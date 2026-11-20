@@ -95,8 +95,19 @@ export function countChange(
   )
 }
 
+// A table of one row per person or organization holds what the person adds to People and
+// Organizations: its fields are theirs, even in a module someone else manages, as a field added
+// beside a mirror's is (rules M2).
+function ownDetails(world: World, redo: Redo): boolean {
+  if (redo.method === 'makeTable') return redo.args[2].some((f) => !!f.per)
+  if (redo.method === 'addFields')
+    return !!world.shape.table(redo.args[0])?.fields.some((f) => f.per)
+  return false
+}
+
 export function askMaintainer(world: World, moduleId: string, redo: Redo, ctx: WriteCtx): void {
   if (ctx.actor.kind === 'system') return
+  if (ownDetails(world, redo)) return
   refuseManaged(world, moduleId, redo.words, ctx)
   refuseSourceField(world, redo, ctx)
   if (ctx.anyway) return

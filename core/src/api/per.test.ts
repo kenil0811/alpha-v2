@@ -138,6 +138,12 @@ it('adds a property in place on People and on Organizations, each its own, and w
     ],
     alpha,
   )
+  // the module people live in comes with Alpha, managed: what the person adds there is still theirs
+  world.db
+    .prepare(
+      "INSERT INTO kits (module_id, kit, version, source, installed_at, updated_at, api, maintainer, managed) VALUES (?, 'Network', '0.1.0', '', '', '', 3, NULL, 'Alpha')",
+    )
+    .run(m.id)
   const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
   const add = (list: string, name: string) =>
     a.inject({
