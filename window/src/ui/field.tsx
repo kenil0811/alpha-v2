@@ -112,8 +112,9 @@ export function AddNew({ adds, onDone }: { adds: Adds; onDone: () => void }) {
   )
 }
 
-// One dropdown everywhere: a button that opens a short list, with a search
-// line past six. A field's choices each wear their colour, on the button too (T17). Written as a
+// One dropdown everywhere (T10): a button that opens a short list, ✓ on the current pick, a search
+// line past six, Add new at the foot where the list can grow, and ★ on a line making it the
+// default where a default is kept. A field's choices each wear their colour, on the button too (T17). Written as a
 // <select> is, <option>s and onChange alike.
 export function Select({
   className,
@@ -127,10 +128,13 @@ export function Select({
   startOpen,
   onDismiss,
   of,
+  star,
   ...rest
 }: Omit<SelectHTMLAttributes<HTMLSelectElement>, 'title'> & {
   'data-tip'?: string | undefined // our tip, never the browser's title: a refusal's words
   of?: Choices | undefined // a field's choices: each line in its own colour
+  // the default line, and what a click on a line's ★ does (on the default: stops it being one)
+  star?: { value: string | null; onStar: (value: string) => void } | undefined
   adds?: Adds | undefined // Add new at the list's foot, where a list can grow
   startOpen?: boolean | undefined // opened at once: a cell being changed
   onDismiss?: (() => void) | undefined // closed with no pick: a click away, Escape
@@ -204,6 +208,11 @@ export function Select({
                 checked={o.value === now}
                 disabled={o.disabled}
                 onClick={() => pick(o.value)}
+                star={
+                  star && o.value
+                    ? { on: star.value === o.value, onClick: () => star.onStar(o.value) }
+                    : undefined
+                }
               >
                 {of && o.value ? <Choice of={of} value={o.value} /> : o.label || '—'}
               </MenuItem>
