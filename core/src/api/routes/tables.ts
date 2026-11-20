@@ -1,6 +1,7 @@
 import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
 import { config } from '../../config.ts'
+import { importRows, sheetHeaders } from '../../files/documents.ts'
 import { tx } from '../../world/db.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { managedBy } from '../../world/maintained.ts'
@@ -68,6 +69,33 @@ export function registerTables(ctx: Ctx): void {
       user: user.id,
     })
     return { id: t.id, hidden: t.hidden }
+  })
+
+  // A sheet or CSV already uploaded, into this table. Without columns it writes nothing and
+  // answers the sheet's headers (the window's mapping); with columns (header -> property) it
+  // imports the rows as the person.
+  app.post('/api/tables/:id/import', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { file, sheet, columns } = z
+      .object({
+        file: z.string(),
+        sheet: z.string().optional(),
+        columns: z.record(z.string(), z.string()).optional(),
+      })
+      .parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    const who = managedBy(world, t.module.id)
+    if (who) throw new Refused(`${t.name} comes with ${who}: rows are not imported into it.`)
+    if (t.mirror)
+      throw new Refused(`${t.name} is a mirror of ${t.mirror}: its rows come from there.`)
+    const f = world.files.findFile(file)
+    if (!f) throw new Refused('That file is not there.')
+    if (!columns) return sheetHeaders(world, f.hash, sheet ?? null)
+    for (const field of Object.values(columns)) findField(t, field)
+    const out = importRows(world, f.hash, t, columns, sheet ?? null, asPerson)
+    live()
+    return { added: out.added }
   })
 
   // What a relation's picker offers: every row of this table, by its name.

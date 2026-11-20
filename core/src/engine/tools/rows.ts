@@ -145,7 +145,7 @@ export function rowTools({ world, here, ctx }: Tooling): ToolEntry[] {
           if (!a.table || !a.columns) throw new Refused('import needs table and columns.')
           const t = tableOf(world, a.table)
           for (const field of Object.values(a.columns)) findField(t, field)
-          return ok(importRows(world, f.hash, t, a.columns, a.sheet ?? null, ctx()))
+          return ok(importRows(world, f.hash, t, a.columns, a.sheet ?? null, ctx()).words)
         }),
       { alwaysLoad: true },
     ),

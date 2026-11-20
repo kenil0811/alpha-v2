@@ -62,10 +62,15 @@ export const api = {
   put: <T>(path: string, body: unknown = {}) => call<T>('PUT', path, body),
   delete: <T>(path: string) => call<T>('DELETE', path),
   upload: (file: File) =>
-    call<{ name: string; readable: boolean; pieces: number }>('POST', '/api/files', file, {
-      'content-type': file.type || 'application/octet-stream',
-      'x-file-name': encodeURIComponent(file.name),
-    }),
+    call<{ hash: string; name: string; readable: boolean; pieces: number }>(
+      'POST',
+      '/api/files',
+      file,
+      {
+        'content-type': file.type || 'application/octet-stream',
+        'x-file-name': encodeURIComponent(file.name),
+      },
+    ),
   // a file dropped on a row: kept there at once
   uploadTo: <T>(path: string, file: File) =>
     call<T>('POST', path, file, {
