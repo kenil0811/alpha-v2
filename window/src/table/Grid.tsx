@@ -59,6 +59,7 @@ import {
   MARK,
   NUMERIC,
   readValue,
+  rowCount,
   show,
   TINT,
   whyFixed,
@@ -512,7 +513,7 @@ export function Grid({
               <Foot
                 key={f.id}
                 field={f}
-                first={i === 0}
+                count={i === 0 ? rowCount((counted ?? rows).length, allRows.length) : undefined}
                 left={stick(i)}
                 edge={i === layout.frozen - 1}
                 rows={counted ?? rows}
@@ -959,7 +960,7 @@ function GroupRow({
 // A column's foot: its total over every row shown, or a quiet place to choose one.
 function Foot({
   field: f,
-  first,
+  count,
   left,
   edge,
   rows,
@@ -969,7 +970,7 @@ function Foot({
   onConfig,
 }: {
   field: FieldView
-  first: boolean
+  count: string | undefined // the first column's: how many rows
   left: number | undefined
   edge: boolean
   rows: RowView[]
@@ -1006,10 +1007,8 @@ function Foot({
             <span className="text-ink-3">{TOTAL_WORDS[op]}</span>
             <span className="truncate font-medium text-ink">{total(op, f, rows, names, true)}</span>
           </>
-        ) : first ? (
-          <span className="text-ink-3">
-            {loading ? '' : `${rows.length} row${rows.length === 1 ? '' : 's'}`}
-          </span>
+        ) : count ? (
+          <span className="text-ink-3">{loading ? '' : count}</span>
         ) : (
           <span className="invisible text-ink-3 group-hover/foot:visible">Total</span>
         )}
