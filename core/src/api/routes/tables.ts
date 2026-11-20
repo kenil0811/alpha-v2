@@ -8,7 +8,7 @@ import { resetWords } from '../../world/records/index.ts'
 import { findField } from '../../world/shape/index.ts'
 import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
-import type { HistoryView, Pick, SavedView, TableView } from '../types.ts'
+import type { HistoryView, Pick, SavedView, TableView, ViewOf } from '../types.ts'
 import { readByOf } from './readnow.ts'
 import { fieldViews } from './rows.ts'
 
@@ -345,6 +345,7 @@ export function registerTables(ctx: Ctx): void {
         documents: t.documents,
         fields: t.fields.map(fieldViews(world.shape)),
         views: world.views.list(t.id).map(savedView),
+        startView: t.startView as ViewOf | null,
         readBy: readByOf(ctx, t.id),
         rows: [],
         names: {},
@@ -360,6 +361,7 @@ export function registerTables(ctx: Ctx): void {
       documents: t.documents,
       fields: t.fields.map(fieldViews(world.shape)),
       views: world.views.list(t.id).map(savedView),
+      startView: t.startView as ViewOf | null,
       readBy: readByOf(ctx, t.id),
       rows: world.records.list(t.id).map((r) => rowOut(t, r)),
       names: {

@@ -455,6 +455,18 @@
               }
             ]
           },
+          "view": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": {}
+          },
           "views": {
             "default": [],
             "type": "array",

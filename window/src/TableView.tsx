@@ -92,7 +92,7 @@ export function TableView({
     views,
     loading,
     order,
-    left.viewOf[data.id],
+    left.viewOf[data.id] ?? data.startView ?? undefined,
     blank,
   )
   const { viewId, setViewId, config, setConfig } = working

@@ -1,5 +1,5 @@
 // The calendar: a month of days, a week or a day of hours, each row on the day and time of the
-// view's date, the earlier and later ones a click away. With the view's end date (until), a row in a
+// view's date, each on one line (its words cut short, the whole in the tip), the earlier and later ones a click away. With the view's end date (until), a row in a
 // week or a day is as long as it lasts; a row that takes the whole day sits above the hours. A row
 // opens whole; the rows with no date are counted. With no rows yet, the table says where they come
 // from (its about).
@@ -170,7 +170,7 @@ function Chip({
       type="button"
       onClick={() => onOpen(p.row.id)}
       {...cutTip(names(p.row))}
-      className="flex items-center gap-1.5 truncate rounded-sm bg-sunk px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
+      className="flex w-full min-w-0 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-sm bg-sunk px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
     >
       {tone && (
         <span className={cn('size-1.5 shrink-0 rounded-full', DOT[tone as keyof typeof DOT])} />
@@ -351,7 +351,7 @@ function Hours({ days, placed, names, toneOf, onOpen }: Draw & { days: Date[] })
                     type="button"
                     onClick={() => onOpen(p.row.id)}
                     {...cutTip(names(p.row))}
-                    className="absolute overflow-hidden rounded-sm border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
+                    className="absolute flex items-baseline gap-1.5 overflow-hidden whitespace-nowrap rounded-sm border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
                     style={{
                       top,
                       height,
@@ -359,12 +359,10 @@ function Hours({ days, placed, names, toneOf, onOpen }: Draw & { days: Date[] })
                       width: `calc(${100 / width}% - 4px)`,
                     }}
                   >
-                    <span className="block truncate font-medium">{names(p.row)}</span>
-                    <span className="block truncate text-ink-3 text-xs tabular-nums">
+                    <span className="shrink-0 text-ink-3 text-xs tabular-nums">
                       {p.at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-                      {p.end &&
-                        ` – ${p.end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}
                     </span>
+                    <span className="truncate font-medium">{names(p.row)}</span>
                   </button>
                 )
               })}

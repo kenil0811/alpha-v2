@@ -148,6 +148,9 @@ export const Manifest = z.object({
             }),
           ])
           .optional(),
+        // how the table first opens, until a person picks a view of their own: a layout and the
+        // fields only it reads, by name (kind, by, until, group, measure)
+        view: z.looseObject({ kind: z.string() }).optional(),
         // saved views by field name: name, default, then the view (world/views.ts ViewConfig)
         views: z
           .array(
