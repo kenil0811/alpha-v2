@@ -9,10 +9,8 @@ export function registerMe(ctx: Ctx): void {
     const folded = world.preference(user.id, 'rail_folded_modules')
     const hidden = world.preference(user.id, 'rail_hidden_modules')
     const pinned = world.preference(user.id, 'rail_pinned_modules')
-    const mapOf = (key: string): Record<string, string[]> => {
-      const v = world.preference(user.id, key)
-      return v ? (JSON.parse(v) as Record<string, string[]>) : {}
-    }
+    const tabOrder = world.preference(user.id, 'tab_order')
+    const barHidden = world.preference(user.id, 'bar_hidden_tables')
     const panel = Number(world.preference(user.id, 'panel_width'))
     const n = (key: string) => {
       const v = Number(world.preference(user.id, key))
@@ -23,8 +21,8 @@ export function registerMe(ctx: Ctx): void {
       folded: folded ? (JSON.parse(folded) as string[]) : [],
       hidden: hidden ? (JSON.parse(hidden) as string[]) : [],
       pinned: pinned ? (JSON.parse(pinned) as string[]) : [],
-      tabOrder: mapOf('tab_order'),
-      tabsHidden: mapOf('tabs_hidden'),
+      tabOrder: tabOrder ? (JSON.parse(tabOrder) as Record<string, string[]>) : {},
+      barHidden: barHidden ? (JSON.parse(barHidden) as string[]) : [],
       railWidth: n('rail_width'),
       panel: Number.isFinite(panel) && panel > 0 ? panel : null,
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
@@ -57,7 +55,7 @@ export function registerMe(ctx: Ctx): void {
         hidden: z.array(z.string()).optional(),
         pinned: z.array(z.string()).optional(),
         tabOrder: z.record(z.string(), z.array(z.string())).optional(),
-        tabsHidden: z.record(z.string(), z.array(z.string())).optional(),
+        barHidden: z.array(z.string()).optional(),
         panel: z.number().int().positive().nullable().optional(),
         railWidth: z.number().int().positive().nullable().optional(),
         assistant: z.enum(['open', 'folded']).optional(),
@@ -92,14 +90,22 @@ export function registerMe(ctx: Ctx): void {
         'rail_pinned_modules',
         given.pinned.length ? JSON.stringify(given.pinned) : null,
       )
-    for (const [map, key] of [
-      [given.tabOrder, 'tab_order'],
-      [given.tabsHidden, 'tabs_hidden'],
-    ] as const) {
-      if (map === undefined) continue
-      const kept = Object.fromEntries(Object.entries(map).filter(([, ids]) => ids.length))
-      world.setPreference(user.id, key, Object.keys(kept).length ? JSON.stringify(kept) : null)
+    if (given.tabOrder !== undefined) {
+      const kept = Object.fromEntries(
+        Object.entries(given.tabOrder).filter(([, ids]) => ids.length),
+      )
+      world.setPreference(
+        user.id,
+        'tab_order',
+        Object.keys(kept).length ? JSON.stringify(kept) : null,
+      )
     }
+    if (given.barHidden !== undefined)
+      world.setPreference(
+        user.id,
+        'bar_hidden_tables',
+        given.barHidden.length ? JSON.stringify(given.barHidden) : null,
+      )
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
     return layoutOf()

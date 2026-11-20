@@ -8,6 +8,7 @@ import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { isPast } from './day.ts'
+import { useLayout } from './layout.ts'
 import { moduleTabs, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
@@ -74,6 +75,7 @@ function PeopleList({
   version: number
   net: ModuleSummary | null
 }) {
+  const { barHidden } = useLayout().layout
   // the core serves People and Organizations as tables; a name changes in its cell
   const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
@@ -89,7 +91,7 @@ function PeopleList({
     <div className="flex h-full min-h-0 flex-col">
       <Tabs
         label={net?.name ?? 'People'}
-        tabs={[...peopleTabs(kind), ...(net ? moduleTabs(net, null) : [])]}
+        tabs={[...peopleTabs(kind), ...(net ? moduleTabs(net, null, barHidden) : [])]}
       />
       {none && (
         <p className="flex items-center gap-1.5 border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">

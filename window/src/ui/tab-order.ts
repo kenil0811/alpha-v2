@@ -30,9 +30,8 @@ export function moveBefore(ids: string[], id: string, before: string | null): st
 
 // What a module's header does with its table tabs, by their keys; the pill switch draws it.
 export interface TabKeeping {
-  hidden: Tab[]
+  hidden: Tab[] // hidden from the header (the layout's barHidden), to show again
   move: (key: string, before: string | null) => void // drag: before that tab, or last
   step: (key: string, by: -1 | 1) => void // Move left, Move right
-  hide: (key: string) => void
   show: (key: string) => void
 }

@@ -9,7 +9,7 @@ export const NO_LAYOUT: Layout = {
   hidden: [],
   pinned: [],
   tabOrder: {},
-  tabsHidden: {},
+  barHidden: [],
   railWidth: null,
   panel: null,
   assistant: 'open',

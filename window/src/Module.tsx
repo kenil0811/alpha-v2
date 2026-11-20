@@ -49,6 +49,7 @@ export function ModuleScreen({
   renderTable: (t: TableData, summary: TableSummary | null) => ReactNode
 }) {
   const [m, setM] = useState<ModuleView | null>(null)
+  const { barHidden } = useLayout().layout
   const load = useCallback(() => {
     api.get<ModuleView>(`/api/modules/${moduleId}`).then(setM, () => setM(null))
   }, [moduleId])
@@ -98,13 +99,16 @@ export function ModuleScreen({
               },
             ]
           : []),
-        ...moduleTabs(facts, current),
+        ...moduleTabs(facts, current, barHidden),
       ]
     : []
   // the person's own order and hidden table tabs, kept per person (the layout)
   const order = layout.tabOrder[moduleId] ?? []
-  const away = layout.tabsHidden[moduleId] ?? []
-  const { shown: tabs, hidden } = arrangeTabs(all, order, away)
+  // hidden tabs come from barHidden, which moduleTabs already leaves out; here to show again
+  const hidden: Tab[] = (facts?.tables ?? [])
+    .filter((t) => t.place === 'main' && barHidden.includes(t.id))
+    .map((t) => ({ key: `t:${t.id}`, href: `#/table/${t.id}`, label: t.name, sel: false }))
+  const { shown: tabs } = arrangeTabs(all, order)
   const idOf = (key: string) => key.slice(2)
   // every table tab in its order now, hidden ones too
   const ids = arrangeTabs(all, order, [])
@@ -127,12 +131,7 @@ export function ModuleScreen({
       // right: before the one after the neighbour, or last
       keeping.move(key, by < 0 ? `t:${to}` : seen[i + 2] === undefined ? null : `t:${seen[i + 2]}`)
     },
-    hide: (key) =>
-      change({ tabsHidden: { ...layout.tabsHidden, [moduleId]: [...away, idOf(key)] } }),
-    show: (key) =>
-      change({
-        tabsHidden: { ...layout.tabsHidden, [moduleId]: away.filter((x) => x !== idOf(key)) },
-      }),
+    show: (key) => change({ barHidden: barHidden.filter((x) => x !== idOf(key)) }),
   }
 
   return (
@@ -169,6 +168,7 @@ export function ModuleScreen({
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
+  hidden: string[] = [], // the tables the person took out of the bar
 ): Tab[] => [
   ...[...m.pages]
     .sort((a, b) => Number(!!b.front) - Number(!!a.front))
@@ -180,9 +180,10 @@ export const moduleTabs = (
       sel: current?.kind === 'page' && current.name === p.name,
     })),
   ...[
-    ...m.tables.filter((t) => t.place === 'main'),
+    ...m.tables.filter((t) => t.place === 'main' && !hidden.includes(t.id)),
     ...m.tables.filter((t) => t.place !== 'main' && t.tab),
   ].map((t) => ({
+    table: t,
     key: `t:${t.id}`,
     href: `#/table/${t.id}`,
     label: t.name,
