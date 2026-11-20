@@ -1,6 +1,7 @@
-// A table's foot, under its rows in every view: New at the left, then, while the list on screen
-// differs from what was saved, Cancel and Save ▾ (Save; Save as new list) at the right, before
-// the pages. A list Alpha keeps itself saves nothing: Cancel alone.
+// A table's foot, under its rows in every view: New at the left and, while the list on screen
+// differs from what was saved, Save ▾ (Save; Save as new list) and Cancel beside it, as they act
+// together; the rows to a page and the pages at the right corner. A list Alpha keeps itself saves
+// nothing: Cancel alone.
 import type { SavedView } from '@alpha/core/api'
 import { ChevronDown, ChevronLeft, ChevronRight, CopyPlus } from 'lucide-react'
 import { type ReactNode, useRef, useState } from 'react'
@@ -35,55 +36,48 @@ export function FootBar({
   return (
     <div className="flex min-h-11 shrink-0 items-center gap-2 border-hair border-t px-3 text-ink-3 text-sm">
       {onNew !== null && <NewButton onNew={onNew} />}
-      <span className="ml-auto flex items-center gap-2">
-        {dirty && (
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onReset}
-              data-tip="Go back to what was saved"
-            >
-              Cancel
-            </Button>
-            {keeps && (
-              <span ref={saveAt} className="flex shrink-0">
-                {view ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="rounded-r-none"
-                      onClick={onSave}
-                      data-tip="Everyone sees the change"
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="rounded-l-none border-l-accent-ink/30 px-1.25"
-                      aria-haspopup="menu"
-                      aria-expanded={saving}
-                      aria-label="More ways to save"
-                      data-tip="More ways to save"
-                      onClick={() => setSaving((o) => !o)}
-                    >
-                      <ChevronDown className="size-3.5" />
-                    </Button>
-                  </>
-                ) : (
-                  <Button size="sm" variant="primary" onClick={() => setNaming(true)}>
-                    Save as list
+      {dirty && (
+        <>
+          {keeps && (
+            <span ref={saveAt} className="flex shrink-0">
+              {view ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    className="rounded-r-none"
+                    onClick={onSave}
+                    data-tip="Everyone sees the change"
+                  >
+                    Save
                   </Button>
-                )}
-              </span>
-            )}
-          </>
-        )}
-        {children}
-      </span>
-      <Popover anchor={saveAt} open={saving} onClose={() => setSaving(false)} align="end">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    className="rounded-l-none border-l-accent-ink/30 px-1.25"
+                    aria-haspopup="menu"
+                    aria-expanded={saving}
+                    aria-label="More ways to save"
+                    data-tip="More ways to save"
+                    onClick={() => setSaving((o) => !o)}
+                  >
+                    <ChevronDown className="size-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="primary" onClick={() => setNaming(true)}>
+                  Save as list
+                </Button>
+              )}
+            </span>
+          )}
+          <Button size="sm" variant="ghost" onClick={onReset} data-tip="Go back to what was saved">
+            Cancel
+          </Button>
+        </>
+      )}
+      <span className="ml-auto flex items-center gap-2">{children}</span>
+      <Popover anchor={saveAt} open={saving} onClose={() => setSaving(false)}>
         <MenuItem
           onClick={() => {
             setSaving(false)
@@ -94,7 +88,7 @@ export function FootBar({
           Save as new list
         </MenuItem>
       </Popover>
-      <Popover anchor={saveAt} open={naming} onClose={() => setNaming(false)} align="end">
+      <Popover anchor={saveAt} open={naming} onClose={() => setNaming(false)}>
         <NameForm
           start=""
           label="Save"
