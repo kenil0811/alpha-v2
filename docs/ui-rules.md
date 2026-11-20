@@ -139,7 +139,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | L1 | Colours and sizes are the tokens in `app.css`, nothing written out | 20 Oct | test |
 | L2 | Seven text sizes, a 14px body, 12px sentence-case labels at Medium; Small and Large move them all together (13 and 16px bodies), spacing as it is; nothing in capitals | 26 Oct, 2 Nov, 17 Nov | test (seven sizes) |
 | L3 | Serif for page, record and section titles and big numbers only | 26 Oct | test |
-| L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a table's frame shows its thumb always, 6px wide in a 12px bar and filling the bar under the pointer, so a table wider than its frame shows it goes on and is easy to drag; a row of tabs shows none | 26 Oct, 10 Nov, 14 Nov | — |
+| L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a table's frame shows its thumb always, 6px wide in a 12px bar and filling the bar under the pointer, so a table wider than its frame shows it goes on and is easy to drag; the frame fills the height below the toolbar in every view (a board's and a timeline's alike), so the sideways bar sits at its bottom however few rows; a row of tabs shows none | 26 Oct, 10 Nov, 14 Nov, 20 Nov | — |
 | L5 | One avatar for people and organizations | 25 Oct | — |
 | L6 | Every button changes colour under the pointer, into the accent's tint (the primary darkens); a soft kind is a way onward that is not the screen's main act (Open page) | 2 Nov | — |
 | L7 | A card's buttons sit at its right, its main act at the right edge, the same on every card | 2 Nov | — |
