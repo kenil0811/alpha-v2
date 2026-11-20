@@ -480,7 +480,8 @@ export function TableView({
               <ChartView
                 rows={rows}
                 group={fields.find((f) => f.id === config.group) ?? (dateBy ? undefined : boardBy)}
-                by={dateBy}
+                // with neither picked, the bars go by the first date, as a board starts on Stage
+                by={dateBy ?? (boardBy ? undefined : fields.find((f) => f.kind === 'date'))}
                 measure={fields.find((f) => f.id === config.measure)}
                 names={data.names}
                 onBar={(field, key) =>

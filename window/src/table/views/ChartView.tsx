@@ -21,7 +21,8 @@ export function ChartView({
   onBar: (field: FieldView, key: string) => void
 }) {
   const axis = group ?? by
-  if (!axis) return <p className="p-4 text-ink-3">Choose what the bars go by.</p>
+  // a view writes no words over its rows (T5): with nothing to go by, an empty chart
+  if (!axis) return <div className="min-h-0 flex-1" />
   const groups = groupRows(rows, axis, names)
   // a choice shows every choice, even with no rows, so the funnel keeps its shape
   const all =
