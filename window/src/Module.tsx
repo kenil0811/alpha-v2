@@ -15,10 +15,12 @@ import type {
 import { Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { useLayout } from './layout.ts'
 import { ModuleDetails, ModuleSetup } from './ModuleSetup.tsx'
 import { PageView } from './PageView.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
+import { arrangeTabs, moveBefore, type TabKeeping } from './ui/tab-order.ts'
 import { type Tab, Tabs } from './ui/tabs.tsx'
 import { Waiting } from './ui/waiting.tsx'
 
@@ -82,7 +84,8 @@ export function ModuleScreen({
   }, [firstTable, m?.people])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
-  const tabs: Tab[] = facts
+  const { layout, change } = useLayout()
+  const all: Tab[] = facts
     ? [
         ...(facts.people ? peopleTabs(null) : []),
         ...(holds
@@ -98,10 +101,43 @@ export function ModuleScreen({
         ...moduleTabs(facts, current),
       ]
     : []
+  // the person's own order and hidden table tabs, kept per person (the layout)
+  const order = layout.tabOrder[moduleId] ?? []
+  const away = layout.tabsHidden[moduleId] ?? []
+  const { shown: tabs, hidden } = arrangeTabs(all, order, away)
+  const idOf = (key: string) => key.slice(2)
+  // every table tab in its order now, hidden ones too
+  const ids = arrangeTabs(all, order, [])
+    .shown.filter((t) => t.key.startsWith('t:'))
+    .map((t) => idOf(t.key))
+  const keeping: TabKeeping = {
+    hidden,
+    move: (key, before) =>
+      change({
+        tabOrder: {
+          ...layout.tabOrder,
+          [moduleId]: moveBefore(ids, idOf(key), before === null ? null : idOf(before)),
+        },
+      }),
+    step: (key, by) => {
+      const seen = tabs.filter((t) => t.key.startsWith('t:')).map((t) => idOf(t.key))
+      const i = seen.indexOf(idOf(key))
+      const to = seen[i + by]
+      if (to === undefined) return
+      // right: before the one after the neighbour, or last
+      keeping.move(key, by < 0 ? `t:${to}` : seen[i + 2] === undefined ? null : `t:${seen[i + 2]}`)
+    },
+    hide: (key) =>
+      change({ tabsHidden: { ...layout.tabsHidden, [moduleId]: [...away, idOf(key)] } }),
+    show: (key) =>
+      change({
+        tabsHidden: { ...layout.tabsHidden, [moduleId]: away.filter((x) => x !== idOf(key)) },
+      }),
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs label={facts?.name ?? 'Module'} tabs={tabs} />
+      <Tabs label={facts?.name ?? 'Module'} tabs={tabs} keeping={keeping} />
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
           m && <Overview m={m} />

@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { useBarSlot } from './bar-slot.tsx'
 import { cn } from './cn.ts'
 import { PillSwitch } from './pill-switch.tsx'
+import type { TabKeeping } from './tab-order.ts'
 
 export type Tab = {
   key: string
@@ -17,9 +18,17 @@ export type Tab = {
   count?: number | undefined
 }
 
-export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
+export function Tabs({
+  label,
+  tabs,
+  keeping,
+}: {
+  label: string
+  tabs: Tab[]
+  keeping?: TabKeeping | undefined // a module's own: tabs dragged, hidden, shown again
+}) {
   const bar = useBarSlot()
-  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} />, bar)
+  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} keeping={keeping} />, bar)
   return (
     <div
       role="tablist"

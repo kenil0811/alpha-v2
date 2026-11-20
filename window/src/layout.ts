@@ -8,6 +8,8 @@ export const NO_LAYOUT: Layout = {
   folded: [],
   hidden: [],
   pinned: [],
+  tabOrder: {},
+  tabsHidden: {},
   railWidth: null,
   panel: null,
   assistant: 'open',
