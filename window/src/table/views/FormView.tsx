@@ -54,7 +54,7 @@ export function FormView({
     }
   }
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4">
       <form
         onSubmit={save}
         className="flex max-w-stream flex-col gap-4 rounded-lg border border-line bg-surface p-5"

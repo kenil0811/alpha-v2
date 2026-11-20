@@ -76,7 +76,7 @@ export function Board({
     s.frame = requestAnimationFrame(step)
   }
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-7 pb-3">
+    <div className="min-h-0 flex-1 overflow-auto p-4">
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a dragged card near an edge scrolls the board; each card's own picker moves it by keyboard */}
       <div
         ref={strip}

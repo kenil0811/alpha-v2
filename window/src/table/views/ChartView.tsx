@@ -21,7 +21,7 @@ export function ChartView({
   onBar: (field: FieldView, key: string) => void
 }) {
   const axis = group ?? by
-  if (!axis) return <p className="px-7 text-ink-3">Choose what the bars go by.</p>
+  if (!axis) return <p className="p-4 text-ink-3">Choose what the bars go by.</p>
   const groups = groupRows(rows, axis, names)
   // a choice shows every choice, even with no rows, so the funnel keeps its shape
   const all =
@@ -48,7 +48,7 @@ export function ChartView({
   const top = Math.max(1, ...values)
   const sum = values.reduce((a, b) => a + b, 0)
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4">
       <div className="max-w-stream rounded-lg border border-line bg-surface p-5">
         <div className="mb-4 flex items-baseline gap-3">
           <h2 className="font-medium font-serif text-ink text-xl">
