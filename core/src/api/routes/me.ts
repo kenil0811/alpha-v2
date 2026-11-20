@@ -24,6 +24,8 @@ export function registerMe(ctx: Ctx): void {
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
       pageSize: n('page_size'),
       agent: world.preference(user.id, 'agent_chosen'),
+      workspaceName: world.preference(user.id, 'workspace_name'),
+      workspacePicture: world.preference(user.id, 'workspace_picture'),
     }
   }
 
@@ -55,6 +57,13 @@ export function registerMe(ctx: Ctx): void {
         assistant: z.enum(['open', 'folded']).optional(),
         pageSize: z.number().int().positive().nullable().optional(),
         agent: z.string().nullable().optional(),
+        workspaceName: z.string().trim().min(1).max(80).nullable().optional(),
+        workspacePicture: z
+          .string()
+          .max(100_000)
+          .regex(/^data:image\/(png|jpeg|webp);base64,/)
+          .nullable()
+          .optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -64,6 +73,10 @@ export function registerMe(ctx: Ctx): void {
     if (given.assistant !== undefined)
       world.setPreference(user.id, 'assistant_folded', given.assistant === 'folded' ? 'yes' : null)
     if (given.agent !== undefined) world.setPreference(user.id, 'agent_chosen', given.agent)
+    if (given.workspaceName !== undefined)
+      world.setPreference(user.id, 'workspace_name', given.workspaceName)
+    if (given.workspacePicture !== undefined)
+      world.setPreference(user.id, 'workspace_picture', given.workspacePicture)
     if (given.railFolded !== undefined)
       world.setPreference(user.id, 'rail_folded', given.railFolded ? 'yes' : null)
     if (given.folded !== undefined)

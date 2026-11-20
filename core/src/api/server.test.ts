@@ -337,6 +337,8 @@ describe('the api over a world', () => {
       assistant: 'open',
       pageSize: null,
       agent: null,
+      workspaceName: null,
+      workspacePicture: null,
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -352,8 +354,27 @@ describe('the api over a world', () => {
         railWidth: 260,
         assistant: 'folded',
         pageSize: 100,
+        workspaceName: 'Bakery HQ',
+        workspacePicture: 'data:image/png;base64,AAAA',
       },
     })
+    expect(
+      (
+        await a.inject({
+          method: 'POST',
+          url: '/api/layout',
+          headers: ok,
+          payload: { workspacePicture: 'https://elsewhere/x.png' },
+        })
+      ).statusCode,
+    ).toBe(400)
+    // the seen mark: what Activity holds after it is the count, and opening Activity clears it
+    const all = (await a.inject({ url: '/api/activity', headers: ok })).json().length
+    expect((await a.inject({ url: '/api/activity/new', headers: ok })).json()).toEqual({
+      count: all,
+    })
+    await a.inject({ method: 'POST', url: '/api/activity/seen', headers: ok })
+    expect((await a.inject({ url: '/api/activity/new', headers: ok })).json()).toEqual({ count: 0 })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: true,
       folded: [shops.id],
@@ -364,6 +385,8 @@ describe('the api over a world', () => {
       assistant: 'folded',
       pageSize: 100,
       agent: null,
+      workspaceName: 'Bakery HQ',
+      workspacePicture: 'data:image/png;base64,AAAA',
     })
     // the text size is kept beside the look, each on its own
     const appearance = (payload: object) =>

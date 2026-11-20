@@ -13,6 +13,8 @@ export const NO_LAYOUT: Layout = {
   assistant: 'open',
   pageSize: null,
   agent: null,
+  workspaceName: null,
+  workspacePicture: null,
 }
 
 export const LayoutContext = createContext<{

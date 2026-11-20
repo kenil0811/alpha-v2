@@ -20,6 +20,18 @@ export function token(): string {
   }
 }
 
+// Log out of a per-install token: this browser forgets it (and the address stops carrying it), so
+// the window shows the signed-out screen until the person opens the address the core prints.
+export function forgetToken(): void {
+  for (const store of [sessionStorage, localStorage])
+    try {
+      store.removeItem(KEY)
+    } catch {
+      // a private window keeps none
+    }
+  window.location.replace(window.location.pathname)
+}
+
 export class Problem extends Error {}
 
 // The window's words for a core that gave none: it is on this Mac, so "not answering" is the

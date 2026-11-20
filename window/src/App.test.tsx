@@ -87,6 +87,7 @@ describe('the window', () => {
         here={null}
         name="Kenil"
         waiting={2}
+        news={7}
         onNew={() => undefined}
         tasksDue={0}
         online
@@ -94,6 +95,8 @@ describe('the window', () => {
         onLayout={() => undefined}
       />,
     )
+    // the workspace tile is a button with the count of what is new in Activity
+    expect(html).toContain('aria-label="Kenil&#x27;s workspace, 7 new in Activity"')
     // each module opens straight where it lands: one with modules inside on its Overview, one with
     // a table on that table (L18)
     expect(html).toContain('href="#/module/m_1/overview"')

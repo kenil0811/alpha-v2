@@ -10,6 +10,17 @@ export function registerActivity(ctx: Ctx): void {
 
   app.get('/api/activity', async (): Promise<RunView[]> => activity())
 
+  // What is new since the person last opened Activity: the entries started after their seen mark
+  // (kept per person, like the rail's folds); with no mark yet, all of them.
+  app.get('/api/activity/new', async () => {
+    const seen = world.preference(user.id, 'activity_seen') ?? ''
+    return { count: activity().filter((r) => r.startedAt > seen).length }
+  })
+  app.post('/api/activity/seen', async () => {
+    world.setPreference(user.id, 'activity_seen', new Date().toISOString())
+    return { count: 0 }
+  })
+
   // Revert or Bring back: what it would do, then doing it, on the person's word in
   // the one pop-up. The target is an Activity entry's, and so are the words naming it.
   const Target = z.union([

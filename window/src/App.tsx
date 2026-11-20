@@ -57,6 +57,7 @@ export function App() {
   const [table, setTable] = useState<TableData | null>(null)
   const [busyTurn, setBusyTurn] = useState<string | null>(null)
   const [name, setName] = useState('')
+  const [activityNew, setActivityNew] = useState(0) // Alpha's doings since Activity was last opened
   const [fileName, setFileName] = useState('')
   const [personName, setPersonName] = useState('')
   const [taskName, setTaskName] = useState('')
@@ -259,6 +260,19 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
+  // opening Activity is what moves the seen mark; otherwise the count follows the core's lines
+  const inActivity = place.at === 'settings' && place.section === 'activity'
+  useEffect(() => {
+    if (inActivity) {
+      setActivityNew(0)
+      api.post('/api/activity/seen').catch(() => undefined)
+    } else
+      api.get<{ count: number }>('/api/activity/new').then(
+        (r) => setActivityNew(r.count),
+        () => undefined,
+      )
+  }, [inActivity, version])
+
   useEffect(() => {
     api.get<Me>('/api/me').then(
       (me) => {
@@ -426,6 +440,7 @@ export function App() {
           onLayout={changeLayout}
           name={name}
           waiting={stream?.cards.length ?? 0}
+          news={activityNew}
           signals={moduleSignals(stream)}
           onNew={() => {
             openBuilder()
