@@ -3,7 +3,7 @@
 // count beside its name, the chosen tab underlined in the accent; a row too long scrolls sideways,
 // never folds a label to an icon or cuts it short.
 import type { TableSummary } from '@alpha/core/api'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { TableTab } from '../TableTab.tsx'
 import { useBarSlot } from './bar-slot.tsx'
@@ -57,5 +57,10 @@ export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
 
 // A tab that is a table takes its menu and rename; any other is its link as it was.
 export function Maybe({ tab, children }: { tab: Tab; children: (on: object) => ReactNode }) {
-  return tab.table ? <TableTab table={tab.table}>{children}</TableTab> : <>{children({})}</>
+  // a fixed tab (People, Setup, a page, Settings' parts) has no menu; the browser's is not offered
+  return tab.table ? (
+    <TableTab table={tab.table}>{children}</TableTab>
+  ) : (
+    <>{children({ onContextMenu: (e: MouseEvent) => e.preventDefault() })}</>
+  )
 }
