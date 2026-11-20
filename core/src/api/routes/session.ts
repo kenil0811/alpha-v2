@@ -11,6 +11,11 @@ export const cookieOf = (ports: number[] | undefined): string => {
   const port = ports?.[0]
   return port && port !== 4700 ? `alpha_session_${port}` : 'alpha_session'
 }
+// the cookie that holds the per-install token, named by port like the session's
+export const keyCookie = (ports: number[] | undefined): string => {
+  const port = ports?.[0]
+  return port && port !== 4700 ? `alpha_key_${port}` : 'alpha_key'
+}
 export const SESSION_PATHS = new Set([
   '/api/session',
   '/api/session/link',

@@ -2,7 +2,6 @@
 // where the person has the page, what they click and type sent back. A site's sign-in on a server
 // and a work's tab watched or taken over are both this.
 import { type ReactNode, useEffect, useRef, useState } from 'react'
-import { token } from './api.ts'
 
 // Two presses this close in time and place are a double click, as on a Mac.
 const DOUBLE_MS = 500
@@ -66,9 +65,7 @@ export function LivePage({
   useEffect(() => {
     box.current?.showModal()
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const ws = new WebSocket(
-      `${proto}://${window.location.host}${path}?t=${encodeURIComponent(token())}`,
-    )
+    const ws = new WebSocket(`${proto}://${window.location.host}${path}`)
     socket.current = ws
     ws.binaryType = 'arraybuffer'
     ws.onopen = () => {
