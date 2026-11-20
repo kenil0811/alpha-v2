@@ -25,10 +25,21 @@ export function TasksSetup({ version, fields }: { version: number; fields: Field
         () => undefined,
       )
   }, [version])
-  const holding = (id: string) => open.filter((t) => t.ownerId === id).length
+  // every agent with an open task, the Chief of staff too, named by the agents list else by the
+  // task's own owner words
+  const held = [
+    ...Map.groupBy(
+      open.filter((t) => t.ownerId),
+      (t) => t.ownerId as string,
+    ),
+  ]
+    .map(([id, ts]) => {
+      const a = agents.find((x) => x.id === id)
+      return { id, name: a?.name ?? ts[0]?.owner ?? id, title: a?.title, n: ts.length }
+    })
+    .sort((x, y) => y.n - x.n)
   // a schedule that wakes an agent hands it a task each time it runs
   const making: ScheduleView[] = modules.flatMap((m) => m.schedules).filter((s) => s.wakes)
-  const held = agents.filter((a) => holding(a.id) > 0)
   return (
     <div className="h-full overflow-y-auto">
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
@@ -47,7 +58,7 @@ export function TasksSetup({ version, fields }: { version: number; fields: Field
           {held.length ? (
             <List>
               {held.map((a) => {
-                const n = holding(a.id)
+                const n = a.n
                 return (
                   <Row
                     key={a.id}
@@ -57,7 +68,7 @@ export function TasksSetup({ version, fields }: { version: number; fields: Field
                         {a.name}
                       </a>
                     }
-                    sub={`${a.title} · ${n} open task${n === 1 ? '' : 's'}`}
+                    sub={`${a.title ? `${a.title} · ` : ''}${n} open task${n === 1 ? '' : 's'}`}
                   />
                 )
               })}
