@@ -157,7 +157,7 @@ export function ViewTabs({
         }
         onKeyDown={mine && keeps ? onList.on.onKeyDown : undefined}
         className={cn(
-          'flex h-7 max-w-44 shrink-0 items-center gap-1.5 rounded-full px-3 text-md',
+          'flex h-7 max-w-44 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-md',
           mine ? 'bg-accent-soft font-medium text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink',
         )}
       >
@@ -169,7 +169,7 @@ export function ViewTabs({
     )
   }
   return (
-    <div className="relative flex min-h-11 items-center gap-2 border-hair border-b px-3">
+    <div className="relative flex min-h-11 items-center gap-1 border-hair border-b pr-3 pl-1">
       {picker}
       <fieldset className="scroll-quiet m-0 flex min-w-0 gap-1 overflow-x-auto border-0 p-0">
         <legend className="sr-only">Saved lists</legend>
@@ -180,7 +180,7 @@ export function ViewTabs({
                 href={l.href}
                 aria-current={l.sel ? 'page' : undefined}
                 className={cn(
-                  'flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-md',
+                  'flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-md',
                   l.sel
                     ? 'bg-accent-soft font-medium text-ink'
                     : 'text-ink-2 hover:bg-hover hover:text-ink',
@@ -239,7 +239,7 @@ function RenameBox({ start, onDone }: { start: string; onDone: (name: string | n
         }
       }}
       style={{ width: `${Math.max(6, name.length + 2)}ch` }}
-      className="h-7 max-w-56 shrink-0 rounded-full border border-accent-line bg-surface px-3 font-medium text-ink text-md outline-none"
+      className="h-7 max-w-56 shrink-0 rounded-full border border-accent-line bg-surface px-2.5 font-medium text-ink text-md outline-none"
     />
   )
 }

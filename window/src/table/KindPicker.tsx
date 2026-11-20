@@ -9,7 +9,6 @@ import {
   CalendarDays,
   ChartBarBig,
   ChartGantt,
-  ChevronDown,
   ClipboardList,
   Kanban,
   LayoutGrid,
@@ -123,10 +122,10 @@ export function KindPicker({
         aria-label={`View: ${current?.words}`}
         data-tip={`View: ${current?.words}`}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-7.5 shrink-0 items-center gap-0.5 rounded-md px-1.5 text-ink-2 hover:bg-hover hover:text-ink"
+        // 28px from 4px in: its icon sits over the tick column's centre (T1)
+        className="grid size-7 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >
         {current?.icon}
-        <ChevronDown className="size-3 text-ink-3" />
       </button>
       {config.kind === 'board' &&
         pick(
