@@ -336,6 +336,7 @@ export const NOT_DOORS: Record<string, string> = {
     'a computer paired with its link; what it lends goes through the connector’s door',
   'DELETE /api/computers/:id': 'a person’s computer removed; what it lent stops, kept',
   'POST /api/layout': 'how the person left the window',
+  'POST /api/enter': 'sets the sign-in cookie from the key the person already holds',
   'POST /api/appearance': 'how the window looks to the person',
   'POST /api/modules/:id/pages/:name/ask': 'a question about a page, answered in a conversation',
   'POST /api/modules/:id/pages/:name/pdf': 'a page printed',
