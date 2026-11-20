@@ -42,6 +42,7 @@ export function ViewTabs({
   onDefault,
   onRemove,
   onReset,
+  links,
 }: {
   tools: ReactNode // the view, search and filter, after the saved lists
   right: ReactNode // the table's own actions, ⋮ and the chevron, at the right end
@@ -58,6 +59,11 @@ export function ViewTabs({
   onDefault: (id: string, on: boolean) => void // the core keeps the list the table opens on
   onRemove: () => void
   onReset: () => void
+  // a list Alpha keeps itself may hold its own lists (Tasks: Today, This week…): pills that go to
+  // them, in place of All, in the same one row
+  links?:
+    | { key: string; label: string; count?: number | undefined; href: string; sel: boolean }[]
+    | undefined
 }) {
   const [more, setMore] = useState(false) // ▾: the lists that don't fit, the list's actions
   const [saving, setSaving] = useState(false) // Save ▾
@@ -225,9 +231,34 @@ export function ViewTabs({
       >
         {ordered.map((v) => pill(v, true))}
       </div>
-      <fieldset ref={pills} className="m-0 flex min-w-0 gap-1 border-0 p-0">
+      <fieldset
+        ref={pills}
+        className={cn(
+          'm-0 flex min-w-0 gap-1 border-0 p-0',
+          links && 'scroll-quiet overflow-x-auto',
+        )}
+      >
         <legend className="sr-only">Saved lists</legend>
-        {shown.map((v) => pill(v))}
+        {links
+          ? links.map((l) => (
+              <a
+                key={l.key}
+                href={l.href}
+                aria-current={l.sel ? 'page' : undefined}
+                className={cn(
+                  'flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-md',
+                  l.sel
+                    ? 'bg-accent-soft font-medium text-ink'
+                    : 'text-ink-2 hover:bg-hover hover:text-ink',
+                )}
+              >
+                {l.label}
+                {l.count !== undefined && (
+                  <span className="text-ink-3 text-sm tabular-nums">{l.count}</span>
+                )}
+              </a>
+            ))
+          : shown.map((v) => pill(v))}
       </fieldset>
       {keeps && (
         <button

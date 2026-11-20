@@ -23,18 +23,17 @@ import { MenuItem, Popover } from './ui/popover.tsx'
 import { PageTitle } from './ui/rename.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
-import { Tabs } from './ui/tabs.tsx'
 
 const TASKS_FRAME = frameOf('tasks', 'Tasks', { id: 'tasks', name: 'Tasks' })
 
 type List = 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done'
 
 const LISTS: { value: List; label: string }[] = [
+  { value: 'open', label: 'All open' },
   { value: 'today', label: 'Today' },
   { value: 'week', label: 'This week' },
   { value: 'overdue', label: 'Overdue' },
   { value: 'waiting', label: 'Waiting' },
-  { value: 'open', label: 'All open' },
   { value: 'done', label: 'Done' },
 ]
 
@@ -85,22 +84,19 @@ function TaskLists({ list, version }: { list: List; version: number }) {
   const [adding, setAdding] = useState(false)
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs
-        label="Tasks"
-        tabs={LISTS.map((l) => ({
-          key: l.value,
-          href: `#/tasks?list=${l.value}`,
-          label: l.label,
-          count: l.value !== 'done' && counts[l.value] ? counts[l.value] : undefined,
-          sel: l.value === list,
-        }))}
-      />
       <div className="min-h-0 flex-1">
         {/* its frame from the first moment, its rows filling in */}
         <TableView
           key={list}
           data={data ?? TASKS_FRAME}
           loading={!data}
+          lists={LISTS.map((l) => ({
+            key: l.value,
+            href: `#/tasks?list=${l.value}`,
+            label: l.label,
+            count: l.value !== 'done' && counts[l.value] ? counts[l.value] : undefined,
+            sel: l.value === list,
+          }))}
           kept={{
             open: (id) => {
               window.location.hash = `#/tasks/${id}`
