@@ -8,9 +8,21 @@ import { resetWords } from '../../world/records/index.ts'
 import { findField } from '../../world/shape/index.ts'
 import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
-import type { HistoryView, Pick, SavedView, TableView } from '../types.ts'
+import type { HistoryView, Pick, RowView, SavedView, TableView } from '../types.ts'
 import { readByOf } from './readnow.ts'
 import { fieldViews } from './rows.ts'
+
+// A row as a table draws it: of its values' sources only what a cell shows (a guess's mark, the
+// dot of a value kept beside it); the rest is a row's at a time, from /api/rows/:row, when its
+// panel or a value's source opens. Most of a large table's read was sources.
+export const cellSources = (r: RowView): RowView => ({
+  ...r,
+  sources: Object.fromEntries(
+    Object.entries(r.sources).filter(
+      ([, s]) => s.kind === 'estimated' || s.kind === 'assumed' || s.beside,
+    ),
+  ),
+})
 
 export function registerTables(ctx: Ctx): void {
   const { app, world, engine, user, asPerson, live } = ctx
@@ -201,8 +213,15 @@ export function registerTables(ctx: Ctx): void {
     )
     const and =
       list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list.at(-1)}`
+    // rows holding a value the person typed: removing them is removing their own word
+    const theirs = rows.filter((r) =>
+      Object.values(world.records.get(r)?.record.provenance ?? {}).some((p) => p.kind === 'stated'),
+    ).length
+    const typed = theirs
+      ? `${theirs === n ? (n === 1 ? 'It holds' : 'They hold') : `${theirs} of them hold`} values you typed. `
+      : ''
     return {
-      words: `${parts.length ? `${n === 1 ? 'Its' : 'Their'} ${and} go with ${n === 1 ? 'it' : 'them'}. ` : ''}Bring back, in Activity, returns ${n === 1 && !parts.length ? 'it' : 'them all'} for ${config.limits().keep_removed_days} days.`,
+      words: `${typed}${parts.length ? `${n === 1 ? 'Its' : 'Their'} ${and} go with ${n === 1 ? 'it' : 'them'}. ` : ''}Bring back, in Activity, returns ${n === 1 && !parts.length ? 'it' : 'them all'} for ${config.limits().keep_removed_days} days.`,
     }
   })
 
@@ -349,6 +368,7 @@ export function registerTables(ctx: Ctx): void {
         rows: [],
         names: {},
       }
+    const listed = world.records.list(t.id)
     return {
       id: t.id,
       name: t.name,
@@ -361,7 +381,7 @@ export function registerTables(ctx: Ctx): void {
       fields: t.fields.map(fieldViews(world.shape)),
       views: world.views.list(t.id).map(savedView),
       readBy: readByOf(ctx, t.id),
-      rows: world.records.list(t.id).map((r) => rowOut(t, r)),
+      rows: listed.map((r) => cellSources(rowOut(t, r))),
       names: {
         ...Object.fromEntries(
           t.fields
@@ -377,7 +397,7 @@ export function registerTables(ctx: Ctx): void {
         ...world.people.names(
           t.fields
             .filter((f) => f.kind === 'person')
-            .flatMap((f) => world.records.list(t.id).map((r) => r.values[f.slug]))
+            .flatMap((f) => listed.map((r) => r.values[f.slug]))
             .filter((v): v is string => typeof v === 'string'),
         ),
       },

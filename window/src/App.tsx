@@ -45,6 +45,7 @@ import { TaskWork } from './TaskThread.tsx'
 import { NextChip } from './Today.tsx'
 import { frameOf } from './table/frame.ts'
 import { titleOf } from './table/values.ts'
+import { useTableLoad } from './table-load.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
 import { inside, landingOf } from './tree.ts'
 import { SlideIn } from './ui/slide.tsx'
@@ -205,32 +206,7 @@ export function App() {
   placeRef.current = place
 
   // a table newly opened: its shape first, drawn at once, its rows alongside
-  const [rowsComing, setRowsComing] = useState(false)
-  const rowsFor = useRef<string | null>(null) // the table whose rows are here
-  const loadTable = useCallback(async (id: string, opening = false) => {
-    const here = () => placeRef.current.at === 'table' && placeRef.current.id === id
-    if (opening)
-      api.get<TableData>(`/api/tables/${id}?rows=none`).then(
-        (shape) => {
-          if (!here() || rowsFor.current === id) return
-          setTable(shape)
-          setRowsComing(true)
-        },
-        () => undefined,
-      )
-    try {
-      const t = await api.get<TableData>(`/api/tables/${id}`)
-      if (!here()) return
-      rowsFor.current = id
-      setTable(t)
-      setRowsComing(false)
-    } catch {
-      if (!here()) return
-      setTable(null)
-      setRowsComing(false)
-      window.location.hash = '#/'
-    }
-  }, [])
+  const { rowsComing, rowsFor, loadTable } = useTableLoad(placeRef, setTable)
 
   const refresh = useCallback(async () => {
     try {
@@ -250,7 +226,8 @@ export function App() {
     // the table open now, on its own: one that has gone (deleted, say) sends the person Home rather
     // than standing as a warning over the next screen
     const p = placeRef.current
-    if (p.at === 'table') await loadTable(p.id)
+    // not while its opening read is on its way: that read brings the rows
+    if (p.at === 'table' && rowsFor.current === p.id) await loadTable(p.id)
   }, [])
 
   useEffect(() => {
@@ -283,7 +260,7 @@ export function App() {
     // another table: drawn from its shape while its rows come; the same one is only brought up to date
     const opening = rowsFor.current !== place.id
     if (opening) rowsFor.current = null
-    void loadTable(place.id, opening)
+    void loadTable(place.id, opening, false)
   }, [place])
 
   useEffect(

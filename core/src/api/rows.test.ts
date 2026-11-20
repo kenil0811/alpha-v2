@@ -11,7 +11,7 @@ import { revert } from '../world/records/index.ts'
 import type { Table } from '../world/shape/index.ts'
 import { World } from '../world/world.ts'
 import { buildServer } from './server.ts'
-import type { RowAround, RowPageView } from './types.ts'
+import type { RowAround, RowPageView, TableView } from './types.ts'
 
 const alpha = { kind: 'alpha' as const }
 const looked = { kind: 'looked_up' as const, source: { url: 'https://example.com' } }
@@ -168,6 +168,45 @@ describe('a row on its own', () => {
     const shown = around.parts[0]?.rows.map((r) => r.values.number)
     expect(shown).toHaveLength(12)
     expect(shown).not.toContain('INV-1')
+  })
+
+  it('a table’s read carries only what a cell draws of its sources; the row’s own read has all', async () => {
+    const { clients, acme, bolt } = firm()
+    world.records.change(
+      clients.id,
+      [
+        {
+          id: acme,
+          values: { Since: '2020-01-01' },
+          provenance: { kind: 'estimated', basis: 'a guess' },
+        },
+      ],
+      { actor: alpha },
+    )
+    const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
+    // the person types Bolt's name in the window
+    await a.inject({
+      method: 'POST',
+      url: `/api/tables/${clients.id}/rows/${bolt}`,
+      headers: ok,
+      payload: { field: 'Name', value: 'Bolt Ltd' },
+    })
+    const table = (
+      await a.inject({ url: `/api/tables/${clients.id}`, headers: ok })
+    ).json() as TableView
+    const row = table.rows.find((r) => r.id === acme)
+    expect(Object.keys(row?.sources ?? {})).toEqual(['since']) // the guess's mark, not Name's source
+    const page = (await a.inject({ url: `/api/rows/${acme}`, headers: ok })).json() as RowPageView
+    expect(Object.keys(page.row.sources).sort()).toEqual(['name', 'since'])
+    // deleting what the person typed says so, from the core, since the table carries no sources
+    const goes = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${clients.id}/rows/goes`,
+      headers: ok,
+      payload: { rows: [acme, bolt] },
+    })
+    expect(goes.json().words).toMatch(/^1 of them hold values you typed\. /)
+    await a.close()
   })
 
   it('comes with its fields and title, and what is around it', async () => {
