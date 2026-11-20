@@ -36,6 +36,7 @@ export type Place =
       at: 'tasks'
       list: 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done'
       id: string | null
+      setup: boolean // Tasks' Setup, the bar's second tab
     }
 
 export function placeOf(address: string): Place {
@@ -91,10 +92,11 @@ export function placeOf(address: string): Place {
   if (tk)
     return {
       at: 'tasks',
+      setup: tk[1] === 'setup',
       list:
         (tk[2] as 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done' | undefined) ??
         'today',
-      id: tk[1] ?? null,
+      id: tk[1] === 'setup' ? null : (tk[1] ?? null),
     }
   const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }

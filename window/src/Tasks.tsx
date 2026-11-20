@@ -9,6 +9,7 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useStat
 import { api, Problem } from './api.ts'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
+import { TasksSetup } from './TasksSetup.tsx'
 import { TaskWorkLine } from './TaskThread.tsx'
 import { frameOf } from './table/frame.ts'
 import { dueWords, toLocalInput } from './time.ts'
@@ -54,24 +55,26 @@ const setState = (id: string, state: TaskLineView['state']) =>
 export function Tasks({
   list,
   id,
+  setup = false,
   version,
   onName,
 }: {
   list: List
   id: string | null
+  setup?: boolean
   version: number
   onName: (name: string) => void
 }) {
   return id ? (
     <TaskPage id={id} version={version} onName={onName} />
   ) : (
-    <TaskLists list={list} version={version} />
+    <TaskLists list={list} setup={setup} version={version} />
   )
 }
 
 // The saved lists are the switch in the bar; the tasks are drawn by the shared table view, with its
 // table, board, calendar and grouping, each opening on its own page.
-function TaskLists({ list, version }: { list: List; version: number }) {
+function TaskLists({ list, setup, version }: { list: List; setup: boolean; version: number }) {
   // the core serves a saved list's tasks as a table: changed in a cell, or by a card dragged
   // across the board
   const [data, setData] = useState<KeptTable | null>(null)
@@ -87,28 +90,45 @@ function TaskLists({ list, version }: { list: List; version: number }) {
     <div className="flex h-full min-h-0 flex-col">
       <Tabs
         label="Tasks"
-        tabs={LISTS.map((l) => ({
-          key: l.value,
-          href: `#/tasks?list=${l.value}`,
-          label: l.label,
-          count: l.value !== 'done' && counts[l.value] ? counts[l.value] : undefined,
-          sel: l.value === list,
-        }))}
+        tabs={[
+          { key: 'tasks', href: '#/tasks', label: 'Tasks', sel: !setup },
+          { key: 'setup', href: '#/tasks/setup', label: 'Setup', sel: setup },
+        ]}
       />
-      <div className="min-h-0 flex-1">
-        {/* its frame from the first moment, its rows filling in */}
-        <TableView
-          key={list}
-          data={data ?? TASKS_FRAME}
-          loading={!data}
-          kept={{
-            open: (id) => {
-              window.location.hash = `#/tasks/${id}`
-            },
-            onNew: () => setAdding(true),
-          }}
-        />
-      </div>
+      {setup ? (
+        <TasksSetup version={version} fields={data?.fields ?? []} />
+      ) : (
+        <>
+          <div className="flex shrink-0 px-5 pt-3 pb-1">
+            <Segmented
+              label="Task lists"
+              value={list}
+              onChange={(l) => {
+                window.location.hash = `#/tasks?list=${l}`
+              }}
+              options={LISTS.map((l) => ({
+                value: l.value,
+                label:
+                  l.value !== 'done' && counts[l.value] ? `${l.label} ${counts[l.value]}` : l.label,
+              }))}
+            />
+          </div>
+          <div className="min-h-0 flex-1">
+            {/* its frame from the first moment, its rows filling in */}
+            <TableView
+              key={list}
+              data={data ?? TASKS_FRAME}
+              loading={!data}
+              kept={{
+                open: (id) => {
+                  window.location.hash = `#/tasks/${id}`
+                },
+                onNew: () => setAdding(true),
+              }}
+            />
+          </div>
+        </>
+      )}
       <Dialog open={adding} title="New task" onClose={() => setAdding(false)}>
         <NewTask
           onAdded={() => {
