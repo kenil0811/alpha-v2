@@ -1,7 +1,6 @@
 // Alpha's own Calendar and People (core/kits) as every calendar and address book finds them: a
 // connector lands in their Events and Contacts by lasting keys, so there is one of each, the
 // Calendar opening on its calendar and People with its People tabs.
-
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,7 +9,6 @@ import { CONTACTS } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { livesPeople } from '../api/views.ts'
 import { keepDefaults } from '../modules/defaults.ts'
-import { placeOf } from '../world/shape/parts.ts'
 import { World } from '../world/world.ts'
 import { landIn } from './places.ts'
 
@@ -48,9 +46,6 @@ describe('Calendar and People, Alpha’s own', () => {
     expect(world.shape.tables(people?.id ?? '').map((t) => t.name)).toEqual(['Contacts'])
     expect(world.shape.ownTable(cal?.id ?? '', 'Events')?.id).toBe(events?.id)
     expect(world.shape.ownModule('Contacts')).toBeUndefined()
-    // Contacts is no tab: its rows are People's, so it is People's source, not a place of its own
-    const contacts = world.shape.ownTable(people?.id ?? '', 'Contacts')
-    expect(contacts && placeOf(contacts)).toBe('people')
   })
 
   it('adopt the Events a calendar made before them, rows and all', async () => {

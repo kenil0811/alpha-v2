@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { NO_LAYOUT } from './layout.ts'
+import { NewModule } from './NewModule.tsx'
 import { placeOf } from './place.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
@@ -109,6 +110,28 @@ describe('the window', () => {
     expect(html).toContain('href="#/settings"')
     expect(html).not.toContain('Alpha is running')
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
+  })
+
+  it('lights New module in the rail on its page, and the page asks what it should do', () => {
+    const html = renderToString(
+      <Rail
+        modules={modules}
+        place={{ at: 'new', setup: false }}
+        here={null}
+        name="Kenil"
+        waiting={0}
+        onNew={() => undefined}
+        tasksDue={0}
+        online
+        layout={open}
+        onLayout={() => undefined}
+      />,
+    )
+    expect(html).toContain('aria-current="page"') // no other row is current on #/new
+    expect(placeOf('#/new/setup')).toEqual({ at: 'new', setup: true })
+    const page = renderToString(<NewModule setup={false} version={0} onBuild={async () => {}} />)
+    expect(page).toContain('What should it do?')
+    expect(page).toContain('Build it')
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {
