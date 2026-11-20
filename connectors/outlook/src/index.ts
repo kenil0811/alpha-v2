@@ -409,7 +409,7 @@ export const outlook: Connector = {
         contacts: await contacts(get),
       }))
       const e = await c.host.land('Events', read.events)
-      const p = await c.host.land('Contacts', read.contacts)
+      const p = await c.host.land(CONTACTS.name, read.contacts)
       more = e.added + p.added
     } catch (err) {
       if (!(err instanceof Problem) || (err.kind !== 'blocked' && err.kind !== 'sign_in')) throw err

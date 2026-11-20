@@ -120,7 +120,7 @@ describe('Google', () => {
       Organizer: ME,
       'Your address': ME,
     })
-    expect(h.landed.find((l) => l.table === 'Contacts')?.items[0]?.values).toMatchObject({
+    expect(h.landed.find((l) => l.table === 'Address book')?.items[0]?.values).toMatchObject({
       Name: 'Priya Shah',
       Company: 'Harbor Mills',
       Title: 'Owner',

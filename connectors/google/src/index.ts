@@ -183,7 +183,7 @@ export const google: Connector = {
       contacts: await contacts(c),
     }))
     const e = await c.host.land('Events', read.events)
-    const p = await c.host.land('Contacts', read.contacts)
+    const p = await c.host.land(CONTACTS.name, read.contacts)
     return { rows: read.events.length + read.contacts.length, sawNew: e.added + p.added > 0 }
   },
 }
