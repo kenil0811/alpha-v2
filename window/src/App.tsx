@@ -431,7 +431,6 @@ export function App() {
             openBuilder()
           }}
           tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
-          online={!problem}
         />
         <main className="flex min-w-0 flex-1 flex-col">
           <Bar

@@ -89,7 +89,6 @@ describe('the window', () => {
         waiting={2}
         onNew={() => undefined}
         tasksDue={0}
-        online
         layout={open}
         onLayout={() => undefined}
       />,
@@ -121,7 +120,6 @@ describe('the window', () => {
         waiting={0}
         onNew={() => undefined}
         tasksDue={0}
-        online
         layout={{ ...open, folded: ['m_1'] }}
         onLayout={() => undefined}
       />,
@@ -137,7 +135,6 @@ describe('the window', () => {
         waiting={0}
         onNew={() => undefined}
         tasksDue={0}
-        online
         layout={{ ...open, railFolded: true }}
         onLayout={() => undefined}
       />,
