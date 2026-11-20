@@ -368,13 +368,11 @@ describe('the api over a world', () => {
         })
       ).statusCode,
     ).toBe(400)
-    // the seen mark: what Activity holds after it is the count, and opening Activity clears it
-    const all = (await a.inject({ url: '/api/activity', headers: ok })).json().length
-    expect((await a.inject({ url: '/api/activity/new', headers: ok })).json()).toEqual({
-      count: all,
-    })
+    // the seen mark: a first look starts from now (0), then only what comes after it counts
+    const count = async () => (await a.inject({ url: '/api/activity/new', headers: ok })).json()
+    expect(await count()).toEqual({ count: 0 })
     await a.inject({ method: 'POST', url: '/api/activity/seen', headers: ok })
-    expect((await a.inject({ url: '/api/activity/new', headers: ok })).json()).toEqual({ count: 0 })
+    expect(await count()).toEqual({ count: 0 })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: true,
       folded: [shops.id],

@@ -11,9 +11,13 @@ export function registerActivity(ctx: Ctx): void {
   app.get('/api/activity', async (): Promise<RunView[]> => activity())
 
   // What is new since the person last opened Activity: the entries started after their seen mark
-  // (kept per person, like the rail's folds); with no mark yet, all of them.
+  // (kept per person, like the rail's folds); a person with no mark yet starts from now, at 0.
   app.get('/api/activity/new', async () => {
-    const seen = world.preference(user.id, 'activity_seen') ?? ''
+    const seen = world.preference(user.id, 'activity_seen')
+    if (seen === null) {
+      world.setPreference(user.id, 'activity_seen', new Date().toISOString())
+      return { count: 0 }
+    }
     return { count: activity().filter((r) => r.startedAt > seen).length }
   })
   app.post('/api/activity/seen', async () => {
