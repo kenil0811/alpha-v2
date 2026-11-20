@@ -45,7 +45,7 @@ import { cycleSort, setWidth } from './edits.ts'
 import { type Group, groupRows, TOTAL_WORDS, tintOf, toneOf, total, widthOf } from './engine.ts'
 import { useGoes } from './goes.ts'
 import type { LayoutNow } from './layout.ts'
-import { useShapeFixed } from './Mirror.tsx'
+import { useFieldsAt, useShapeFixed } from './Mirror.tsx'
 import { RowMenu } from './RowMenu.tsx'
 import { TagChips } from './Tags.tsx'
 import {
@@ -1083,6 +1083,7 @@ export function AddFieldForm({
   title: string
   onAdded: (name: string) => void
 }) {
+  const at = useFieldsAt() ?? `/api/tables/${tableId}/fields`
   const [name, setName] = useState('')
   const [kind, setKind] = useState('text')
   const [choices, setChoices] = useState('')
@@ -1102,7 +1103,7 @@ export function AddFieldForm({
     try {
       // tags are a choice that holds several
       const tags = kind === 'tags'
-      await api.post(`/api/tables/${tableId}/fields`, {
+      await api.post(at, {
         name,
         kind: tags ? 'choice' : kind,
         ...(tags ? { many: true } : {}),

@@ -119,7 +119,7 @@ export class World {
     this.people = new People(db, this.shape, this.cards)
     this.records.watch = this.people
     this.people.records = this.records
-    this.records.personOf = (said) => this.people.ref(said)
+    this.records.personOf = (said, company) => this.people.ref(said, company)
     // one row per person, and the fold of a merge
     this.records.peopleRoot = (id) => this.people.root(id)
     this.records.personName = (id) => this.people.names([id])[id] ?? 'them'

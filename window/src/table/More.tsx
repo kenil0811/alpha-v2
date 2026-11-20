@@ -184,7 +184,7 @@ export function More({
         </SubMenu>
         <MenuItem
           reason={
-            fixed ?? (adding ? undefined : 'This table has its own page; add properties there.')
+            fixed ?? (adding ? undefined : 'This list has its own page; add properties there.')
           }
           onClick={() => {
             setOpen(false)

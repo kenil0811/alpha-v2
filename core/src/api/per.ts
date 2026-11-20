@@ -1,4 +1,4 @@
-// The one-row-per-person tables of the module People lives in, as People's grid and
+// The one-row-per-person (or per-organization) tables of the module People lives in, as People's grid and
 // a person's page show them: their fields join People's own columns, and a value the person types
 // there is written to that person's row, made if there isn't one yet. Nothing is copied: the
 // columns are read from those tables each time.
@@ -20,17 +20,20 @@ export interface PerColumn {
   view: FieldView // named for People's grid: its table's name in front only where two would clash
 }
 
-const OWN = ['name', 'organization', 'email', 'phone', 'last', 'talks']
+const OWN = {
+  person: ['name', 'organization', 'email', 'phone', 'last', 'talks'],
+  company: ['name', 'domain', 'people'],
+}
 
-export function perColumns(world: World): PerColumn[] {
-  const tables = peopleTables(world.shape)
+export function perColumns(world: World, kind: 'person' | 'company' = 'person'): PerColumn[] {
+  const tables = peopleTables(world.shape, kind)
   const shown = (t: Table) => t.fields.filter((f) => f.id !== perField(t)?.id && f.kind !== 'notes')
   const all = tables.flatMap((t) => shown(t).map((f) => f.name.toLowerCase()))
   const view = fieldViews(world.shape)
   return tables.flatMap((t) =>
     shown(t).map((f) => {
       const name = f.name.toLowerCase()
-      const clash = OWN.includes(name) || all.filter((x) => x === name).length > 1
+      const clash = OWN[kind].includes(name) || all.filter((x) => x === name).length > 1
       return {
         table: t,
         field: f,

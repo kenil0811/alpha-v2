@@ -7,6 +7,10 @@ import { when } from './values.ts'
 // Why this table's shape is fixed, on a managed module (rules M2): its controls grey with it.
 export const ShapeFixed = createContext<string | undefined>(undefined)
 export const useShapeFixed = () => useContext(ShapeFixed)
+// Where a property is added from this table's header when it is not the module table's own route:
+// People's and Organizations' lists have theirs (rules T16).
+export const FieldsAt = createContext<string | undefined>(undefined)
+export const useFieldsAt = () => useContext(FieldsAt)
 export const managedWhy = (managed: string | null) =>
   managed ? `Comes with ${managed}: its columns change only with it` : undefined
 

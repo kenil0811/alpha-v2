@@ -260,7 +260,7 @@ function summaryNames(t: Table, tables: Table[]): string[] {
 function perColumns(tables: Table[]): { name: string; sql: string }[] {
   const own = ['id', 'name', 'emails', 'phones', 'profile', 'companies', 'added']
   const fields = tables.flatMap((t) => {
-    const per = t.fields.find((f) => f.per === 'person')
+    const per = t.fields.find((f) => f.per)
     return per
       ? columnsOf({ ...t, fields: t.fields.filter((f) => f.id !== per.id) }).map((col) => ({
           t,

@@ -12,16 +12,17 @@ import type { Table, WriteCtx } from './types.ts'
 import { findField } from './types.ts'
 
 // The person field a table's rows are one per, if any.
-export const perField = (t: Table) => t.fields.find((f) => f.per === 'person')
+export const perField = (t: Table) => t.fields.find((f) => f.per)
 
 // The one-row-per-person tables of the module People lives in (Network's): their fields join
 // People's own columns, a person's page and the model's people view.
-export const peopleTables = (shape: Shape): Table[] =>
+// `per` says whose rows: a person's (People's columns) or an organization's (Organizations').
+export const peopleTables = (shape: Shape, kind: 'person' | 'company' = 'person'): Table[] =>
   shape
     .modules()
     .filter((m) => manifestSays(m, 'people'))
     .flatMap((m) => shape.tables(m.id))
-    .filter((t) => !!perField(t))
+    .filter((t) => perField(t)?.per === kind)
 
 // Only a person field, once a table, and only while every row has its person.
 export function perAllowed(shape: Shape, table: Table, name: string, kind: string, made: boolean) {
@@ -62,7 +63,7 @@ export function setPer(
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
     const f = findField(table, field)
-    if ((f.per === 'person') === per) return table
+    if (!!f.per === per) return table
     if (per) {
       perAllowed(shape, table, f.name, f.kind, false)
       if (one(shape.db, `SELECT 1 FROM ${quote(table.slug)} WHERE ${quote(f.slug)} IS NULL`))

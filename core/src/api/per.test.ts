@@ -109,3 +109,74 @@ it('joins People, a person’s page and the people view, and a typed value makes
   ])
   await a.close()
 })
+
+it('adds a property in place on People and on Organizations, each its own, and writes a value', async () => {
+  const m = world.shape.makeModule('Network', alpha)
+  appendFileSync(join(m.dir, 'module.yaml'), 'people: true\n')
+  const cards = world.shape.makeTable(
+    m.id,
+    'Cards',
+    [
+      { name: 'Name', kind: 'text' },
+      { name: 'Email', kind: 'email' },
+      { name: 'Company', kind: 'text' },
+    ],
+    alpha,
+  )
+  world.people.mapTable(
+    cards.id,
+    { each: 'person', name: 'Name', emails: 'Email', company: 'Company' },
+    alpha,
+  )
+  world.records.add(
+    cards.id,
+    [
+      {
+        values: { Name: 'Ann Lee', Email: 'ann@lee.example', Company: 'Acme' },
+        provenance: looked,
+      },
+    ],
+    alpha,
+  )
+  const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
+  const add = (list: string, name: string) =>
+    a.inject({
+      method: 'POST',
+      url: `/api/kept/${list}/fields`,
+      headers: ok,
+      payload: { name, kind: 'text' },
+    })
+  expect((await add('people', 'Nickname')).statusCode).toBe(200)
+  expect((await add('organizations', 'Tier')).statusCode).toBe(200)
+  const get = async (list: string) =>
+    (await a.inject({ url: `/api/kept/${list}`, headers: ok })).json() as KeptTable
+  let people = await get('people')
+  let orgs = await get('organizations')
+  expect(people.fields.slice(6).map((f) => f.name)).toEqual(['Nickname'])
+  expect(orgs.fields.slice(3).map((f) => f.name)).toEqual(['Tier'])
+  expect(orgs.kept?.editable).toEqual(['Name', 'Tier'])
+  const post = (list: string, id: string, field: string, value: string) =>
+    a.inject({
+      method: 'POST',
+      url: `/api/kept/${list}/rows/${id}`,
+      headers: ok,
+      payload: { field, value },
+    })
+  const ann = people.rows[0]?.id as string
+  const acme = orgs.rows[0]?.id as string
+  await post('people', ann, 'Nickname', 'Annie')
+  await post('organizations', acme, 'Tier', 'Gold')
+  people = await get('people')
+  orgs = await get('organizations')
+  expect(people.rows[0]?.values[people.fields[6]?.slug as string]).toBe('Annie')
+  expect(orgs.rows[0]?.values[orgs.fields[3]?.slug as string]).toBe('Gold')
+  // a second property goes into the table made the first time
+  await add('people', 'Notes2')
+  expect(
+    world.shape
+      .tables(m.id)
+      .map((t) => t.name)
+      .sort(),
+  ).toEqual(['Cards', 'Organization details', 'People details'])
+  await a.close()
+})
