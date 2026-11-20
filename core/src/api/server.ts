@@ -36,7 +36,7 @@ import { registerReadNow } from './routes/readnow.ts'
 import { registerRows } from './routes/rows.ts'
 import { registerRules } from './routes/rules.ts'
 import { registerSchedules } from './routes/schedules.ts'
-import { cookieIn, cookieOf, registerSession, SESSION_PATHS } from './routes/session.ts'
+import { cookieIn, cookieOf, keyCookie, registerSession, SESSION_PATHS } from './routes/session.ts'
 import { registerSettings } from './routes/settings.ts'
 import { BACK, registerSignIn } from './routes/signin.ts'
 import { registerSites } from './routes/sites.ts'
@@ -147,7 +147,9 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const back = path === BACK
     const host = req.headers.host ?? ''
     const origin = req.headers.origin
-    const given = req.headers['x-alpha-token'] ?? (req.query as { t?: string }).t
+    // the token comes in a header, or in the cookie /api/enter set: never in an address
+    const given =
+      req.headers['x-alpha-token'] ?? cookieIn(req.headers.cookie, keyCookie(options.ports))
     if (hosts.size && !hosts.has(host)) return deny(reply, 'This address is not Alpha’s.')
     if (origin && hosts.size && !hosts.has(origin.replace(/^https?:\/\//, '')))
       return deny(reply, 'This page is not Alpha’s.')
@@ -165,6 +167,18 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     }
     if (token && given !== token)
       return deny(reply, 'Open Alpha from the address the core printed.')
+  })
+  // The window opens with the token in its first address, trades it here for a cookie the page's
+  // script cannot read, and drops it from the address: no link, picture, file or socket shows it.
+  // The hook above has already checked the header (and Host, and Origin).
+  app.post('/api/enter', async (req, reply) => {
+    if (!token) return { ok: true }
+    const secure = req.protocol === 'https' || options.publicAddress ? '; Secure' : ''
+    reply.header(
+      'set-cookie',
+      `${keyCookie(options.ports)}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict${secure}`,
+    )
+    return { ok: true }
   })
   // after the body is read, so the route and all that it starts run as this person
   // large answers go compressed when the window can read them so (compress.ts)

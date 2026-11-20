@@ -1,24 +1,24 @@
 // The window's only way to the core: HTTP with the per-install token, and one websocket.
 import type { LiveEvent } from '@alpha/core/api'
 
-const KEY = 'alpha-token'
-
-export function token(): string {
-  const fromUrl = new URLSearchParams(window.location.search).get('t')
-  if (fromUrl) {
-    try {
-      sessionStorage.setItem(KEY, fromUrl)
-    } catch {
-      // a private window: the token stays in the address
-    }
-    return fromUrl
-  }
-  try {
-    return sessionStorage.getItem(KEY) ?? ''
-  } catch {
-    return ''
-  }
+// The address the core prints carries the token once. Here it is traded for a cookie the page
+// cannot read (POST /api/enter) and dropped from the address, so no link, picture, file or socket
+// shows it. Everything waits on `ready`.
+const entering = (): Promise<void> => {
+  if (typeof window === 'undefined') return Promise.resolve() // a test renders on the server
+  const url = new URL(window.location.href)
+  const given = url.searchParams.get('t')
+  if (!given) return Promise.resolve()
+  return fetch('/api/enter', { method: 'POST', headers: { 'x-alpha-token': given } }).then(
+    (res) => {
+      if (!res.ok) return
+      url.searchParams.delete('t')
+      window.history.replaceState(null, '', url)
+    },
+    () => undefined,
+  )
 }
+export const ready = entering()
 
 export class Problem extends Error {}
 
@@ -38,10 +38,10 @@ async function call<T>(
   body?: unknown,
   headers: Record<string, string> = {},
 ): Promise<T> {
+  await ready
   const res = await fetch(path, {
     method,
     headers: {
-      'x-alpha-token': token(),
       ...(body !== undefined && !(body instanceof Blob)
         ? { 'content-type': 'application/json' }
         : {}),
@@ -72,15 +72,15 @@ export const api = {
       'content-type': file.type || 'application/octet-stream',
       'x-file-name': encodeURIComponent(file.name),
     }),
-  // a core address the browser opens itself (a picture, a download), with the token
-  tokened: (path: string) =>
-    `${path}${path.includes('?') ? '&' : '?'}t=${encodeURIComponent(token())}`,
-  fileUrl: (hash: string) => `/api/files/${hash}?t=${encodeURIComponent(token())}`,
+  // a core address the browser opens itself (a picture, a download): the cookie goes with it
+  tokened: (path: string) => path,
+  fileUrl: (hash: string) => `/api/files/${hash}`,
   // a file the core makes (an export), saved by the browser under the name given
   download: async (path: string, body: unknown, name: string) => {
+    await ready
     const res = await fetch(path, {
       method: 'POST',
-      headers: { 'x-alpha-token': token(), 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     })
     if (!res.ok) {
@@ -114,8 +114,9 @@ export function listen(on: (e: LiveEvent) => void): () => void {
   let closed = false
   let retry: ReturnType<typeof setTimeout> | undefined
   const open = () => {
+    if (closed) return
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    ws = new WebSocket(`${proto}://${window.location.host}/ws?t=${encodeURIComponent(token())}`)
+    ws = new WebSocket(`${proto}://${window.location.host}/ws`)
     ws.onmessage = (m) => on(JSON.parse(String(m.data)) as LiveEvent)
     ws.onopen = () => {
       on({ type: 'lines' })
@@ -125,7 +126,7 @@ export function listen(on: (e: LiveEvent) => void): () => void {
       if (!closed) retry = setTimeout(open, 1500)
     }
   }
-  open()
+  void ready.then(open)
   return () => {
     closed = true
     clearTimeout(retry)

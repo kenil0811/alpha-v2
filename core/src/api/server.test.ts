@@ -194,6 +194,32 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('trades the token for a cookie, so no address carries it', async () => {
+    const a = app()
+    const host = { host: '127.0.0.1:4700' }
+    // no token, no cookie: refused, and entering without the token is refused too
+    expect((await a.inject({ url: '/api/me', headers: host })).statusCode).toBe(403)
+    expect((await a.inject({ method: 'POST', url: '/api/enter', headers: host })).statusCode).toBe(
+      403,
+    )
+    // the token in an address no longer opens anything
+    expect((await a.inject({ url: `/api/me?t=${token}`, headers: host })).statusCode).toBe(403)
+    // entering with the header sets an HttpOnly, SameSite=Strict cookie
+    const enter = await a.inject({ method: 'POST', url: '/api/enter', headers: ok })
+    expect(enter.statusCode).toBe(200)
+    const set = String(enter.headers['set-cookie'])
+    expect(set).toContain('HttpOnly')
+    expect(set).toContain('SameSite=Strict')
+    const cookie = set.split(';')[0] ?? ''
+    // the cookie alone opens the api, a wrong one does not
+    expect((await a.inject({ url: '/api/me', headers: { ...host, cookie } })).statusCode).toBe(200)
+    expect(
+      (await a.inject({ url: '/api/me', headers: { ...host, cookie: 'alpha_key=wrong' } }))
+        .statusCode,
+    ).toBe(403)
+    await a.close()
+  })
+
   it('shows a stored file inline only when it is harmless, HTML in a sandbox, the rest as a download', async () => {
     const a = app()
     const person = { actor: { kind: 'person' as const, id: world.owner('Kenil').id } }
