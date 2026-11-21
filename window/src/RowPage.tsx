@@ -4,6 +4,7 @@
 // table. It comes again whenever the world changes.
 import type {
   FieldView,
+  ModuleView,
   RowAround,
   RowFileView,
   RowPageView,
@@ -12,6 +13,7 @@ import type {
 } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import { PageView } from './PageView.tsx'
 import { type Block, Framed, RecordPage } from './RecordPage.tsx'
 import { TableName } from './table/context.ts'
 import { RowBody } from './table/RowPanel.tsx'
@@ -34,6 +36,7 @@ interface Around {
   tasks: number
   around: RowAround | null
   rules: RuleView[]
+  module: ModuleView | null // for its pages drawn for this row (P16-4)
 }
 
 export function RowPage({
@@ -63,12 +66,14 @@ export function RowPage({
       api.get<TasksView>(`/api/tasks?row=${id}`).catch(() => null),
       api.get<RowAround>(`/api/rows/${id}/around`).catch(() => null),
       api.get<RuleView[]>(`/api/rules?module=${encodeURIComponent(moduleId)}`).catch(() => []),
-    ]).then(([files, tasks, around, rules]) =>
+      api.get<ModuleView>(`/api/modules/${moduleId}`).catch(() => null),
+    ]).then(([files, tasks, around, rules, module]) =>
       setNear({
         files: files.length,
         tasks: tasks?.lines.length ?? 0,
         around,
         rules: rules.filter((r) => !r.revokedAt),
+        module,
       }),
     )
   }, [tableId, moduleId, id, version])
@@ -169,7 +174,22 @@ export function RowPage({
       {Object.values(view.row.sources).some((s) => s?.open) && part('read')}
     </div>
   )
+  // the module's pages drawn for one record of this table: a report on each client (P16-4)
+  const mine = near?.module
+  const pages: Block[] = mine
+    ? mine.pages
+        .filter((p) => p.record === view.table.id)
+        .map((p) => {
+          const drawn = (
+            <Framed>
+              <PageView m={mine} page={p} version={version} record={id} />
+            </Framed>
+          )
+          return { key: `page:${p.name}`, title: p.title, short: drawn, full: drawn, wide: true }
+        })
+    : []
   const blocks: Block[] = [
+    ...pages,
     ...(notes ? [{ key: 'notes', title: notes.name, short: part('notes'), wide: true }] : []),
     ...(around?.parts ?? []).map((p) => ({
       key: `part:${p.table.id}`,

@@ -32,3 +32,9 @@ moved out of the grid into its own file. The + is the next free cell of the prop
 source is on its hover, in plain words ("Alpha found it", or its own words, and the day). What
 Alpha knows is sentences: where the values came from and when, the rules, what Alpha read as text
 links; it no longer repeats the values. "On" is the DealPilot module's own field, not the page.
+
+P16-4, asked by Vikas through the P4 session: a page can belong to a table's records. Its file
+says `<meta name="alpha-record" content="Clients">`; the core lists it with that table's id, draws
+it for one row of that table (`?record=`, refused for any other row) and hands the page the row as
+`alpha.record`. The record page shows it as a block, drawn for that record. A page keeps its
+picker on its module's tab when `alpha.record` is empty. Not done: the row panel.
