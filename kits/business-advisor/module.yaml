@@ -1,0 +1,6 @@
+# Business method by executive role: no tables, only skills. Start with chief-of-staff.
+name: Business advisor
+version: 0.1.0
+api: 2
+description: Business method for a small firm's decisions, grouped under six executive roles (CEO, CFO, COO, CMO, CHRO, CDO) with a chief of staff that routes each question.
+tables: []
