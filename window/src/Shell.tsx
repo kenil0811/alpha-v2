@@ -35,7 +35,7 @@ import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN, STRIP, stripItem } from './ui/edge.tsx'
 import { Field } from './ui/field.tsx'
 import { MenuItem, Popover, useContextMenu } from './ui/popover.tsx'
-import { Renamable } from './ui/rename.tsx'
+import { RENAME_TIP, Renamable } from './ui/rename.tsx'
 import { SlideWidth } from './ui/slide.tsx'
 
 function Nav({
@@ -272,7 +272,9 @@ function Workspace({
   onLayout: (change: Partial<Layout>) => void
 }) {
   const label = layout.workspaceName ?? (name ? `${name}'s workspace` : 'Your workspace')
-  const anchor = useRef<HTMLButtonElement>(null)
+  const anchor = useRef<HTMLDivElement>(null)
+  const pic = useRef<HTMLButtonElement>(null)
+  const [showing, setShowing] = useState(false)
   const file = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -312,33 +314,60 @@ function Workspace({
     } else forgetToken()
   }
   const initial = (name.trim()[0] ?? 'A').toUpperCase()
+  const toMenu = () => setOpen((o) => !o)
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
+    <div
+      ref={anchor}
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 hover:bg-rail-hover"
+    >
       <button
-        ref={anchor}
+        ref={pic}
         type="button"
-        aria-label={news ? `${label}, ${news} new in Activity` : label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="relative flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 text-left hover:bg-rail-hover"
+        aria-label="Workspace picture"
+        data-tip="Click to see it, double-click to change it"
+        onClick={() => (layout.workspacePicture && !tileOnly ? setShowing(true) : toMenu())}
+        onDoubleClick={() => {
+          setShowing(false)
+          setOpen(false)
+          file.current?.click()
+        }}
+        className="relative grid size-6.5 shrink-0 place-items-center overflow-hidden rounded-md bg-accent font-semibold text-accent-ink text-md leading-none"
       >
-        <span className="relative grid size-6.5 shrink-0 place-items-center overflow-hidden rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
-          {layout.workspacePicture ? (
-            <img src={layout.workspacePicture} alt="" className="size-full object-cover" />
-          ) : (
-            initial
-          )}
-        </span>
-        {news > 0 && (
-          <span className="absolute -top-0.5 left-4.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 font-semibold text-accent-ink text-xs">
-            {news > 99 ? '99+' : news}
-          </span>
+        {layout.workspacePicture ? (
+          <img src={layout.workspacePicture} alt="" className="size-full object-cover" />
+        ) : (
+          initial
         )}
-        <span className={tileOnly ? 'sr-only' : 'min-w-0 flex-1 truncate font-semibold text-md'}>
-          {label}
-        </span>
       </button>
+      {news > 0 && (
+        <span className="pointer-events-none absolute -top-0.5 left-5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 font-semibold text-accent-ink text-xs">
+          {news > 99 ? '99+' : news}
+        </span>
+      )}
+      <Renamable
+        name={label}
+        rename={tileOnly ? null : async (to) => onLayout({ workspaceName: to.slice(0, 80) })}
+      >
+        {(start) => (
+          <button
+            type="button"
+            aria-label={news ? `${label}, ${news} new in Activity` : label}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            data-tip={start ? RENAME_TIP : undefined}
+            onClick={toMenu}
+            onDoubleClick={() => {
+              setOpen(false)
+              start?.()
+            }}
+            className="min-w-0 flex-1 text-left"
+          >
+            <span className={tileOnly ? 'sr-only' : 'block truncate font-semibold text-md'}>
+              {label}
+            </span>
+          </button>
+        )}
+      </Renamable>
       <input
         ref={file}
         type="file"
@@ -349,6 +378,13 @@ function Workspace({
           e.target.value = ''
         }}
       />
+      <Popover anchor={pic} open={showing} onClose={() => setShowing(false)}>
+        <img
+          src={layout.workspacePicture ?? undefined}
+          alt={label}
+          className="m-1 size-40 rounded-md object-cover"
+        />
+      </Popover>
       <Popover anchor={anchor} open={open} onClose={close}>
         {renaming === null ? (
           <>
