@@ -76,8 +76,8 @@ export function linkBeside(href: string, base: string): Opened | null {
   return { kind, id: m[2] }
 }
 
-// Go to an address as a click on a link to it would: a thing opens beside the page when there is
-// room, anything else (or no room) goes to its page. For the places that open from a button, a row
+// Go to an address as a click on a link to it would: a thing opens beside the page, anything else
+// goes to its page. For the places that open from a button, a row
 // or a result, not an <a>.
 export function openLink(href: string): void {
   const a = document.createElement('a')

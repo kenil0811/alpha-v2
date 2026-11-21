@@ -35,20 +35,14 @@ const iconOf = (t: Thing, className: string) =>
   t.kind === 'event' ? <CalendarClock className={className} /> : <Circle className={className} />
 
 // What comes next today, at the right of Home's bar; nothing when nothing is left today. It opens
-// the day beside the page, or the Calendar where there is no room beside.
-export function NextChip({ version, room }: { version: number; room: boolean }) {
+// the day beside the page.
+export function NextChip({ version }: { version: number }) {
   const { day, now } = useDay(version)
   const next = day ? nextOf(day, now) : null
   if (!day || !next) return null
   return (
     <a
-      href={
-        room
-          ? withBeside('#/', { kind: 'day', id: 'today' })
-          : day.calendar
-            ? `#/table/${day.calendar}`
-            : '#/tasks'
-      }
+      href={withBeside('#/', { kind: 'day', id: 'today' })}
       {...cutTip(next.words)}
       className="hidden h-7 min-w-0 max-w-72 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 text-ink-2 text-md hover:bg-hover hover:text-ink @2xl:flex"
     >

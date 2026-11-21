@@ -1,7 +1,7 @@
 // A task, a run, a person or a row open beside the page, and a schedule, a rule, the rows a figure
 // counted and the day: its own page, narrow, in the side panel, with Open page to the page itself at
-// the panel's foot. A link to one of them opens it here when the window has room beside the page
-// (room.ts); a ⌘-click, Open page, or no room goes to the page, as before. A link inside the
+// the panel's foot. A link to one of them opens it here, over the centre of the window (never over
+// the assistant); a ⌘-click or Open page goes to the page. A link inside the
 // panel replaces what it shows; what was clicked to open it stays in sight to its left.
 import type { TableView as TableData } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
@@ -18,9 +18,8 @@ import { DayBeside } from './Today.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
 // A click on a link to one of these kinds opens it beside the page, in the address.
-export function useOpenBeside(room: boolean): void {
+export function useOpenBeside(): void {
   useEffect(() => {
-    if (!room) return
     const click = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return
       const a = (e.target as Element | null)?.closest?.('a[href]')
@@ -37,7 +36,7 @@ export function useOpenBeside(room: boolean): void {
     }
     document.addEventListener('click', click)
     return () => document.removeEventListener('click', click)
-  }, [room])
+  }, [])
 }
 
 export function OpenedPanel({
