@@ -185,7 +185,7 @@ export function RowPage({
               <PageView m={mine} page={p} version={version} record={id} />
             </Framed>
           )
-          return { key: `page:${p.name}`, title: p.title, short: drawn, full: drawn, wide: true }
+          return { key: `page:${p.name}`, title: p.title, full: drawn } // its own tab, never on Summary (Vikas, 21 Nov)
         })
     : []
   const blocks: Block[] = [

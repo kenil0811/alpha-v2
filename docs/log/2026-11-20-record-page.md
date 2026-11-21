@@ -38,3 +38,7 @@ says `<meta name="alpha-record" content="Clients">`; the core lists it with that
 it for one row of that table (`?record=`, refused for any other row) and hands the page the row as
 `alpha.record`. The record page shows it as a block, drawn for that record. A page keeps its
 picker on its module's tab when `alpha.record` is empty. Not done: the row panel.
+
+21 Nov, from Vikas: a record's module pages also show in the row's side panel, at its foot. On the
+record page a module page is its own tab, always there and never on Summary. Tabs drag to a new
+place; the order is kept with the pins, per person, for every record of the table.

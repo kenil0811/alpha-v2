@@ -11,6 +11,7 @@ import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
 import { useLayout } from '../layout.ts'
 import { AddCell, HiddenToggle } from '../RecordFields.tsx'
+import { RecordPages } from '../RecordPages.tsx'
 import { NewTask, TaskList } from '../Tasks.tsx'
 import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
@@ -38,6 +39,7 @@ export function RowPanel({
   return (
     <SidePanel title={title || 'A row'} onClose={onClose} full={`#/row/${rest.row.id}`}>
       <RowBody {...rest} />
+      <RecordPages row={rest.row.id} />
     </SidePanel>
   )
 }

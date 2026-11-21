@@ -22,7 +22,7 @@ export interface Block {
   title: string
   about?: string
   count?: number // how many it holds; 0 is nothing, and the block shows nowhere
-  short: ReactNode // its start, on Summary
+  short?: ReactNode // its start, on Summary; none: only its tab, always in the tab row (a module's page)
   full?: ReactNode // the whole of it, on its tab; none: Summary shows all of it, and it has no tab
   wide?: boolean // the whole width on Summary (the note)
 }
@@ -54,10 +54,24 @@ export function RecordPage({
   const shown = blocks.filter((b) => b.count !== 0)
   const open = shown.find((b) => b.key === tab && b.full)
   // in the order pinned; one opened from its All shows as a tab while it is open
-  const tabs = [
-    ...layout.recordTabs.flatMap((k) => shown.filter((b) => b.full && pinKey(b.key) === k)),
-    ...(open && !pinned(open.key) ? [open] : []),
-  ]
+  // a module's page always has its tab; another block once pinned; in the order the person
+  // dragged them to (kept in the pins), and one opened from its All while it is open
+  const at = (b: Block) => layout.recordTabs.indexOf(pinKey(b.key))
+  const kept = shown
+    .filter((b) => b.full && (!b.short || pinned(b.key)))
+    .sort((a, b) => at(a) - at(b))
+  const tabs = [...kept, ...(open?.short && !pinned(open.key) ? [open] : [])]
+  const move = (from: string, to: string) => {
+    const keys = kept.map((b) => b.key)
+    const next = keys.filter((k) => k !== from)
+    next.splice(next.indexOf(to) + (keys.indexOf(from) < keys.indexOf(to) ? 1 : 0), 0, from)
+    change({
+      recordTabs: [
+        ...layout.recordTabs.filter((k) => !k.startsWith(`${scope}:`)),
+        ...next.map(pinKey),
+      ],
+    })
+  }
   const toggle = (key: string) =>
     change({
       recordTabs: pinned(key)
@@ -84,6 +98,7 @@ export function RecordPage({
           <Tabs
             under
             label={name}
+            onMove={move}
             tabs={[
               {
                 key: 'summary',
@@ -98,8 +113,9 @@ export function RecordPage({
                 label: b.title,
                 count: b.count,
                 sel: open?.key === b.key,
+                drag: kept.includes(b),
                 onPick: () => setTab(b.key),
-                onMenu: menuOf(b.key),
+                ...(b.short ? { onMenu: menuOf(b.key) } : {}),
               })),
             ]}
           />
@@ -116,41 +132,43 @@ export function RecordPage({
           <>
             {properties}
             <div className="grid items-start gap-x-8 gap-y-7 @3xl:grid-cols-2">
-              {shown.map((b) => (
-                // biome-ignore lint/a11y/noStaticElementInteractions: a block's right-click pins it; its tab's menu does too
-                <div
-                  key={b.key}
-                  className={cn('min-w-0', b.wide && '@3xl:col-span-2')}
-                  onContextMenu={
-                    b.full
-                      ? (e) => {
-                          if ((e.target as HTMLElement).closest('h3') === null) return
-                          e.preventDefault()
-                          menuOf(b.key)({ x: e.clientX, y: e.clientY })
-                        }
-                      : undefined
-                  }
-                >
-                  <Section
-                    small
-                    title={b.title}
-                    {...(b.about ? { about: b.about } : {})}
-                    action={
-                      b.full ? (
-                        <button
-                          type="button"
-                          onClick={() => setTab(b.key)}
-                          className="text-accent text-sm hover:underline"
-                        >
-                          {b.count ? `All ${b.count}` : 'All'}
-                        </button>
-                      ) : undefined
+              {shown
+                .filter((b) => b.short)
+                .map((b) => (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: a block's right-click pins it; its tab's menu does too
+                  <div
+                    key={b.key}
+                    className={cn('min-w-0', b.wide && '@3xl:col-span-2')}
+                    onContextMenu={
+                      b.full
+                        ? (e) => {
+                            if ((e.target as HTMLElement).closest('h3') === null) return
+                            e.preventDefault()
+                            menuOf(b.key)({ x: e.clientX, y: e.clientY })
+                          }
+                        : undefined
                     }
                   >
-                    {b.short}
-                  </Section>
-                </div>
-              ))}
+                    <Section
+                      small
+                      title={b.title}
+                      {...(b.about ? { about: b.about } : {})}
+                      action={
+                        b.full ? (
+                          <button
+                            type="button"
+                            onClick={() => setTab(b.key)}
+                            className="text-accent text-sm hover:underline"
+                          >
+                            {b.count ? `All ${b.count}` : 'All'}
+                          </button>
+                        ) : undefined
+                      }
+                    >
+                      {b.short}
+                    </Section>
+                  </div>
+                ))}
             </div>
           </>
         )}
