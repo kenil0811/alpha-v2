@@ -82,6 +82,7 @@ export function ModuleMenu({
   point,
   onShut,
   onRename,
+  fixed,
 }: {
   m: ModuleSummary
   modules: ModuleSummary[]
@@ -89,7 +90,9 @@ export function ModuleMenu({
   point: { x: number; y: number } | null // a right-click's place
   onShut: () => void
   onRename: (() => void) | undefined // its name edited in place in the rail
+  fixed?: boolean // Home, Agents or Tasks: the same menu, what a module alone can do greyed
 }) {
+  const notModule = fixed ? `${m.name} is not a module` : undefined
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -137,18 +140,18 @@ export function ModuleMenu({
           <PanelRightOpen className="size-3.5 text-ink-3" />
           Open
         </MenuItem>
-        {onRename && (
-          <MenuItem
-            onClick={() => {
-              close()
-              onRename()
-            }}
-          >
-            <PencilLine className="size-3.5 text-ink-3" />
-            Rename
-          </MenuItem>
-        )}
+        <MenuItem
+          onClick={() => {
+            close()
+            onRename?.()
+          }}
+          reason={notModule}
+        >
+          <PencilLine className="size-3.5 text-ink-3" />
+          Rename
+        </MenuItem>
         <SubMenu
+          reason={notModule}
           label={
             <>
               <FolderInput className="size-3.5 text-ink-3" />
@@ -209,7 +212,13 @@ export function ModuleMenu({
             hiding.set([...hiding.hidden, m.id])
             close()
           }}
-          reason={last ? 'The last module in the sidebar stays' : undefined}
+          reason={
+            fixed
+              ? `${m.name} always stays`
+              : last
+                ? 'The last module in the sidebar stays'
+                : undefined
+          }
         >
           <EyeOff className="size-3.5 text-ink-3" />
           Hide
@@ -227,6 +236,7 @@ export function ModuleMenu({
             close()
             setDeleting(true)
           }}
+          reason={notModule}
         >
           <Trash2 className="size-3.5" />
           Delete
