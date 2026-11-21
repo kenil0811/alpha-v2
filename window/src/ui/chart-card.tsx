@@ -183,7 +183,7 @@ function Key({ parts, fmt }: { parts: Part[]; fmt: (n: number) => string }) {
 
 function Table({ head, rows }: { head: string[]; rows: { key: string; cells: ReactNode[] }[] }) {
   return (
-    <table className="w-full table-fixed border-collapse text-md">
+    <table className="w-full border-collapse text-md">
       <thead>
         <tr className="text-left text-ink-3 text-sm">
           {head.map((h, i) => (
@@ -191,7 +191,7 @@ function Table({ head, rows }: { head: string[]; rows: { key: string; cells: Rea
               key={h}
               className={cn(
                 'border-line border-b py-1 pr-3 font-normal',
-                i > 0 && 'w-28 text-right',
+                i > 0 && 'text-right',
               )}
             >
               {h}
@@ -207,7 +207,7 @@ function Table({ head, rows }: { head: string[]; rows: { key: string; cells: Rea
                 // biome-ignore lint/suspicious/noArrayIndexKey: a cell's place is its column
                 key={i}
                 className={cn(
-                  'truncate border-hair border-b py-1.5 pr-3',
+                  'whitespace-nowrap border-hair border-b py-1.5 pr-3',
                   i > 0 ? 'text-right text-ink-2' : 'text-ink',
                 )}
               >
