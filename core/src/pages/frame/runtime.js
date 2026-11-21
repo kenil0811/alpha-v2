@@ -129,5 +129,7 @@
       run()
     },
     printing,
+    // the record it is drawn for, on that record's page: its row's id; none on its module's tab
+    record: window.alphaRecord ?? null,
   }
 })()

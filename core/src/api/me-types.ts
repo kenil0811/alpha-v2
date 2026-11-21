@@ -23,4 +23,8 @@ export interface Layout {
   assistant: 'open' | 'folded'
   pageSize: number | null // a table's rows to a page; none is 50
   agent: string | null // the agent the assistant shows; none is the Chief of staff
+  // a record page's (prototype, 20 Nov): the properties hidden from it, by field id, and the
+  // blocks pinned as its tabs, each "<table id or person>:<block>"
+  recordHidden: string[]
+  recordTabs: string[]
 }

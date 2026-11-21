@@ -2,7 +2,7 @@
 // page opened beside), one row of tabs under it as before: every label in full, a table's row
 // count beside its name, the chosen tab underlined in the accent; a row too long scrolls sideways,
 // never folds a label to an icon or cuts it short.
-import type { ReactNode } from 'react'
+import { type ReactNode, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useBarSlot } from './bar-slot.tsx'
 import { cn } from './cn.ts'
@@ -15,11 +15,25 @@ export type Tab = {
   sel: boolean
   icon?: ReactNode | undefined
   count?: number | undefined
+  onPick?: (() => void) | undefined // a tab kept on the page, not in the address
+  onMenu?: ((at: { x: number; y: number }) => void) | undefined // its right-click: Pin, Unpin
+  drag?: boolean // dragged to a new place among the others that drag (onMove)
 }
 
-export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
+export function Tabs({
+  label,
+  tabs,
+  under = false,
+  onMove,
+}: {
+  label: string
+  tabs: Tab[]
+  under?: boolean // the row under a record's head, even where the screen has a bar
+  onMove?: (from: string, to: string) => void // a tab dropped on another's place
+}) {
   const bar = useBarSlot()
-  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} />, bar)
+  const dragged = useRef<string | null>(null)
+  if (bar && !under) return createPortal(<PillSwitch label={label} tabs={tabs} />, bar)
   return (
     <div
       role="tablist"
@@ -32,6 +46,37 @@ export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
           role="tab"
           aria-selected={t.sel}
           href={t.href}
+          {...(onMove && t.drag
+            ? {
+                draggable: true,
+                onDragStart: () => {
+                  dragged.current = t.key
+                },
+                onDragOver: (e) => dragged.current && e.preventDefault(),
+                onDrop: (e) => {
+                  e.preventDefault()
+                  const from = dragged.current
+                  dragged.current = null
+                  if (from && from !== t.key) onMove(from, t.key)
+                },
+              }
+            : {})}
+          onClick={
+            t.onPick
+              ? (e) => {
+                  e.preventDefault()
+                  t.onPick?.()
+                }
+              : undefined
+          }
+          onContextMenu={
+            t.onMenu
+              ? (e) => {
+                  e.preventDefault()
+                  t.onMenu?.({ x: e.clientX, y: e.clientY })
+                }
+              : undefined
+          }
           className={cn(
             'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-ink-2 text-md hover:text-ink',
             t.sel ? 'border-accent font-medium text-ink' : 'border-transparent',

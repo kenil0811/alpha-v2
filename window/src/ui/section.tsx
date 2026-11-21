@@ -7,8 +7,10 @@ export function Section({
   title,
   about,
   action,
+  small = false,
   children,
 }: {
+  small?: boolean // inside a block of a record page: the size of a card's head
   title: string
   about?: string
   action?: ReactNode // on the heading's right: a short list's Add
@@ -17,7 +19,11 @@ export function Section({
   return (
     <section className="flex min-w-0 flex-col gap-2.5">
       <div className="flex items-center gap-1.5">
-        <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+        {small ? (
+          <h3 className="font-semibold text-base text-ink">{title}</h3>
+        ) : (
+          <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+        )}
         {about && <Info help={about} />}
         {action && <span className="ml-auto">{action}</span>}
       </div>

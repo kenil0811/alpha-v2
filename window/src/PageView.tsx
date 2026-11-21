@@ -62,10 +62,12 @@ export function PageView({
   m,
   page,
   version,
+  record,
 }: {
   m: ModuleView
   page: PageSummary
   version: number // a change in the world: the page asks again
+  record?: string // the row it is drawn for, on that row's page (P16-4)
 }) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [html, setHtml] = useState<string | null>(null)
@@ -84,11 +86,11 @@ export function PageView({
   useEffect(() => {
     setHtml(null)
     setProblem(null)
-    api.get<{ html: string }>(base).then(
+    api.get<{ html: string }>(record ? `${base}?record=${encodeURIComponent(record)}` : base).then(
       (p) => setHtml(p.html),
       (err) => setProblem(err instanceof Problem ? err.message : 'The page did not load.'),
     )
-  }, [base])
+  }, [base, record])
 
   const send = () => frame.current?.contentWindow?.postMessage({ alpha: 'theme', ...look() }, '*')
   useEffect(() => {
@@ -173,7 +175,11 @@ export function PageView({
     setPrinting(true)
     setProblem(null)
     try {
-      await api.download(`${base}/pdf`, { inputs: inputs.current }, `${page.title}.pdf`)
+      await api.download(
+        `${base}/pdf`,
+        { inputs: inputs.current, ...(record ? { record } : {}) },
+        `${page.title}.pdf`,
+      )
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'The PDF was not made.')
     } finally {

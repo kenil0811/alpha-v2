@@ -257,6 +257,7 @@ export interface PageSummary {
   name: string
   title: string
   front: boolean
+  record: string | null // the table whose every record's page shows it, drawn for that record
 }
 
 // Where a value came from, in words the person reads, with what to open.

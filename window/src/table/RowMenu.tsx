@@ -7,6 +7,8 @@ import {
   Copy,
   CopyPlus,
   Eraser,
+  Eye,
+  EyeOff,
   FileSearch,
   History,
   Link,
@@ -32,7 +34,11 @@ export function RowMenu({
   onOpen,
   onDuplicate,
   onRemove,
+  onHide,
+  hidden = false,
 }: {
+  onHide?: (() => void) | undefined // a record page's: hide the property on every page of its table
+  hidden?: boolean // it is hidden, shown for now: the line shows it again
   tableId: string
   row: RowView
   field: FieldView | null
@@ -89,6 +95,16 @@ export function RowMenu({
             <History className="size-3.5 text-ink-3" />
             History
           </MenuItem>
+          {onHide && (
+            <MenuItem onClick={then(onHide)}>
+              {hidden ? (
+                <Eye className="size-3.5 text-ink-3" />
+              ) : (
+                <EyeOff className="size-3.5 text-ink-3" />
+              )}
+              {hidden ? 'Show on every page' : 'Hide'}
+            </MenuItem>
+          )}
           {onOpen && <MenuLine />}
         </>
       )}
