@@ -62,7 +62,6 @@ const PAGES = {
     title: 'Settings',
     tabs: [
       ['model', 'Model'],
-      ['usage', 'Usage'],
       ['data', 'Data'],
       ['appearance', 'Appearance'],
       ['permissions', 'Permissions'],
@@ -113,8 +112,12 @@ export function Settings({
     files: <KeptFiles version={version} module={open} />,
     modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
     permissions: <Permissions version={version} owner={!member} />,
-    model: <ModelSection />,
-    usage: <UsageSection />,
+    model: (
+      <>
+        <UsageSection />
+        <ModelSection />
+      </>
+    ),
     activity: <Activity version={version} cards={cards} />,
     people: <AccountsSection />,
     data: <DataSection />,

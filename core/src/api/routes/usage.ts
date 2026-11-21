@@ -1,10 +1,11 @@
 // What the model was used for and what it spent, a month at a time (core plan step 5): desk turns
 // under the module they were asked in (Alpha's, asked on Home), schedules' runs under their schedule.
 import { z } from 'zod'
-import { monthOf } from '../../world/day.ts'
+import { monthOf, monthSpan } from '../../world/day.ts'
 import type { SpendRow } from '../../world/spend.ts'
 import type { Ctx } from '../ctx.ts'
 import type { UsageRow, UsageView } from '../usage-types.ts'
+import { daysOf } from './usage-days.ts'
 
 export function registerUsage(ctx: Ctx): void {
   const { app, world, engine } = ctx
@@ -37,6 +38,13 @@ export function registerUsage(ctx: Ctx): void {
         (r) => (r.agent && world.agents.get(r.agent)?.name) || 'Chief of staff',
       ),
       byModel: grouped(rows, (r) => r.model),
+      days: daysOf(rows, {
+        module: (r) => moduleName(r.module_id),
+        agent: (r) => (r.agent && world.agents.get(r.agent)?.name) || 'Chief of staff',
+        person: (r) =>
+          world.users().find((u) => u.id === r.user_id)?.name ?? 'No one: schedules and asks',
+      }),
+      tasksDone: world.tasks.doneBetween(...monthSpan(m)),
     }
   })
 }

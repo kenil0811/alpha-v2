@@ -4,6 +4,7 @@
 import type { UsageRow, UsageView } from '@alpha/core/usage'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { Figures, SpendChart } from './SpendChart.tsx'
 import { money } from './table/values.ts'
 import { cutTip } from './ui/cut-tip.ts'
 import { Info } from './ui/info.tsx'
@@ -70,6 +71,8 @@ export function UsageSection() {
                   .join(' · ')}
               </span>
             </div>
+            <Figures u={u} />
+            <SpendChart month={u.month} days={u.days} names={MODEL_NAMES} />
             <UsageTable title="By module" rows={u.byModule} />
             {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
             {u.bySchedule.length > 0 && <UsageTable title="By schedule" rows={u.bySchedule} />}

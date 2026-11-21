@@ -9,6 +9,16 @@ export interface UsageRow {
   usd: number | null // null: some of it has no price
 }
 
+export const SPLITS = ['model', 'module', 'agent', 'use', 'person'] as const
+export type UsageSplit = (typeof SPLITS)[number]
+
+// One day's spend in dollars (priced rows only), whole and split each way by key
+export interface UsageDay {
+  day: string // YYYY-MM-DD, the person's day
+  usd: number
+  split: Record<UsageSplit, Record<string, number>>
+}
+
 export interface UsageView {
   month: string // YYYY-MM
   months: string[] // the months with spend, newest first
@@ -18,4 +28,6 @@ export interface UsageView {
   bySchedule: UsageRow[]
   byAgent: UsageRow[]
   byModel: UsageRow[]
+  days: UsageDay[] // the days with spend, oldest first
+  tasksDone: number // tasks closed in the month, for the cost of each
 }

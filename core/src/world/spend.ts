@@ -39,6 +39,7 @@ export interface SpendRow {
   usd: number | null
   how: Use['how']
   agent: string | null
+  user_id: string | null // who asked, for a desk turn: its journal's person
 }
 
 const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
@@ -118,7 +119,8 @@ export class Spend {
     const [from, to] = monthSpan(month)
     return all<SpendRow>(
       this.db,
-      'SELECT * FROM spend WHERE at >= ? AND at < ? ORDER BY id',
+      `SELECT spend.*, (SELECT user_id FROM journal WHERE turn_id = spend.turn AND user_id IS NOT NULL LIMIT 1)
+         AS user_id FROM spend WHERE at >= ? AND at < ? ORDER BY id`,
       from.toISOString(),
       to.toISOString(),
     )
