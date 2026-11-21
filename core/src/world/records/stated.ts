@@ -6,7 +6,7 @@
 // as Alpha put them, and are not looked for.
 import { dayOf, dayPlus } from '../day.ts'
 import { one } from '../db.ts'
-import type { Provenance } from '../kinds.ts'
+import { type Provenance, Refused } from '../kinds.ts'
 import type { Table } from '../shape/index.ts'
 import type { RecordCtx } from './types.ts'
 
@@ -133,5 +133,32 @@ export function checkStated(
     )
     if (line && inWords(f.kind, vals[f.id], line.words, dayOf(new Date(line.at)))) continue
     prov[f.id] = { kind: 'assumed', source: {}, basis: NOT_IN_WORDS, at: p.at }
+  }
+}
+
+// A grey value the person turned down is not written back: Alpha's estimate or assumption of the
+// same value in the same field of the same row is refused (the person's own entry always stands).
+export function checkTurnedDown(
+  db: Parameters<typeof one>[0],
+  table: Table,
+  rowId: string,
+  vals: Record<string, unknown>,
+  prov: Record<string, Provenance>,
+): void {
+  for (const f of table.fields) {
+    const k = prov[f.id]?.kind
+    if ((k !== 'estimated' && k !== 'assumed') || !(f.id in vals)) continue
+    if (
+      one(
+        db,
+        'SELECT 1 FROM turned_down WHERE record_id = ? AND field_id = ? AND value = ?',
+        rowId,
+        f.id,
+        JSON.stringify(vals[f.id]),
+      )
+    )
+      throw new Refused(
+        `You turned down that ${f.name}; Alpha won’t write the same guess back. Give a different value, or ask the person.`,
+      )
   }
 }
