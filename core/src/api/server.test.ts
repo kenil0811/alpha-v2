@@ -337,6 +337,8 @@ describe('the api over a world', () => {
       assistant: 'open',
       pageSize: null,
       agent: null,
+      recordHidden: [],
+      recordTabs: [],
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -352,6 +354,8 @@ describe('the api over a world', () => {
         railWidth: 260,
         assistant: 'folded',
         pageSize: 100,
+        recordHidden: ['f_one'],
+        recordTabs: ['t_one:knows'],
       },
     })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
@@ -364,6 +368,8 @@ describe('the api over a world', () => {
       assistant: 'folded',
       pageSize: 100,
       agent: null,
+      recordHidden: ['f_one'],
+      recordTabs: ['t_one:knows'],
     })
     // the text size is kept beside the look, each on its own
     const appearance = (payload: object) =>
