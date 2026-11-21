@@ -23,4 +23,6 @@ export interface Layout {
   assistant: 'open' | 'folded'
   pageSize: number | null // a table's rows to a page; none is 50
   agent: string | null // the agent the assistant shows; none is the Chief of staff
+  workspaceName: string | null // the workspace tile's name, as the person renamed it; none: "<name>'s workspace"
+  workspacePicture: string | null // the tile's picture, a small image kept as a data address; none: the initial
 }

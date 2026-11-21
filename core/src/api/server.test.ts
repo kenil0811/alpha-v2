@@ -337,6 +337,8 @@ describe('the api over a world', () => {
       assistant: 'open',
       pageSize: null,
       agent: null,
+      workspaceName: null,
+      workspacePicture: null,
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -352,8 +354,25 @@ describe('the api over a world', () => {
         railWidth: 260,
         assistant: 'folded',
         pageSize: 100,
+        workspaceName: 'Bakery HQ',
+        workspacePicture: 'data:image/png;base64,AAAA',
       },
     })
+    expect(
+      (
+        await a.inject({
+          method: 'POST',
+          url: '/api/layout',
+          headers: ok,
+          payload: { workspacePicture: 'https://elsewhere/x.png' },
+        })
+      ).statusCode,
+    ).toBe(400)
+    // the seen mark: a first look starts from now (0), then only what comes after it counts
+    const count = async () => (await a.inject({ url: '/api/activity/new', headers: ok })).json()
+    expect(await count()).toEqual({ count: 0 })
+    await a.inject({ method: 'POST', url: '/api/activity/seen', headers: ok })
+    expect(await count()).toEqual({ count: 0 })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: true,
       folded: [shops.id],
@@ -364,6 +383,8 @@ describe('the api over a world', () => {
       assistant: 'folded',
       pageSize: 100,
       agent: null,
+      workspaceName: 'Bakery HQ',
+      workspacePicture: 'data:image/png;base64,AAAA',
     })
     // the text size is kept beside the look, each on its own
     const appearance = (payload: object) =>

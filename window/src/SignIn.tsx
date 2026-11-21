@@ -2,7 +2,7 @@
 // loads, the session is looked at; no session, the sign-in page or, from a one-time link, the page
 // that sets a password. A session that runs out comes back here.
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
-import { api, wordsOf } from './api.ts'
+import { api, token, wordsOf } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
 
@@ -25,6 +25,13 @@ export function Gate({ children }: { children: ReactNode }) {
   }, [])
   if (problem) return <Page title="Alpha">{problem}</Page>
   if (!session) return null
+  // a per-install token this browser has forgotten (Log out): nothing here asks for a password
+  if (!session.signIn && !token())
+    return (
+      <Page title="You're logged out">
+        Open the address Alpha prints when it starts to come back in.
+      </Page>
+    )
   const link = linkToken()
   if (session.signIn && link) return <SetPassword token={link} />
   if (session.signIn && !session.signedIn) return <SignIn microsoft={session.microsoft} />
