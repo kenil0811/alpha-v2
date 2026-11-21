@@ -65,4 +65,15 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     ).map((c) => c.name)
     if (!cols.includes('plugin')) db.exec('ALTER TABLE kits ADD COLUMN plugin TEXT')
   },
+  // 6, 20 Nov 2026: the grey values a person turned down (✕); a world made from schema.sql has it
+  // already
+  (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS turned_down (
+  record_id TEXT NOT NULL REFERENCES records (id),
+  field_id TEXT NOT NULL,
+  value TEXT NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (record_id, field_id, value)
+) STRICT`)
+  },
 ]

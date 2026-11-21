@@ -196,6 +196,15 @@ CREATE TABLE provenance (
   PRIMARY KEY (record_id, field_id)
 ) STRICT;
 
+-- A grey value the person turned down (✕), so a later guess can't write the same one back.
+CREATE TABLE turned_down (
+  record_id TEXT NOT NULL REFERENCES records (id),
+  field_id TEXT NOT NULL,
+  value TEXT NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (record_id, field_id, value)
+) STRICT;
+
 -- Rows searched by their words.
 CREATE VIRTUAL TABLE records_fts USING fts5 (record_id UNINDEXED, table_id UNINDEXED, words, tokenize = 'porter unicode61');
 

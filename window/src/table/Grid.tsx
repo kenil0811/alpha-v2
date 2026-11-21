@@ -43,6 +43,7 @@ import { ColumnMenu, TotalItems } from './ColumnMenu.tsx'
 import { EditCell } from './EditCell.tsx'
 import { cycleSort, setWidth } from './edits.ts'
 import { type Group, groupRows, TOTAL_WORDS, tintOf, toneOf, total, widthOf } from './engine.ts'
+import { type Grey, GreyChoice, isGrey } from './GreyChoice.tsx'
 import { useGoes } from './goes.ts'
 import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
@@ -119,7 +120,7 @@ export function Grid({
   onSource: (p: { row: string; field: string }) => void // where a value came from
   onConfig: (c: ViewConfig) => void
   onTick: (ids: Set<string>) => void
-  onEdit: (row: RowView, field: FieldView, value: unknown) => Promise<boolean>
+  onEdit: (row: RowView, field: FieldView, value: unknown, grey?: Grey) => Promise<boolean>
   onOpen: (row: string) => void
   onPaste: (plan: PastePlan) => void
   counted?: RowView[] // what the footer totals: every row the view holds, not only this page
@@ -175,6 +176,7 @@ export function Grid({
   useEffect(() => {
     if (!panelRow) setCell(null)
   }, [panelRow])
+  const [greyed, setGreyed] = useState<{ row: string; field: string } | null>(null)
   const startEditing = (p: { row: string; field: string }) => {
     window.clearTimeout(soon.current)
     setEditing(p)
@@ -437,7 +439,15 @@ export function Grid({
                         i === layout.frozen - 1 && 'shadow-[inset_-1px_0_0_var(--hair)]',
                       )}
                     >
-                      {isEditing ? (
+                      {greyed?.row === r.id && greyed.field === f.slug ? (
+                        <GreyChoice
+                          text={show(f, r.values[f.slug], names)}
+                          onCancel={() => setGreyed(null)}
+                          onChoose={async (g) => {
+                            if (await onEdit(r, f, undefined, g)) setGreyed(null)
+                          }}
+                        />
+                      ) : isEditing ? (
                         <EditCell
                           field={f}
                           value={r.values[f.slug]}
@@ -462,7 +472,14 @@ export function Grid({
                           selected={cell?.row === r.id && cell.field === f.slug}
                           inRange={inRange(r.id, f.slug)}
                           onPick={() => pick(here, i === 0)}
-                          onEdit={!readOnly && canEdit(f) ? () => startEditing(here) : undefined}
+                          onEdit={
+                            !readOnly && canEdit(f)
+                              ? () =>
+                                  isGrey(r.sources[f.slug]?.kind)
+                                    ? setGreyed(here)
+                                    : startEditing(here)
+                              : undefined
+                          }
                           fixed={!readOnly && canEdit(f) ? undefined : whyFixed(f, readOnly)}
                         />
                       )}
