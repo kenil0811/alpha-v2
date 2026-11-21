@@ -15,10 +15,9 @@ import { api, wordsOf } from './api.ts'
 import { type Block, Framed, RecordPage } from './RecordPage.tsx'
 import { TableName } from './table/context.ts'
 import { RowBody } from './table/RowPanel.tsx'
-import { KIND_WORDS, show } from './table/values.ts'
+import { show, sourceTip } from './table/values.ts'
 import { Refusal } from './ui/act.tsx'
 import { cn } from './ui/cn.ts'
-import { Pill } from './ui/pill.tsx'
 import { PageTitle } from './ui/rename.tsx'
 import { Waiting } from './ui/waiting.tsx'
 
@@ -137,61 +136,37 @@ export function RowPage({
       show(f, view.row.values[f.slug], view.names)
     )
   })
-  // all of it on Summary too, scrolling inside its block (Vikas, 20 Nov: read all 9 there)
+  // in sentences, never the values again (they are the properties above): where they came from
+  // and when, which ones when not all of them, then the rules that hold here (Vikas, 20 Nov)
+  const froms = new Map<string, string[]>()
+  for (const f of known) {
+    const s = view.row.sources[f.slug]
+    if (s) froms.set(sourceTip(s), [...(froms.get(sourceTip(s)) ?? []), f.name])
+  }
   const knows = (all: boolean) => (
-    <div className={cn('flex flex-col gap-4', !all && 'max-h-96 overflow-y-auto')}>
-      {known.length > 0 && (
-        <Framed>
-          {known.map((f) => {
-            const s = view.row.sources[f.slug]
-            return (
-              <div key={f.id} className="flex flex-col gap-0.5 border-hair border-b px-4 py-2.5">
-                <span className="text-md">
-                  <span className="text-ink-3">{f.name}</span>{' '}
-                  {show(f, view.row.values[f.slug], view.names)}
-                </span>
-                <span className="flex gap-3 text-ink-3 text-sm">
-                  <span className="min-w-0 flex-1 truncate">
-                    {s ? `${KIND_WORDS[s.kind]}: ${s.words}` : ''}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-accent hover:underline"
-                    onClick={() => void edit(f, view.row.values[f.slug])}
-                  >
-                    Keep
-                  </button>
-                  <button
-                    type="button"
-                    className="hover:text-bad hover:underline"
-                    onClick={() => void edit(f, null)}
-                  >
-                    Forget
-                  </button>
-                </span>
-              </div>
-            )
-          })}
-        </Framed>
-      )}
-      {!!near?.rules.length && (
-        <Framed>
-          {near.rules.map((r) => (
-            <div key={r.id} className="flex items-start gap-2 border-hair border-b px-4 py-2.5">
-              <Pill tone={r.side === 'deny' ? 'bad' : 'good'}>
-                {r.side === 'deny' ? 'Never' : 'May'}
-              </Pill>
-              <span className="min-w-0 flex-1 text-md">
-                {r.words}
-                <span className="block text-ink-3 text-sm">
-                  {r.kind === 'inferred' ? 'Alpha noticed' : 'You said'} · {r.where}
-                </span>
-              </span>
-            </div>
-          ))}
-        </Framed>
-      )}
-      {all && part('read')}
+    <div className={cn('flex flex-col gap-3', !all && 'max-h-96 overflow-y-auto')}>
+      <Framed>
+        {[...froms].map(([from, names]) => (
+          <p key={from} className="border-hair border-b px-4 py-2.5 text-md text-ink-2">
+            {from}:{' '}
+            {names.length === known.length
+              ? 'every property above that holds a value.'
+              : `${names.slice(0, -1).join(', ')}${names.length > 1 ? ' and ' : ''}${names.at(-1)}.`}
+          </p>
+        ))}
+        {near?.rules.map((r) => (
+          <p key={r.id} className="border-hair border-b px-4 py-2.5 text-md text-ink-2">
+            <span className={r.side === 'deny' ? 'text-bad' : 'text-good'}>
+              {r.side === 'deny' ? 'Never' : 'May'}:
+            </span>{' '}
+            {r.words}{' '}
+            <span className="text-ink-3">
+              ({r.kind === 'inferred' ? 'Alpha noticed' : 'you said'}, {r.where})
+            </span>
+          </p>
+        ))}
+      </Framed>
+      {Object.values(view.row.sources).some((s) => s?.open) && part('read')}
     </div>
   )
   const blocks: Block[] = [
@@ -229,8 +204,8 @@ export function RowPage({
       key: 'knows',
       title: 'What Alpha knows',
       about:
-        'Values Alpha read, looked up or guessed, with where from: Keep makes one your word, Forget clears it. Then the rules that hold here.',
-      count: known.length + (near?.rules.length ?? 0),
+        'Where the values above came from, what Alpha read, and the rules that hold here. A value you doubt: right-click it to clear it, or type your own.',
+      count: froms.size + (near?.rules.length ?? 0),
       short: knows(false),
       full: knows(true),
     },

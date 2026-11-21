@@ -25,3 +25,10 @@ from standard blocks. A row, a person and an organization now share one page (`R
 - **Failing elsewhere:** 4 date tests in `engine.test.ts` and 8 core tests (bridge, connector
   discovery, desk, PDF pages, R1). This change touches none of them; they weren't rerun on clean
   main.
+
+Later, from Vikas's look: the property form lists Text, Number (with money and phone icons),
+Date, Choices (a circle for one, a box for several), Link (with an email icon), and the rest; it
+moved out of the grid into its own file. The + is the next free cell of the properties. A value's
+source is on its hover, in plain words ("Alpha found it", or its own words, and the day). What
+Alpha knows is sentences: where the values came from and when, the rules, what Alpha read as text
+links; it no longer repeats the values. "On" is the DealPilot module's own field, not the page.

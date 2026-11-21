@@ -5,12 +5,12 @@
 // which a file dropped on the view joins at once. Its own page also has the rows that link to it,
 // the notes that mention it, and the pages and files its values were read from.
 import type { FieldView, RowAround, RowFileView, RowView, TasksView } from '@alpha/core/api'
-import { ExternalLink, FileText, Plus, X } from 'lucide-react'
+import { FileText, Plus, X } from 'lucide-react'
 import { type DragEvent, type KeyboardEvent, type MouseEvent, useEffect, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
 import { useLayout } from '../layout.ts'
-import { FieldsFoot } from '../RecordFields.tsx'
+import { AddCell, HiddenToggle } from '../RecordFields.tsx'
 import { NewTask, TaskList } from '../Tasks.tsx'
 import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
@@ -27,7 +27,7 @@ import { ReadLine } from './Mirror.tsx'
 import { Notes } from './Notes.tsx'
 import { RowMenu } from './RowMenu.tsx'
 import { TagChips } from './Tags.tsx'
-import { canEdit, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
+import { canEdit, EMPTY_WORDS, isTags, MARK, show, sourceTip } from './values.ts'
 
 // The side panel's way in: the row's view, with Open full to its own page.
 export function RowPanel({
@@ -221,32 +221,22 @@ export function RowBody({
             </div>
           )}
         {page && shows('read') && places.size > 0 && (
-          <div className="flex flex-col gap-2 p-4.5">
-            {!only && <div className="font-semibold text-ink-3 text-sm">Read from</div>}
-            <div className="flex flex-wrap gap-1.5">
-              {[...places.values()].map((p) => (
-                <Button
-                  key={p.url ?? p.file}
-                  size="sm"
-                  className="max-w-full"
-                  onClick={() =>
-                    p.url
-                      ? window.open(p.url, '_blank', 'noreferrer')
-                      : window.location.assign(fileHref({ file: p.file as string }))
-                  }
+          <p className="p-4.5 text-md text-ink-2">
+            Alpha read it from{' '}
+            {[...places.values()].map((p, i, all) => (
+              <span key={p.url ?? p.file}>
+                {i > 0 && (i === all.length - 1 ? ' and ' : ', ')}
+                <a
+                  href={p.url ?? fileHref({ file: p.file as string })}
+                  {...(p.url ? { target: '_blank', rel: 'noreferrer' } : {})}
+                  className="text-accent hover:underline"
                 >
-                  {p.url ? (
-                    <ExternalLink className="size-3.25" />
-                  ) : (
-                    <FileText className="size-3.25" />
-                  )}
-                  <span className="truncate" {...cutTip(p.label)}>
-                    {p.label}
-                  </span>
-                </Button>
-              ))}
-            </div>
-          </div>
+                  {p.label}
+                </a>
+              </span>
+            ))}
+            .
+          </p>
         )}
         {shows('tasks') && (
           <div className="flex flex-col gap-2 p-4.5">
@@ -416,7 +406,7 @@ export function FieldList({
   columns = false,
   hideable = false,
 }: {
-  hideable?: boolean // a record page's: right-click hides one, and a + adds one (FieldsFoot)
+  hideable?: boolean // a record page's: right-click hides one, and a + in the next cell adds one
   tableId: string
   fields: FieldView[]
   row: RowView
@@ -498,9 +488,10 @@ export function FieldList({
                   data-tip={f.about ?? f.summary ?? undefined}
                 >
                   {f.name}
-                  {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
                 </dt>
+                {/* where it came from, in plain words on its hover (Vikas, 20 Nov) */}
                 <dd
+                  data-tip={source ? sourceTip(source) : undefined}
                   className={cn(
                     'whitespace-pre-wrap break-words text-md',
                     text ? 'text-ink' : 'text-ink-3',
@@ -523,7 +514,7 @@ export function FieldList({
                   )}
                   {text && source && MARK[source.kind] && (
                     <span className="ml-1.5 text-ink-3 text-sm not-italic">
-                      {MARK[source.kind]} {KIND_WORDS[source.kind]}
+                      {MARK[source.kind]}
                     </span>
                   )}
                 </dd>
@@ -541,6 +532,7 @@ export function FieldList({
               </button>
             )
           })}
+        {hideable && <AddCell tableId={tableId} />}
       </dl>
       <Popover point={menu && { x: menu.x, y: menu.y }} open={!!menu} onClose={() => setMenu(null)}>
         {menu && (
@@ -573,9 +565,8 @@ export function FieldList({
           />
         )}
       </Popover>
-      {hideable && (
-        <FieldsFoot
-          tableId={tableId}
+      {hidden.length > 0 && (
+        <HiddenToggle
           hidden={hidden.length}
           shown={unhidden}
           onShow={() => setUnhidden(!unhidden)}
