@@ -18,7 +18,7 @@ const LOOK_WORDS: Record<Look, string> = {
 
 // the page's own option colours, which hold in dark mode
 const FILL = ['opt-1', 'opt-2', 'opt-3', 'opt-4', 'opt-5', 'opt-6', 'opt-7', 'opt-8']
-const fill = (i: number) => `var(--color-${FILL[Math.min(i, FILL.length - 1)]})`
+const fill = (i: number) => `var(--${FILL[Math.min(i, FILL.length - 1)]})`
 
 export interface Part {
   label: string
