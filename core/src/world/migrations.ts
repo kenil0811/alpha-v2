@@ -105,4 +105,12 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
       ).run(t.id, t.id)
     }
   },
+  // 7, 20 Nov 2026: the module People and Organizations live in is Network (Vikas, 20 Nov); its
+  // lasting key stays People. A name the person gave it is theirs and left.
+  (db) => {
+    db.exec(
+      `UPDATE modules SET name = 'Network' WHERE key = 'People' AND name = 'People'
+         AND NOT EXISTS (SELECT 1 FROM modules WHERE name = 'Network' COLLATE NOCASE)`,
+    )
+  },
 ]

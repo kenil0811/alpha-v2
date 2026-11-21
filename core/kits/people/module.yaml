@@ -2,6 +2,7 @@
 # meetings; every address book Alpha reads lands in its Address book (a Mac's own through Alpha
 # Bridge, Outlook, Google), found by its lasting keys.
 name: People
+title: Network
 version: 0.2.0
 api: 3
 core: true
