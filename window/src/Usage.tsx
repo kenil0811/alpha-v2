@@ -54,19 +54,11 @@ export function UsageSection() {
               ) : (
                 <span className="text-ink text-md">{monthName(u.month)}</span>
               )}
-              <span className="font-medium text-ink text-lg tabular-nums">
-                {usdWords(u.total.usd)}
-              </span>
               {u.atApiPrices && (
                 <Info help="Your Claude subscription doesn't charge per reply: this is what the same use would cost paid by use." />
               )}
               <span className="text-ink-3 text-md">
-                {[
-                  u.atApiPrices ? 'at API prices' : '',
-                  plural(u.total.turns, 'reply', 'replies'),
-                  plural(u.total.runs, 'run'),
-                  plural(u.total.tokens, 'token'),
-                ]
+                {[u.atApiPrices ? 'at API prices' : '', plural(u.total.tokens, 'token')]
                   .filter(Boolean)
                   .join(' · ')}
               </span>

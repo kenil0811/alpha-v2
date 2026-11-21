@@ -31,7 +31,7 @@ export function Figures({ u }: { u: UsageView }) {
   const f = spent === null ? null : forecast(spent, u.month)
   const per = spent !== null && u.tasksDone > 0 ? spent / u.tasksDone : null
   const cells: [string, string, string?][] = [
-    ['This month', spent === null ? 'Unknown' : money(spent, 'USD')],
+    ['Spent', spent === null ? 'Unknown' : money(spent, 'USD')],
     [
       'Forecast',
       f === null ? '–' : money(f, 'USD'),
