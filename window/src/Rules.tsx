@@ -3,6 +3,7 @@ import type { KeptTable, RowView } from '@alpha/core/api'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
+import { openLink } from './opened.ts'
 import { TableView } from './TableView.tsx'
 import { useAct } from './ui/act.tsx'
 import { List, Row } from './ui/list.tsx'
@@ -63,7 +64,7 @@ export function Standing({ version }: { version: number }) {
     <Embedded
       data={data}
       open={(id) => {
-        window.location.hash = `#/rule/${id}`
+        openLink(`#/rule/${id}`)
       }}
       onNew={() => startAsk('From now on, ')}
     />

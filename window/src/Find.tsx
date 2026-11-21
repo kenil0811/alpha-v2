@@ -4,6 +4,7 @@ import type { FoundRow, ModuleSummary } from '@alpha/core/api'
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
+import { openLink } from './opened.ts'
 import { cn } from './ui/cn.ts'
 
 export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: () => void }) {
@@ -62,7 +63,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
     ...rows,
   ]
   const go = (href: string | undefined) => {
-    if (href) window.location.hash = href
+    if (href) openLink(href)
     onClose()
   }
   return (

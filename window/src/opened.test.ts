@@ -45,4 +45,12 @@ describe('what is open beside the page', () => {
     expect(splitBeside(at).opened).toEqual(rows)
     expect(pageOf({ kind: 'rows', id: 't_9:r_1,r_2' })).toBe('#/table/t_9?only=r_1,r_2')
   })
+
+  it('opens a file beside the page, its page one click away', () => {
+    expect(linkBeside('#/file/0123456789abcdef', '#/module/m_1')).toEqual({
+      kind: 'file',
+      id: '0123456789abcdef',
+    })
+    expect(pageOf({ kind: 'file', id: '0123456789abcdef' })).toBe('#/file/0123456789abcdef')
+  })
 })
