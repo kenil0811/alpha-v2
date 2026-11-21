@@ -40,6 +40,7 @@ function Nav({
   current,
   extra,
   small,
+  onDoubleClick,
 }: {
   href: string
   icon: ReactNode
@@ -47,10 +48,12 @@ function Nav({
   current: boolean
   extra?: ReactNode
   small?: boolean
+  onDoubleClick?: (() => void) | undefined
 }) {
   return (
     <a
       href={href}
+      onDoubleClick={onDoubleClick}
       aria-current={current ? 'page' : undefined}
       className={cn(
         'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
@@ -309,6 +312,7 @@ function ModuleItem({
                 icon={<ModuleIcon name={m.name} className="size-4" />}
                 label={m.name}
                 current={here === m.id}
+                onDoubleClick={start}
                 extra={
                   <>
                     {!m.parent && hiding.pinned.includes(m.id) && (
