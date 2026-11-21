@@ -15,11 +15,21 @@ export type Tab = {
   sel: boolean
   icon?: ReactNode | undefined
   count?: number | undefined
+  onPick?: (() => void) | undefined // a tab kept on the page, not in the address
+  onMenu?: ((at: { x: number; y: number }) => void) | undefined // its right-click: Pin, Unpin
 }
 
-export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
+export function Tabs({
+  label,
+  tabs,
+  under = false,
+}: {
+  label: string
+  tabs: Tab[]
+  under?: boolean // the row under a record's head, even where the screen has a bar
+}) {
   const bar = useBarSlot()
-  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} />, bar)
+  if (bar && !under) return createPortal(<PillSwitch label={label} tabs={tabs} />, bar)
   return (
     <div
       role="tablist"
@@ -32,6 +42,22 @@ export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
           role="tab"
           aria-selected={t.sel}
           href={t.href}
+          onClick={
+            t.onPick
+              ? (e) => {
+                  e.preventDefault()
+                  t.onPick?.()
+                }
+              : undefined
+          }
+          onContextMenu={
+            t.onMenu
+              ? (e) => {
+                  e.preventDefault()
+                  t.onMenu?.({ x: e.clientX, y: e.clientY })
+                }
+              : undefined
+          }
           className={cn(
             'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-ink-2 text-md hover:text-ink',
             t.sel ? 'border-accent font-medium text-ink' : 'border-transparent',

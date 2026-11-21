@@ -9,6 +9,8 @@ import { ExternalLink, FileText, Plus, X } from 'lucide-react'
 import { type DragEvent, type KeyboardEvent, type MouseEvent, useEffect, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
+import { useLayout } from '../layout.ts'
+import { FieldsFoot } from '../RecordFields.tsx'
 import { NewTask, TaskList } from '../Tasks.tsx'
 import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
@@ -49,7 +51,14 @@ export function RowBody({
   onField,
   onEdit,
   page = false,
+  only,
+  columns = false,
 }: {
+  // one part of the view, for a block of the record page:
+  // its fields, its notes, one part (part:<table id>), what links to it, where it was read from,
+  // its tasks or its files
+  only?: string | undefined
+  columns?: boolean // its fields across the width in columns
   tableId: string
   kinds: string[] | null // the kinds of document the table's rows take
   row: RowView
@@ -71,6 +80,7 @@ export function RowBody({
     api.get<TasksView>(`/api/tasks?row=${row.id}`).then(setTasks, () => setTasks(null))
   const [problem, setProblem] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  const shows = (what: string) => !only || only === what
   // the row comes again whenever the world changes: its files are asked again with it
   useEffect(() => {
     if (row.id) api.get<RowFileView[]>(path).then(setFiles, () => setFiles([]))
@@ -119,18 +129,24 @@ export function RowBody({
         onDragLeave={() => setDragging(false)}
         onDrop={drop}
       >
-        <ReadLine row={row} />
-        <FieldList
-          tableId={tableId}
-          fields={fields}
-          row={row}
-          names={names}
-          onField={onField}
-          onEdit={onEdit}
-        />
-        {notes && (
+        {shows('fields') && (
+          <>
+            <ReadLine row={row} />
+            <FieldList
+              tableId={tableId}
+              fields={fields}
+              row={row}
+              names={names}
+              onField={onField}
+              onEdit={onEdit}
+              columns={columns}
+              hideable={only === 'fields'}
+            />
+          </>
+        )}
+        {notes && shows('notes') && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
-            <div className="font-semibold text-ink-3 text-sm">{notes.name}</div>
+            {!only && <div className="font-semibold text-ink-3 text-sm">{notes.name}</div>}
             <Notes
               value={
                 typeof row.values[notes.slug] === 'string' ? (row.values[notes.slug] as string) : ''
@@ -139,69 +155,74 @@ export function RowBody({
             />
           </div>
         )}
-        {around?.parts.map((p) => (
-          <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
-            <div className="flex items-center justify-between">
-              <div className="font-semibold text-ink-3 text-sm">
-                {p.table.name} · {p.count}
-              </div>
-              {p.count > 0 && (
-                <a
-                  href={`#/table/${p.table.id}?of=${row.id}`}
-                  className="text-accent text-sm hover:underline"
-                >
-                  Open as a table
-                </a>
-              )}
-            </div>
-            {p.rows.length > 0 && <PartTable part={p} />}
-            {p.count > p.rows.length && (
-              <span className="text-ink-3 text-sm">and {p.count - p.rows.length} more</span>
-            )}
-            {onEdit && (
-              <Button size="sm" variant="ghost" className="w-fit" onClick={() => setAdding(p)}>
-                <Plus className="size-3.25" />
-                New
-              </Button>
-            )}
-          </div>
-        ))}
-        {page && around && (around.links.length > 0 || around.mentions.length > 0) && (
-          <div className="flex flex-col gap-2 border-hair border-b p-4.5">
-            <div className="font-semibold text-ink-3 text-sm">Linked here</div>
-            {[
-              ...around.links.map((l) => ({
-                key: `l${l.table.id}${l.field}`,
-                what: `${l.table.name} · ${l.field}`,
-                rows: l.rows,
-              })),
-              ...around.mentions.map((m) => ({
-                key: `m${m.table.id}`,
-                what: `Mentioned in ${m.table.name}`,
-                rows: m.rows,
-              })),
-            ].map((g) => (
-              <div key={g.key} className="flex flex-col">
-                <span className="text-ink-3 text-sm">{g.what}</span>
-                {g.rows.slice(0, 12).map((r) => (
+        {around?.parts
+          .filter((p) => shows(`part:${p.table.id}`))
+          .map((p) => (
+            <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-ink-3 text-sm">
+                  {p.table.name} · {p.count}
+                </div>
+                {p.count > 0 && (
                   <a
-                    key={r.id}
-                    href={`#/row/${r.id}`}
-                    className="truncate py-0.5 text-ink text-md hover:underline"
+                    href={`#/table/${p.table.id}?of=${row.id}`}
+                    className="text-accent text-sm hover:underline"
                   >
-                    {r.name}
+                    Open as a table
                   </a>
-                ))}
-                {g.rows.length > 12 && (
-                  <span className="text-ink-3 text-sm">and {g.rows.length - 12} more</span>
                 )}
               </div>
-            ))}
-          </div>
-        )}
-        {page && places.size > 0 && (
+              {p.rows.length > 0 && <PartTable part={p} />}
+              {p.count > p.rows.length && (
+                <span className="text-ink-3 text-sm">and {p.count - p.rows.length} more</span>
+              )}
+              {onEdit && (
+                <Button size="sm" variant="ghost" className="w-fit" onClick={() => setAdding(p)}>
+                  <Plus className="size-3.25" />
+                  New
+                </Button>
+              )}
+            </div>
+          ))}
+        {page &&
+          shows('linked') &&
+          around &&
+          (around.links.length > 0 || around.mentions.length > 0) && (
+            <div className="flex flex-col gap-2 border-hair border-b p-4.5">
+              {!only && <div className="font-semibold text-ink-3 text-sm">Linked here</div>}
+              {[
+                ...around.links.map((l) => ({
+                  key: `l${l.table.id}${l.field}`,
+                  what: `${l.table.name} · ${l.field}`,
+                  rows: l.rows,
+                })),
+                ...around.mentions.map((m) => ({
+                  key: `m${m.table.id}`,
+                  what: `Mentioned in ${m.table.name}`,
+                  rows: m.rows,
+                })),
+              ].map((g) => (
+                <div key={g.key} className="flex flex-col">
+                  <span className="text-ink-3 text-sm">{g.what}</span>
+                  {g.rows.slice(0, 12).map((r) => (
+                    <a
+                      key={r.id}
+                      href={`#/row/${r.id}`}
+                      className="truncate py-0.5 text-ink text-md hover:underline"
+                    >
+                      {r.name}
+                    </a>
+                  ))}
+                  {g.rows.length > 12 && (
+                    <span className="text-ink-3 text-sm">and {g.rows.length - 12} more</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        {page && shows('read') && places.size > 0 && (
           <div className="flex flex-col gap-2 p-4.5">
-            <div className="font-semibold text-ink-3 text-sm">Read from</div>
+            {!only && <div className="font-semibold text-ink-3 text-sm">Read from</div>}
             <div className="flex flex-wrap gap-1.5">
               {[...places.values()].map((p) => (
                 <Button
@@ -227,86 +248,92 @@ export function RowBody({
             </div>
           </div>
         )}
-        <div className="flex flex-col gap-2 p-4.5">
-          <div className="font-semibold text-ink-3 text-sm">
-            Tasks
-            {tasks?.lines.length
-              ? ` · ${tasks.lines.filter((t) => t.state !== 'done' && t.state !== 'dropped').length} open`
-              : ''}
+        {shows('tasks') && (
+          <div className="flex flex-col gap-2 p-4.5">
+            <div className="font-semibold text-ink-3 text-sm">
+              Tasks
+              {tasks?.lines.length
+                ? ` · ${tasks.lines.filter((t) => t.state !== 'done' && t.state !== 'dropped').length} open`
+                : ''}
+            </div>
+            {tasks && tasks.lines.length > 0 && (
+              <TaskList lines={tasks.lines} onChange={() => void loadTasks()} />
+            )}
+            <NewTask
+              on={{ row: row.id }}
+              placeholder="Add a task on this row"
+              onAdded={() => void loadTasks()}
+            />
           </div>
-          {tasks && tasks.lines.length > 0 && (
-            <TaskList lines={tasks.lines} onChange={() => void loadTasks()} />
-          )}
-          <NewTask
-            on={{ row: row.id }}
-            placeholder="Add a task on this row"
-            onAdded={() => void loadTasks()}
-          />
-        </div>
-        <div className="flex flex-col gap-2 p-4.5">
-          <div className="font-semibold text-ink-3 text-sm">Documents</div>
-          {/* one drop zone for files: drop on it or click to choose */}
-          <DropZone onFiles={add}>
-            {files.map((f) => (
-              <div
-                key={f.hash}
-                className="flex flex-col gap-1 rounded-md border border-hair px-2.5 py-2"
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="size-3.5 shrink-0 text-ink-3" />
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 truncate text-left text-md text-ink hover:underline"
-                    {...cutTip(f.name)}
-                    onClick={() => window.location.assign(fileHref({ file: f.hash }))}
-                  >
-                    {f.name}
-                  </button>
-                  <IconButton
-                    label="Take it off this row"
-                    onClick={() => act(api.post<RowFileView[]>(`${path}/${f.hash}`, { off: true }))}
-                  >
-                    <X className="size-3.5" />
-                  </IconButton>
-                </div>
-                <div className="flex items-center gap-2 text-ink-3 text-sm">
-                  {kinds?.length ? (
-                    <Select
-                      aria-label="What kind of document it is"
-                      className="h-6.5 text-sm"
-                      value={f.kind ?? ''}
-                      onChange={(e) =>
-                        act(
-                          api.post<RowFileView[]>(`${path}/${f.hash}`, {
-                            kind: e.target.value || null,
-                          }),
-                        )
+        )}
+        {shows('files') && (
+          <div className="flex flex-col gap-2 p-4.5">
+            {!only && <div className="font-semibold text-ink-3 text-sm">Documents</div>}
+            {/* one drop zone for files: drop on it or click to choose */}
+            <DropZone onFiles={add}>
+              {files.map((f) => (
+                <div
+                  key={f.hash}
+                  className="flex flex-col gap-1 rounded-md border border-hair px-2.5 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="size-3.5 shrink-0 text-ink-3" />
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 truncate text-left text-md text-ink hover:underline"
+                      {...cutTip(f.name)}
+                      onClick={() => window.location.assign(fileHref({ file: f.hash }))}
+                    >
+                      {f.name}
+                    </button>
+                    <IconButton
+                      label="Take it off this row"
+                      onClick={() =>
+                        act(api.post<RowFileView[]>(`${path}/${f.hash}`, { off: true }))
                       }
                     >
-                      <option value="">No kind given</option>
-                      {kinds.map((k) => (
-                        <option key={k} value={k}>
-                          {k}
-                        </option>
-                      ))}
-                    </Select>
-                  ) : (
-                    f.kind && <span>{f.kind}</span>
-                  )}
-                  <span className="truncate">
-                    {f.by}, {dayWords(f.at)}
-                    {f.read === 'reading'
-                      ? ' · being read'
-                      : f.read === 'kept'
-                        ? ' · saved, not read'
-                        : ''}
-                  </span>
+                      <X className="size-3.5" />
+                    </IconButton>
+                  </div>
+                  <div className="flex items-center gap-2 text-ink-3 text-sm">
+                    {kinds?.length ? (
+                      <Select
+                        aria-label="What kind of document it is"
+                        className="h-6.5 text-sm"
+                        value={f.kind ?? ''}
+                        onChange={(e) =>
+                          act(
+                            api.post<RowFileView[]>(`${path}/${f.hash}`, {
+                              kind: e.target.value || null,
+                            }),
+                          )
+                        }
+                      >
+                        <option value="">No kind given</option>
+                        {kinds.map((k) => (
+                          <option key={k} value={k}>
+                            {k}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      f.kind && <span>{f.kind}</span>
+                    )}
+                    <span className="truncate">
+                      {f.by}, {dayWords(f.at)}
+                      {f.read === 'reading'
+                        ? ' · being read'
+                        : f.read === 'kept'
+                          ? ' · saved, not read'
+                          : ''}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </DropZone>
-          {problem && <div className="text-bad text-sm">{problem}</div>}
-        </div>
+              ))}
+            </DropZone>
+            {problem && <div className="text-bad text-sm">{problem}</div>}
+          </div>
+        )}
         {dragging && (
           <div className="pointer-events-none absolute inset-2 flex items-center justify-center rounded-xl border border-accent-line border-dashed bg-surface/80 text-ink-2">
             Drop to keep it on this row
@@ -386,23 +413,32 @@ export function FieldList({
   names,
   onField,
   onEdit,
+  columns = false,
+  hideable = false,
 }: {
+  hideable?: boolean // a record page's: right-click hides one, and a + adds one (FieldsFoot)
   tableId: string
   fields: FieldView[]
   row: RowView
   names: Record<string, string>
   onField: (slug: string) => void
   onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined
+  columns?: boolean // across the width in columns (a record page's Summary)
 }) {
   const [editing, setEditing] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ field: FieldView; x: number; y: number } | null>(null)
   const [past, setPast] = useState<FieldView | null>(null)
+  const { layout, change } = useLayout()
+  const [unhidden, setUnhidden] = useState(false)
+  const hidden = hideable ? fields.filter((f) => layout.recordHidden.includes(f.id)) : []
   const first = fields[0]
   return (
     <>
-      <dl className="flex flex-col">
+      <dl
+        className={cn(columns ? 'grid gap-x-6 @3xl:grid-cols-2 @6xl:grid-cols-3' : 'flex flex-col')}
+      >
         {fields
-          .filter((f) => f.kind !== 'notes')
+          .filter((f) => f.kind !== 'notes' && (unhidden || !hidden.includes(f)))
           .map((f) => {
             const source = row.sources[f.slug]
             const text = show(f, row.values[f.slug], names)
@@ -520,9 +556,31 @@ export function FieldList({
             onClear={() => void onEdit?.(menu.field, null)}
             onSource={() => onField(menu.field.slug)}
             onHistory={() => setPast(menu.field)}
+            onHide={
+              hideable
+                ? () => {
+                    const id = menu.field.id
+                    const on = layout.recordHidden.includes(id)
+                    change({
+                      recordHidden: on
+                        ? layout.recordHidden.filter((x) => x !== id)
+                        : [...layout.recordHidden, id],
+                    })
+                  }
+                : undefined
+            }
+            hidden={layout.recordHidden.includes(menu.field.id)}
           />
         )}
       </Popover>
+      {hideable && (
+        <FieldsFoot
+          tableId={tableId}
+          hidden={hidden.length}
+          shown={unhidden}
+          onShow={() => setUnhidden(!unhidden)}
+        />
+      )}
       {past && (
         <CellHistory
           tableId={tableId}

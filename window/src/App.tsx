@@ -440,6 +440,7 @@ export function App() {
             plain={place.at === 'work'}
             ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
             back={parentOf()}
+            path={place.at === 'row' ? rowPlace?.path : undefined}
             next={place.at === 'home' && <NextChip version={version} room={room} />}
           />
           {problem && (

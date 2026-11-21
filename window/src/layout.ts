@@ -13,6 +13,8 @@ export const NO_LAYOUT: Layout = {
   assistant: 'open',
   pageSize: null,
   agent: null,
+  recordHidden: [],
+  recordTabs: [],
 }
 
 export const LayoutContext = createContext<{
