@@ -10,7 +10,7 @@ import { Refused } from '../../world/kinds.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ModuleSummary, ModuleView } from '../types.ts'
-import { livesPeople, tableSummary } from '../views.ts'
+import { listed, livesPeople, tableSummary } from '../views.ts'
 
 export function registerModules(ctx: Ctx): void {
   const { app, world, engine, user, options } = ctx
@@ -136,7 +136,7 @@ export function registerModules(ctx: Ctx): void {
       pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
-        .filter((t) => !t.hidden)
+        .filter(listed)
         .map((t) => tableSummary(world, t)),
       modules: summaries()
         .filter((c) => c.parent === m.id)

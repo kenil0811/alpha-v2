@@ -1,8 +1,9 @@
-# Alpha's own People: the people and organizations Alpha knows, joined across contacts, mail and
-# meetings; every address book Alpha reads lands in its Contacts (a Mac's own through Alpha
+# Alpha's own People: the people and organizations Alpha knows, joined across address books, mail and
+# meetings; every address book Alpha reads lands in its Address book (a Mac's own through Alpha
 # Bridge, Outlook, Google), found by its lasting keys.
 name: People
-version: 0.1.0
+title: Network
+version: 0.2.0
 api: 3
 core: true
 people: true
@@ -14,8 +15,8 @@ business_case:
   keeps: Everyone the person deals with, and the organizations they are with
   decides: Who to talk to, and what was last said
 tables:
-  - name: Contacts
-    about: "Your contacts as your address books have them, read and never written back. Connect one in Intelligence › Connections: your Mac's own through Alpha Bridge, Outlook, or Google."
+  - name: Address book
+    about: "Everyone your address books hold, read and never written back; People is these rows, joined with the people you write to and meet. Connect one in Intelligence › Connections: your Mac's own through Alpha Bridge, Outlook, or Google."
     fields:
       - { name: Name, kind: text, about: "The person, or the organization when the card has no name." }
       - { name: Company, kind: text, about: "Where they work." }
@@ -34,7 +35,7 @@ tables:
       profile: Profile
       you: { field: Is you, is: "yes" }
     views:
-      - name: All contacts
+      - name: Everyone
         default: true
         sorts: [{ field: Name, dir: asc }]
         about: "Everyone in your address books"

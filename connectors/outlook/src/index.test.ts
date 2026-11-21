@@ -373,7 +373,7 @@ describe('the calendar and contacts', () => {
         },
       },
     ])
-    expect(h.landed.find((l) => l.table === 'Contacts')?.items[0]?.values).toMatchObject({
+    expect(h.landed.find((l) => l.table === 'Address book')?.items[0]?.values).toMatchObject({
       Name: 'Priya Shah',
       Company: 'Harbor Mills',
       Emails: 'priya@harbor.example',

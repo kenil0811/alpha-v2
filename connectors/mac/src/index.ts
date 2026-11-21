@@ -191,7 +191,7 @@ export const contactsConnector: Connector = {
   sync: async (c) => {
     const all = await contacts(c)
     const landed = await c.host.land(
-      'Contacts',
+      CONTACTS.name,
       all.map((p) => ({
         key: p.id,
         values: {

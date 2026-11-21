@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { placeOf } from '../../world/shape/parts.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FoundRow, Layout, Me } from '../types.ts'
 
@@ -120,7 +121,8 @@ export function registerMe(ctx: Ctx): void {
         .filter((h) => h.what === 'record')
         .flatMap((h) => {
           const rec = world.records.get(h.id)
-          if (!rec || rec.table.hidden) return []
+          // People's own storage is found as the people above, not again as its rows
+          if (!rec || rec.table.hidden || placeOf(rec.table) === 'people') return []
           return [
             {
               label: world.rowName(rec.table, rec.record.values),

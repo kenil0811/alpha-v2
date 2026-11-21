@@ -65,4 +65,52 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     ).map((c) => c.name)
     if (!cols.includes('plugin')) db.exec('ALTER TABLE kits ADD COLUMN plugin TEXT')
   },
+  // 6, 20 Nov 2026: People keeps its own source table, the Address book, and Contacts goes (Vikas,
+  // 19 and 20 Nov). The shared Contacts table of the module People lives in (or of the module a
+  // connector made for it before People) is renamed in place: same id, rows, versions, lasting
+  // key's rows and what people_sources says of them, so every person, link and history is
+  // unchanged. Its lasting key, name, folder and kit view follow; a world without it is left as it is.
+  (db) => {
+    const one = (sql: string, ...a: string[]) =>
+      db.prepare(sql).get(...a) as Record<string, string> | undefined
+    const was = db
+      .prepare(
+        `SELECT t.id, t.slug FROM tables t JOIN modules m ON m.id = t.module_id
+         WHERE t.key = 'Contacts' AND m.key IN ('People', 'Contacts')`,
+      )
+      .all() as { id: string; slug: string }[]
+    for (const t of was) {
+      // one already there (a connector made it again) is left: nothing is merged by guesswork
+      if (
+        one(
+          "SELECT 1 AS x FROM tables WHERE key = 'Address book' AND module_id = (SELECT module_id FROM tables WHERE id = ?)",
+          t.id,
+        )
+      )
+        continue
+      let slug = 'address_book'
+      for (
+        let n = 2;
+        one('SELECT 1 AS x FROM tables WHERE slug = ?', slug) ||
+        one('SELECT 1 AS x FROM sqlite_master WHERE name = ?', slug);
+        n++
+      )
+        slug = `address_book_${n}`
+      db.exec(`ALTER TABLE "${t.slug.replace(/"/g, '""')}" RENAME TO "${slug}"`)
+      db.prepare(
+        "UPDATE tables SET name = 'Address book', key = 'Address book', slug = ? WHERE id = ?",
+      ).run(slug, t.id)
+      db.prepare(
+        "UPDATE views SET name = 'Everyone' WHERE table_id = ? AND lower(name) = 'all contacts' AND NOT EXISTS (SELECT 1 FROM views v WHERE v.table_id = ? AND lower(v.name) = 'everyone')",
+      ).run(t.id, t.id)
+    }
+  },
+  // 7, 20 Nov 2026: the module People and Organizations live in is Network (Vikas, 20 Nov); its
+  // lasting key stays People. A name the person gave it is theirs and left.
+  (db) => {
+    db.exec(
+      `UPDATE modules SET name = 'Network' WHERE key = 'People' AND name = 'People'
+         AND NOT EXISTS (SELECT 1 FROM modules WHERE name = 'Network' COLLATE NOCASE)`,
+    )
+  },
 ]

@@ -114,7 +114,7 @@ export const SOURCES: Source[] = [
     'Contacts',
     'may I read your contacts?',
     'Each contact’s name, company and title, from the contacts connected here.',
-    { module: 'People', table: 'Contacts' },
+    { module: 'People', table: 'Address book' },
     (rows) =>
       [
         `${rows.length} contacts.`,

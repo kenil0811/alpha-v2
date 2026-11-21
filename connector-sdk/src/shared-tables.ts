@@ -1,6 +1,6 @@
 // The tables every calendar and every address book lands in, whichever system keeps them (a Mac's
 // own Calendar and Contacts, Outlook, Google), as Gmail and Outlook share Mail: what reads Events or
-// Contacts reads them all, and People joins the same person across them. Each row keeps its source.
+// the Address book (People's own source, once called Contacts) reads them all, and People joins the same person across them. Each row keeps its source.
 // They are Alpha's own Calendar's and People's (core/kits), found by these lasting keys.
 import type { TableSpec } from './connector.ts'
 
@@ -30,7 +30,7 @@ export const EVENTS: TableSpec = {
 }
 
 export const CONTACTS: TableSpec = {
-  name: 'Contacts',
+  name: 'Address book',
   module: 'People',
   fields: [
     { name: 'Name', kind: 'text' },
