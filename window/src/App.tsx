@@ -26,6 +26,7 @@ import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { applyLive, clearLive } from './live.ts'
 import { ModuleScreen } from './Module.tsx'
+import { NewModule } from './NewModule.tsx'
 import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
 import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
@@ -136,17 +137,18 @@ export function App() {
   const chosen = agents.some((a) => a.id === asked) ? asked : CHIEF
   const agentHere = agents.find((a) => a.id === chosen) ?? null
   const pickAgent = useCallback((id: string) => changeLayout({ agent: id }), [changeLayout])
-  // New module opens the Module builder's conversation, the Chief of staff's once it has gone
-  const openBuilder = useCallback(() => {
-    const go = (id: string) => {
-      pickAgent(id)
-      window.location.hash = '#/conversation'
-    }
-    api.get<{ id: string | null }>('/api/agents/builder').then(
-      (b) => go(b.id ?? CHIEF),
-      () => go(CHIEF),
-    )
-  }, [pickAgent])
+  // Send gives the Module builder (the Chief of staff once it has gone) a task, which starts at
+  // once; the New module page shows the task's conversation in its own central column
+  const build = useCallback(async (words: string) => {
+    const b = await api.get<{ id: string | null }>('/api/agents/builder').catch(() => null)
+    const title = `Build a module: ${words.split('\n')[0]?.slice(0, 60) ?? ''}`
+    const t = await api.post<{ id: string }>('/api/tasks', {
+      title,
+      notes: words,
+      owner: { kind: 'alpha', id: b?.id ?? CHIEF },
+    })
+    return t.id
+  }, [])
   const chosenRef = useRef(chosen)
   chosenRef.current = chosen
   const askableRef = useRef(askable)
@@ -393,6 +395,8 @@ export function App() {
         return 'Intelligence'
       case 'parts':
         return 'Parts'
+      case 'new':
+        return 'New module'
       case 'plugin':
         return screenOf(place.name)?.title ?? ''
       case 'file':
@@ -428,7 +432,7 @@ export function App() {
           waiting={stream?.cards.length ?? 0}
           signals={moduleSignals(stream)}
           onNew={() => {
-            openBuilder()
+            window.location.hash = '#/new'
           }}
           tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
           online={!problem}
@@ -468,6 +472,8 @@ export function App() {
                     busyTurn={busyTurn}
                     version={version}
                   />
+                ) : place.at === 'new' ? (
+                  <NewModule setup={place.setup} version={version} onBuild={build} />
                 ) : place.at === 'parts' ? (
                   <Parts />
                 ) : place.at === 'plugin' ? (
