@@ -1,5 +1,5 @@
-// What Settings › Model shows of a month's spend: its total, then by module, by schedule and by
-// model, largest first. Its own file, beside the window's contract in types.ts, which is kept
+// What Settings › Model shows of a month's spend: its total, then split every way, largest first;
+// each split counts every row, so each adds up to the total. Its own file, beside the window's contract in types.ts, which is kept
 // from growing.
 export interface UsageRow {
   name: string
@@ -9,7 +9,7 @@ export interface UsageRow {
   usd: number | null // null: some of it has no price
 }
 
-export const SPLITS = ['model', 'module', 'agent', 'use', 'person'] as const
+export const SPLITS = ['day', 'model', 'module', 'agent', 'schedule', 'use', 'person'] as const
 export type UsageSplit = (typeof SPLITS)[number]
 
 // One day's spend in dollars (priced rows only), whole and split each way by key
@@ -24,10 +24,7 @@ export interface UsageView {
   months: string[] // the months with spend, newest first
   atApiPrices: boolean // on the subscription: what it would cost on an API key
   total: UsageRow
-  byModule: UsageRow[]
-  bySchedule: UsageRow[]
-  byAgent: UsageRow[]
-  byModel: UsageRow[]
+  by: Record<UsageSplit, UsageRow[]>
   days: UsageDay[] // the days with spend, oldest first
   tasksDone: number // tasks closed in the month, for the cost of each
 }

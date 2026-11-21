@@ -11,7 +11,7 @@ describe('the month’s spend', () => {
     const day = (d: string, split: Record<string, number>) => ({
       day: d,
       usd: 0,
-      split: { model: split, module: {}, agent: {}, use: {}, person: {} },
+      split: { day: {}, model: split, module: {}, agent: {}, schedule: {}, use: {}, person: {} },
     })
     const s = stack('2026-11', [day('2026-11-02', { a: 3, b: 2, c: 1 })], 'model', 2)
     expect(s.days).toHaveLength(30)

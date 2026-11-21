@@ -154,6 +154,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
 | L17 | Nothing on a screen moves when something is picked or appears: what appears takes a place kept for it, as the one line over a table holds a paste waiting, ticked rows or filters at one height | 10 Nov | — |
 | L18 | Loading is quiet: nothing at first and a soft Loading… only once it has taken a while; never a word that something is not there while it is on its way; a module's tabs and the bar's name stay put while what is under them loads, and a module opens straight on where it lands | 10 Nov | — |
+| L19 | Every visual is one card (`ui/chart-card.tsx`): its title, its own choices, and a Show as drop-down drawing the same numbers as columns over time, bars, a donut or a table; each part keeps one colour across the looks and its key says its value (spend: dollars and tokens). No table repeats a chart under it: the table is a look of the card. Reports and pages draw their charts the same way unless the person asks otherwise | 21 Nov | — |
 
 ## Proposed, waiting on Kenil or the core
 

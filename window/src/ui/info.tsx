@@ -24,7 +24,7 @@ export function Info({ help }: { help: string }) {
         <InfoIcon className="size-3.5" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} className="max-w-72">
-        <div id={id} role="tooltip" className="px-2 py-1.5 text-ink-2 text-sm">
+        <div id={id} role="tooltip" className="whitespace-pre-line px-2 py-1.5 text-ink-2 text-sm">
           {help}
         </div>
       </Popover>

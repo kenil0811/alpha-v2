@@ -15,7 +15,7 @@ export function forecast(spent: number, month: string, today: Date = new Date())
 export function stack(
   month: string,
   days: UsageDay[],
-  split: UsageSplit | 'day',
+  split: UsageSplit,
   keep = 7,
 ): { days: { day: string; parts: [string, number][] }[]; keys: string[] } {
   const [y, m] = month.split('-').map(Number) as [number, number]
