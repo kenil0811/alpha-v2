@@ -1,13 +1,13 @@
 // New module: a page reached from the rail like opening a module. The bar says New module | Setup
-// (Setup is the Module builder's own page); the page asks what the module should do, takes a file
-// to bring in (kept the way any file is), and Build it hands the words to the Module builder, whose
-// conversation then opens and does the work.
-import { useEffect, useState } from 'react'
+// (Setup is the Module builder's own page). The page asks one warm question; Send hands the words
+// to the Module builder, whose conversation then runs right here in the page's central column;
+// Import beside Send brings a file in (kept the way any file is) to build from.
+import { ArrowUp, Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { AgentPage } from './Agents.tsx'
 import { api, Problem } from './api.ts'
+import { TaskWork } from './TaskThread.tsx'
 import { Button } from './ui/button.tsx'
-import { DropZone } from './ui/drop-zone.tsx'
-import { Section } from './ui/section.tsx'
 import { Tabs } from './ui/tabs.tsx'
 
 const noName = () => undefined
@@ -19,12 +19,14 @@ export function NewModule({
 }: {
   setup: boolean
   version: number
-  onBuild: (words: string) => Promise<void>
+  onBuild: (words: string) => Promise<string>
 }) {
   const [words, setWords] = useState('')
   const [files, setFiles] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [task, setTask] = useState<string | null>(null)
+  const pick = useRef<HTMLInputElement>(null)
   const [builder, setBuilder] = useState<string | null>(null)
   useEffect(() => {
     api.get<{ id: string | null }>('/api/agents/builder').then(
@@ -45,7 +47,7 @@ export function NewModule({
     setProblem(null)
     const brought = files.length ? `\n\nFiles I brought in: ${files.join(', ')}` : ''
     try {
-      await onBuild(`${words.trim()}${brought}`)
+      setTask(await onBuild(`${words.trim()}${brought}`))
     } catch (e) {
       setProblem(e instanceof Problem ? e.message : 'That did not go to the Module builder.')
     }
@@ -63,30 +65,43 @@ export function NewModule({
         builder ? (
           <AgentPage id={builder} version={version} onName={noName} inAgents />
         ) : null
+      ) : task ? (
+        <div className="min-h-0 flex-1">
+          <TaskWork id={task} version={version} onName={noName} />
+        </div>
       ) : (
-        <div className="mx-auto flex w-full max-w-150 flex-col gap-4 px-6 py-8">
-          <Section title="What should it do?">
-            <textarea
-              aria-label="What should it do?"
-              rows={5}
-              value={words}
-              onChange={(e) => setWords(e.target.value)}
-              className="min-w-0 rounded-md border border-line bg-surface px-2.5 py-2 text-ink text-md outline-none transition-colors placeholder:text-ink-3 focus:border-accent-line focus:ring-3 focus:ring-accent-soft"
-            />
-          </Section>
-          <Section title="Import">
-            <DropZone onFiles={(f) => void bring(f)} busy={busy}>
-              {files.map((n) => (
-                <div key={n} className="px-1.5 text-md text-ink-2">
-                  {n}
-                </div>
-              ))}
-            </DropZone>
-          </Section>
+        <div className="mx-auto flex w-full max-w-stream flex-col gap-4 px-8 py-16">
+          <h1 className="font-medium text-2xl text-ink">What are you planning to build today?</h1>
+          <textarea
+            aria-label="What are you planning to build today?"
+            placeholder="Tell me what it should do, in your own words"
+            rows={4}
+            value={words}
+            onChange={(e) => setWords(e.target.value)}
+            className="min-w-0 rounded-xl border border-line bg-surface px-4 py-3 text-base text-ink shadow-pop outline-none transition-colors placeholder:text-ink-3 focus:border-accent-line focus:ring-3 focus:ring-accent-soft"
+          />
+          {files.length > 0 && (
+            <div className="text-ink-2 text-md">Brought in: {files.join(', ')}</div>
+          )}
           <div className="flex items-center justify-end gap-3">
             {problem && <span className="text-bad text-md">{problem}</span>}
+            <Button disabled={busy} onClick={() => pick.current?.click()}>
+              <Upload className="size-4" />
+              {busy ? 'Adding…' : 'Import'}
+            </Button>
+            <input
+              ref={pick}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) void bring([...e.target.files])
+                e.target.value = ''
+              }}
+            />
             <Button variant="primary" disabled={!words.trim()} onClick={() => void build()}>
-              Build it
+              <ArrowUp className="size-4" />
+              Send
             </Button>
           </div>
         </div>

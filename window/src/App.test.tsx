@@ -129,9 +129,10 @@ describe('the window', () => {
     )
     expect(html).toContain('aria-current="page"') // no other row is current on #/new
     expect(placeOf('#/new/setup')).toEqual({ at: 'new', setup: true })
-    const page = renderToString(<NewModule setup={false} version={0} onBuild={async () => {}} />)
-    expect(page).toContain('What should it do?')
-    expect(page).toContain('Build it')
+    const page = renderToString(<NewModule setup={false} version={0} onBuild={async () => ''} />)
+    expect(page).toContain('What are you planning to build today?')
+    expect(page).toContain('Send')
+    expect(page).toContain('Import')
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {

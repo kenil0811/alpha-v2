@@ -137,8 +137,8 @@ export function App() {
   const chosen = agents.some((a) => a.id === asked) ? asked : CHIEF
   const agentHere = agents.find((a) => a.id === chosen) ?? null
   const pickAgent = useCallback((id: string) => changeLayout({ agent: id }), [changeLayout])
-  // Build it gives the Module builder (the Chief of staff once it has gone) a task, which starts
-  // at once, and opens the task's page where the work is read
+  // Send gives the Module builder (the Chief of staff once it has gone) a task, which starts at
+  // once; the New module page shows the task's conversation in its own central column
   const build = useCallback(async (words: string) => {
     const b = await api.get<{ id: string | null }>('/api/agents/builder').catch(() => null)
     const title = `Build a module: ${words.split('\n')[0]?.slice(0, 60) ?? ''}`
@@ -147,7 +147,7 @@ export function App() {
       notes: words,
       owner: { kind: 'alpha', id: b?.id ?? CHIEF },
     })
-    window.location.hash = `#/tasks/${t.id}/work`
+    return t.id
   }, [])
   const chosenRef = useRef(chosen)
   chosenRef.current = chosen
