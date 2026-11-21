@@ -82,7 +82,7 @@ describe('a desk turn', () => {
 })
 
 describe('Settings › Model › Usage', () => {
-  it('gives a month by module, schedule and model, largest first', async () => {
+  it('gives a month split every way, largest first, each adding up to the total', async () => {
     const m = world.shape.makeModule('Garden', { actor: { kind: 'alpha' } })
     const opus = (usd: number) => [
       {
@@ -105,12 +105,18 @@ describe('Settings › Model › Usage', () => {
     expect(u.month).toBe(new Date().toISOString().slice(0, 7))
     expect(u.total).toMatchObject({ turns: 2, runs: 1, tokens: 330 })
     expect(u.total.usd).toBeCloseTo(0.26)
-    expect(u.byModule.map((r) => [r.name, r.turns, r.runs])).toEqual([
+    expect(u.by.module.map((r) => [r.name, r.turns, r.runs])).toEqual([
       ['Garden', 1, 1],
       ['Alpha', 1, 0],
     ])
-    expect(u.bySchedule.map((r) => r.name)).toEqual(['Waterer'])
-    expect(u.byModel.map((r) => r.name)).toEqual(['claude-opus-5-5'])
+    expect(u.by.schedule.map((r) => r.name)).toEqual(['Not a schedule', 'Waterer'])
+    expect(u.by.model.map((r) => r.name)).toEqual(['claude-opus-5-5'])
+    // every split adds up to the total: a schedule's run has no agent but is still counted
+    for (const rows of Object.values(u.by)) {
+      expect(rows.reduce((s, r) => s + r.tokens, 0)).toBe(u.total.tokens)
+      expect(rows.reduce((s, r) => s + (r.usd ?? 0), 0)).toBeCloseTo(0.26)
+    }
+    expect(u.by.agent.map((r) => r.name)).toContain('Schedules (no agent)')
     expect(world.spend.of({ turn: '2' })).toBeCloseTo(0.2)
   })
 })

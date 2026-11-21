@@ -1,10 +1,15 @@
-// What the model was used for and what it spent, a month at a time (core plan step 5): desk turns
-// under the module they were asked in (Alpha's, asked on Home), schedules' runs under their schedule.
+// What the model was used for and what it spent, a month at a time (core plan step 5). Every split
+// counts every spend row, so each adds up to the month's total: a row with no agent (a schedule's
+// run, a small ask) is counted under what it was, not left out.
 import { z } from 'zod'
-import { monthOf } from '../../world/day.ts'
+import { dayOf, monthOf, monthSpan } from '../../world/day.ts'
 import type { SpendRow } from '../../world/spend.ts'
 import type { Ctx } from '../ctx.ts'
-import type { UsageRow, UsageView } from '../usage-types.ts'
+import { SPLITS, type UsageRow, type UsageSplit, type UsageView } from '../usage-types.ts'
+import { daysOf } from './usage-days.ts'
+
+const USE = { turn: 'Chat turns', run: 'Schedule runs', ask: 'Small asks' }
+const NO_AGENT = { run: 'Schedules (no agent)', ask: 'Small asks (no agent)' }
 
 export function registerUsage(ctx: Ctx): void {
   const { app, world, engine } = ctx
@@ -21,22 +26,30 @@ export function registerUsage(ctx: Ctx): void {
     const months = world.spend.months()
     const m = month ?? months[0] ?? monthOf()
     const rows = world.spend.month(m)
-    const moduleName = (id: string | null) => (id && world.shape.module(id)?.name) || 'Alpha'
+    const people = world.users()
+    const keysOf = (r: SpendRow): Record<UsageSplit, string> => ({
+      day: dayOf(new Date(r.at)),
+      model: r.model,
+      module: (r.module_id && world.shape.module(r.module_id)?.name) || 'Alpha',
+      agent:
+        r.kind === 'turn'
+          ? (r.agent && world.agents.get(r.agent)?.name) || 'Chief of staff'
+          : NO_AGENT[r.kind],
+      schedule: r.schedule ?? 'Not a schedule',
+      use: USE[r.kind],
+      person: people.find((u) => u.id === r.user_id)?.name ?? 'No one: schedules and asks',
+    })
     return {
       month: m,
       months,
       atApiPrices: (engine.route?.name ?? 'subscription') === 'subscription',
       total: sumOf('All', rows),
-      byModule: grouped(rows, (r) => moduleName(r.module_id)),
-      bySchedule: grouped(
-        rows.filter((r) => r.schedule),
-        (r) => r.schedule as string,
-      ),
-      byAgent: grouped(
-        rows.filter((r) => r.kind === 'turn'),
-        (r) => (r.agent && world.agents.get(r.agent)?.name) || 'Chief of staff',
-      ),
-      byModel: grouped(rows, (r) => r.model),
+      by: Object.fromEntries(SPLITS.map((s) => [s, grouped(rows, (r) => keysOf(r)[s])])) as Record<
+        UsageSplit,
+        UsageRow[]
+      >,
+      days: daysOf(rows, keysOf),
+      tasksDone: world.tasks.doneBetween(...monthSpan(m)),
     }
   })
 }

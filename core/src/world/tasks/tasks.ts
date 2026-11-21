@@ -20,6 +20,18 @@ export class Tasks {
     this.personName = personName
   }
 
+  // How many tasks were closed from one instant to the next (spend's cost of each).
+  doneBetween(from: Date, to: Date): number {
+    return (
+      one<{ n: number }>(
+        this.db,
+        "SELECT count(*) AS n FROM tasks WHERE state = 'done' AND done_at >= ? AND done_at < ?",
+        from.toISOString(),
+        to.toISOString(),
+      )?.n ?? 0
+    )
+  }
+
   // ---- places -----------------------------------------------------------------------------
 
   // A place named by its words: a module, a table in it, one of its rows, a field, or a page.

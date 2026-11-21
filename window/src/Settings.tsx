@@ -61,8 +61,7 @@ const PAGES = {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
     tabs: [
-      ['model', 'Model'],
-      ['usage', 'Usage'],
+      ['model', 'LLM'],
       ['data', 'Data'],
       ['appearance', 'Appearance'],
       ['permissions', 'Permissions'],
@@ -113,8 +112,12 @@ export function Settings({
     files: <KeptFiles version={version} module={open} />,
     modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
     permissions: <Permissions version={version} owner={!member} />,
-    model: <ModelSection />,
-    usage: <UsageSection />,
+    model: (
+      <>
+        <UsageSection />
+        <ModelSection />
+      </>
+    ),
     activity: <Activity version={version} cards={cards} />,
     people: <AccountsSection />,
     data: <DataSection />,
@@ -374,15 +377,17 @@ function ModelSection() {
                 title={
                   <span className="flex items-center gap-2">
                     {p.title}
-                    <Info help={modelHelp(p.route, onServer)} />
+                    <Info
+                      help={[modelHelp(p.route, onServer), `It reaches ${p.can}.`, p.cannot]
+                        .filter(Boolean)
+                        .join('\n\n')}
+                    />
                     {p.chosen && <Pill tone="accent">In use</Pill>}
                   </span>
                 }
                 sub={
                   <>
                     <div className="text-ink-2">{state}</div>
-                    <div>{p.can}</div>
-                    {p.cannot && <div className="text-warn">{p.cannot}</div>}
                     {on === p.route && <Refusal words={problem} />}
                   </>
                 }
