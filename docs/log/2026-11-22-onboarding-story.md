@@ -77,3 +77,11 @@ The window reuses Settings' pieces (the connect form, the sign-in app's sheet, t
 steps, the site sign-in), each now shared. New ui-rule U5. On his look ("why are we wasting so much space") the tiles became one compact
 row each down a wider column: name, one line of what it reads (the rest in its ⓘ), its act at the
 right, what landed under it; on a phone the act moves under the name.
+
+## A site's sign-in as a small window
+
+On Kenil's word (a Google sign-in pop-up beside the full LinkedIn window Alpha opened), a site's
+sign-in now opens in Chrome as a small window of its own, `--app` at 520 by 760, with no tabs and
+no toolbar: on Alpha's own Mac (`connector-sdk/src/browser.ts`) and through Alpha Bridge
+(`bridge/src/chrome.ts`), released as Alpha Bridge 0.5.1 for the Mac and put on his server and his
+Mac. The Windows build waits on GitHub's machine, which needs the branch pushed.

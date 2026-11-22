@@ -44,11 +44,17 @@ export const profileOf = (home: string, site: string) =>
 
 const QUIET = ['--no-first-run', '--no-default-browser-check']
 
-// The site in a normal window of its own profile, where the person signs in themselves; done
-// when they close it. Alpha never sees what they type.
+// A sign-in as a small window of its own, as a site's own sign-in pop-up opens: no tabs and no
+// toolbar, the site alone (Kenil, 22 Nov).
+export const SIGN_IN_WINDOW = (url: string) => [`--app=${url}`, '--window-size=520,760']
+
+// The site in a small window of its own profile, where the person signs in themselves; done when
+// they close it. Alpha never sees what they type.
 export function signInWindow(chrome: string, dir: string, url: string): Promise<void> {
   mkdirSync(dir, { recursive: true })
-  const window = spawn(chrome, [`--user-data-dir=${dir}`, ...QUIET, url], { stdio: 'ignore' })
+  const window = spawn(chrome, [`--user-data-dir=${dir}`, ...QUIET, ...SIGN_IN_WINDOW(url)], {
+    stdio: 'ignore',
+  })
   return new Promise((resolve, reject) => {
     window.on('exit', () => {
       writeFileSync(join(dir, '.signed-in'), new Date().toISOString())
