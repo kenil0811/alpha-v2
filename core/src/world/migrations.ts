@@ -73,4 +73,12 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     ).map((c) => c.name)
     if (!cols.includes('help')) db.exec('ALTER TABLE cards ADD COLUMN help TEXT')
   },
+  // 7, 22 Nov 2026: how a table's kit says it first opens (a calendar for Events); a world made
+  // from schema.sql has it already
+  (db) => {
+    const cols = (
+      db.prepare("SELECT name FROM pragma_table_info('tables')").all() as { name: string }[]
+    ).map((c) => c.name)
+    if (!cols.includes('start_view')) db.exec('ALTER TABLE tables ADD COLUMN start_view TEXT')
+  },
 ]

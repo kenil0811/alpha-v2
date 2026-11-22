@@ -311,7 +311,8 @@ Scripts are plain JavaScript in the sandbox, importing nothing of Alpha's and ha
 object. They are deterministic, and the model is reached only through named calls.
 
 Every module is open, the firm's to change, or managed, changed only by a newer signed pack. On an
-update, what the person changed is kept and nothing is deleted. `pnpm kit check` and `pnpm kit test`
+update, what the person changed is kept and nothing of theirs is deleted: a list the kit made and no
+longer names goes only while nobody has changed it, taking no rows, and leaves everyone's order. `pnpm kit check` and `pnpm kit test`
 try a kit before it installs, and tests record the model's answers rather than call it.
 
 Pages are HTML files drawn in a sandboxed frame with no network. They read the module's rows

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
+import { drawnTables } from '../../world/table-prefs.ts'
 import { World } from '../../world/world.ts'
 import { Field } from './common.ts'
 import { applyShape } from './shape.ts'
@@ -120,5 +121,41 @@ describe('the shape tool and meaning', () => {
       alpha,
     )
     expect(world.views.list(t?.id as string)[0]?.about).toBe('The dinners alone.')
+  })
+
+  it('opens a list Alpha lays out for someone as it was made: their view of the table takes its kind', () => {
+    const ann = world.owner('Ann').id
+    const forAnn = { actor: { kind: 'alpha' as const }, user: ann }
+    applyShape(
+      world,
+      {
+        action: 'make_table',
+        module: 'Shop',
+        table: 'Deals',
+        about: 'Deals in hand.',
+        business_case: { for: 'Ann', keeps: 'Her deals', decides: 'Which to chase' },
+        fields: [
+          { name: 'Name', kind: 'text', about: 'The deal.' },
+          { name: 'Stage', kind: 'choice', choices: ['New', 'Won'], about: 'Where it is.' },
+        ],
+      },
+      forAnn,
+    )
+    const t = world.shape.table('Deals')
+    applyShape(
+      world,
+      {
+        action: 'save_view',
+        table: 'Deals',
+        field: 'By stage',
+        view: { kind: 'board', group: 'Stage' },
+      },
+      forAnn,
+    )
+    const stage = t?.fields.find((f) => f.name === 'Stage')?.id
+    expect(drawnTables(world.db, ann)[t?.id as string]).toMatchObject({
+      kind: 'board',
+      group: stage,
+    })
   })
 })

@@ -2,6 +2,7 @@ import { all, json, now, one, parse, run, tx } from '../db.ts'
 import { dropFieldSql, dropTableSql, junctionName, lit, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { type FieldKind, Refused } from '../kinds.ts'
+import { forgetField, forgetTable } from '../table-prefs.ts'
 import { ViewConfig } from '../views.ts'
 import { asks } from './asks.ts'
 import { writeManifest } from './manifest.ts'
@@ -49,6 +50,7 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
     run(shape.db, 'DELETE FROM removed_rows WHERE table_id = ?', table.id)
     const sums = dropSummaries(shape, table.id, undefined, ctx)
     run(shape.db, 'DELETE FROM views WHERE table_id = ?', table.id)
+    forgetTable(shape.db, table.id)
     run(shape.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM tables WHERE id = ?', table.id)
     tombstone(shape, table.module.id, 'table', table.key ?? table.name, ctx)
@@ -105,6 +107,7 @@ export function dropField(shape: Shape, table: Table, f: Field, ctx: WriteCtx): 
   run(shape.db, 'DELETE FROM provenance WHERE field_id = ?', f.id)
   run(shape.db, 'DELETE FROM fields WHERE id = ?', f.id)
   dropFieldFromViews(shape, table.id, f.id)
+  forgetField(shape.db, table.id, f.id)
   dropFieldFromTrash(shape, table.id, f.id)
   tombstone(shape, table.module.id, 'field', f.key ?? f.name, ctx)
 }

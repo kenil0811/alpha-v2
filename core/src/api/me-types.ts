@@ -1,5 +1,6 @@
 // Who is at the window and how they left it: the person's own, kept by Alpha per person (design
 //), never in the browser. Re-exported by types.ts, the window's one import.
+import type { ViewKind } from './types.ts'
 
 export interface Me {
   user: { id: string; name: string; role: 'owner' | 'member' }
@@ -13,6 +14,17 @@ export interface Me {
 }
 
 // How the person left the window: all of it here, none in the browser.
+// How a table is drawn, the person's: the layout kind and what only that layout reads (a board's
+// or chart's group, a calendar's, timeline's or map's dates, a chart's measure). A list decides
+// which rows show, never how they are drawn.
+export interface ViewOf {
+  kind: ViewKind
+  by: string | null
+  until: string | null
+  group: string | null
+  measure: string | null
+}
+
 export interface Layout {
   railFolded: boolean
   folded: string[] // the modules folded in the rail
@@ -23,4 +35,6 @@ export interface Layout {
   assistant: 'open' | 'folded'
   pageSize: number | null // a table's rows to a page; none is 50
   agent: string | null // the agent the assistant shows; none is the Chief of staff
+  listOrder: Record<string, string[]> // a table's lists in the person's order: table id → list ids ('all' is All); the first is where the table opens
+  viewOf: Record<string, ViewOf> // a table's view for this person: table id → how it is drawn; none opens on the first list's own layout
 }

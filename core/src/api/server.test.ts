@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Engine } from '../engine/engine.ts'
 import { MAINTAINED_SHAPE } from '../engine/tools/index.ts'
 import { install } from '../modules/kits/index.ts'
+import { setDrawn } from '../world/table-prefs.ts'
 import { World } from '../world/world.ts'
 import { buildServer, VERSION } from './server.ts'
 import type { RowPageView, Stream, TableView } from './types.ts'
@@ -337,6 +338,8 @@ describe('the api over a world', () => {
       assistant: 'open',
       pageSize: null,
       agent: null,
+      listOrder: {},
+      viewOf: {},
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -352,6 +355,8 @@ describe('the api over a world', () => {
         railWidth: 260,
         assistant: 'folded',
         pageSize: 100,
+        listOrder: { t1: ['v2', 'all', 'v1'] },
+        viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
       },
     })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
@@ -364,6 +369,39 @@ describe('the api over a world', () => {
       assistant: 'folded',
       pageSize: 100,
       agent: null,
+      listOrder: { t1: ['v2', 'all', 'v1'] },
+      viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
+    })
+    expect(
+      (
+        await a.inject({
+          method: 'POST',
+          url: '/api/layout',
+          headers: ok,
+          payload: { listOrder: 3 },
+        })
+      ).statusCode,
+    ).toBe(400)
+    expect(
+      (
+        await a.inject({
+          method: 'POST',
+          url: '/api/layout',
+          headers: ok,
+          payload: { viewOf: { t1: { kind: 'sphere' } } },
+        })
+      ).statusCode,
+    ).toBe(400)
+    // each table's order and view is kept on its own: another table's leaves it be, none forgets it
+    await a.inject({
+      method: 'POST',
+      url: '/api/layout',
+      headers: ok,
+      payload: { listOrder: { t2: ['all'] }, viewOf: { t1: null } },
+    })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toMatchObject({
+      listOrder: { t1: ['v2', 'all', 'v1'], t2: ['all'] },
+      viewOf: {},
     })
     // the text size is kept beside the look, each on its own
     const appearance = (payload: object) =>
@@ -524,6 +562,17 @@ describe('the api over a world', () => {
       await a.inject({ url: `/api/rows/${table.rows[0]?.id}`, headers: ok })
     ).json() as RowPageView
     expect(row.row.sources.food?.words).toBe('You said “log two eggs”')
+    // the person's own view of the table comes with it, as the core keeps it
+    expect(table.drawn).toBeNull()
+    setDrawn(world.db, user.id, t.id, {
+      kind: 'gallery',
+      by: null,
+      until: null,
+      group: null,
+      measure: null,
+    })
+    const drawn = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
+    expect(drawn.drawn?.kind).toBe('gallery')
     const stream = (await a.inject({ url: '/api/stream', headers: ok })).json() as Stream
     expect(stream.lines.map((l) => [l.kind, l.words])).toEqual([
       ['said', 'log two eggs'],

@@ -130,7 +130,7 @@ export class Files {
   findFile(nameOrHash: string): FileOut | undefined {
     return one<FileOut>(
       this.db,
-      'SELECT hash, name, size, mime FROM files WHERE hash = ? OR name = ? ORDER BY added_at DESC',
+      'SELECT hash, name, size, mime FROM files WHERE hash = ? OR name = ? ORDER BY added_at DESC, rowid DESC',
       nameOrHash,
       nameOrHash,
     )
@@ -140,7 +140,7 @@ export class Files {
   list(): (FileOut & { addedBy: string; addedAt: string })[] {
     return all<FileOut & { addedBy: string; addedAt: string }>(
       this.db,
-      'SELECT hash, name, size, mime, added_by AS addedBy, added_at AS addedAt FROM files ORDER BY added_at DESC',
+      'SELECT hash, name, size, mime, added_by AS addedBy, added_at AS addedAt FROM files ORDER BY added_at DESC, rowid DESC',
     )
   }
 

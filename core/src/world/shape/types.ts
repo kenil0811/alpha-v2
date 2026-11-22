@@ -62,6 +62,15 @@ export type AboutBy = 'kit' | 'alpha' | 'person'
 export type Tone = 'good' | 'warn' | 'bad' | 'accent'
 export { TONES }
 
+// How a table first opens, as its kit says (by field id): a layout and what only it reads.
+export interface StartView {
+  kind: string
+  by: string | null
+  until: string | null
+  group: string | null
+  measure: string | null
+}
+
 export interface Table {
   id: string
   module: Module
@@ -72,6 +81,7 @@ export interface Table {
   hidden: boolean // out of the sidebar
   setup: boolean // what the module's schedules read: on the module's Setup, not a tab
   tab: boolean // kept as a tab of its module wherever it sits, by the person or its kit
+  startView: StartView | null // how its kit says it first opens, until the person picks a view
   addedOn: string | null // Alpha adds a row only once the person has answered this on a card
   fields: Field[]
   documents: string[] | null // the kinds of document its rows take, as its kit names them

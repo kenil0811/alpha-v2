@@ -29,7 +29,7 @@ describe('Calendar and People, Alpha’s own', () => {
   it('are there from the start, and a calendar and an address book land in them', async () => {
     const said = await keepDefaults(world, system)
     expect(said).toEqual([
-      "Installed Calendar 0.1.0, Alpha's own.",
+      "Installed Calendar 0.2.0, Alpha's own.",
       "Installed People 0.1.0, Alpha's own.",
     ])
     const cal = world.shape.ownModule('Calendar')
@@ -37,8 +37,8 @@ describe('Calendar and People, Alpha’s own', () => {
     expect(people && livesPeople(people)).toBe(true)
     const events = world.shape.ownTable(cal?.id ?? '', 'Events')
     expect(events?.hidden).toBe(false)
-    const first = world.views.list(events?.id ?? '').find((v) => v.isDefault)
-    expect(first?.config.kind).toBe('calendar')
+    // Events opens as a calendar, as its kit says (ui-rules T27): a view, not a list
+    expect(events?.startView?.kind).toBe('calendar')
     // the connectors find them by their keys: one Events, one Contacts
     landIn(world, calendar)
     landIn(world, contactsConnector)
@@ -63,9 +63,7 @@ describe('Calendar and People, Alpha’s own', () => {
     expect(events?.id).toBe(made?.id)
     expect(world.records.count(events?.id ?? '')).toBe(1)
     expect(events?.hidden).toBe(false)
-    expect(world.views.list(events?.id ?? '').find((v) => v.isDefault)?.config.kind).toBe(
-      'calendar',
-    )
+    expect(events?.startView?.kind).toBe('calendar')
   })
 
   it('take the module a connector kept contacts in before, under People', async () => {

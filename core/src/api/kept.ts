@@ -41,6 +41,8 @@ export function keptTable(
     rows: rows.map((r) => ({ ...r, sources: {} })),
     names: {},
     views: [],
+    startView: null,
+    drawn: null,
     readBy: [],
     kept: { name, ...kept },
   }

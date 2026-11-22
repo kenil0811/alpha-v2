@@ -68,8 +68,14 @@ export function App() {
   const [finding, setFinding] = useState(false)
   // how the person left the window, kept by Alpha per person: the rail, the assistant, tables
   const [layout, setLayout] = useState<Layout>(NO_LAYOUT)
+  // a table's list order and view are kept table by table: a change names only its own table
   const changeLayout = useCallback((change: Partial<Layout>) => {
-    setLayout((l) => ({ ...l, ...change }))
+    setLayout((l) => ({
+      ...l,
+      ...change,
+      listOrder: { ...l.listOrder, ...change.listOrder },
+      viewOf: { ...l.viewOf, ...change.viewOf },
+    }))
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
   const layoutHere = useMemo(() => ({ layout, change: changeLayout }), [layout, changeLayout])

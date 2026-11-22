@@ -27,6 +27,18 @@ export const FIELD_KINDS = [
 ] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
 
+// How a table can be drawn: a list's kind, and how a kit says a table first opens.
+export const VIEW_KINDS = [
+  'table',
+  'board',
+  'list',
+  'gallery',
+  'calendar',
+  'chart',
+  'form',
+  'map',
+] as const
+
 // What a summary field does with the rows that point at its row, and the ops its one condition
 // may take: a view's filter's, but none relative to today.
 export const SUMMARY_OPS = ['count', 'sum', 'min', 'max', 'latest'] as const

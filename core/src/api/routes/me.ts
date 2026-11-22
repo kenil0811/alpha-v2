@@ -1,6 +1,8 @@
 import { z } from 'zod'
+import { drawnTables, listOrders, setDrawn, setListOrder } from '../../world/table-prefs.ts'
+import { VIEW_KINDS } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
-import type { FoundRow, Layout, Me } from '../types.ts'
+import type { FoundRow, Layout, Me, ViewOf } from '../types.ts'
 
 export function registerMe(ctx: Ctx): void {
   const { app, world, user, options } = ctx
@@ -24,6 +26,8 @@ export function registerMe(ctx: Ctx): void {
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
       pageSize: n('page_size'),
       agent: world.preference(user.id, 'agent_chosen'),
+      listOrder: listOrders(world.db, user.id),
+      viewOf: drawnTables(world.db, user.id) as Record<string, ViewOf>,
     }
   }
 
@@ -55,6 +59,22 @@ export function registerMe(ctx: Ctx): void {
         assistant: z.enum(['open', 'folded']).optional(),
         pageSize: z.number().int().positive().nullable().optional(),
         agent: z.string().nullable().optional(),
+        // each table named is kept on its own (none forgets it); tables not named stay as they are
+        listOrder: z.record(z.string(), z.array(z.string()).nullable()).optional(),
+        viewOf: z
+          .record(
+            z.string(),
+            z
+              .object({
+                kind: z.enum(VIEW_KINDS),
+                by: z.string().nullable(),
+                until: z.string().nullable(),
+                group: z.string().nullable(),
+                measure: z.string().nullable(),
+              })
+              .nullable(),
+          )
+          .optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -84,6 +104,10 @@ export function registerMe(ctx: Ctx): void {
         'rail_pinned_modules',
         given.pinned.length ? JSON.stringify(given.pinned) : null,
       )
+    for (const [table, ids] of Object.entries(given.listOrder ?? {}))
+      setListOrder(world.db, user.id, table, ids)
+    for (const [table, drawn] of Object.entries(given.viewOf ?? {}))
+      setDrawn(world.db, user.id, table, drawn)
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
     return layoutOf()

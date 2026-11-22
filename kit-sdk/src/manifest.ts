@@ -2,7 +2,7 @@
 // where it sits, what it uses of other kits, who keeps it, and how its shape changed between
 // versions. The core installs by this schema; `alpha kit check` reads it.
 import { z } from 'zod'
-import { CONDITION_OPS, FIELD_KINDS, SUMMARY_OPS } from './kinds.ts'
+import { CONDITION_OPS, FIELD_KINDS, SUMMARY_OPS, VIEW_KINDS } from './kinds.ts'
 
 export const TONES = ['good', 'warn', 'bad', 'accent'] as const
 export type Tone = (typeof TONES)[number]
@@ -148,11 +148,15 @@ export const Manifest = z.object({
             }),
           ])
           .optional(),
+        // how the table first opens, until a person picks a view of their own: a layout and the
+        // fields only it reads, by name (kind, by, until, group, measure)
+        view: z.looseObject({ kind: z.enum(VIEW_KINDS) }).optional(),
         // saved views by field name: name, default, then the view (world/views.ts ViewConfig)
         views: z
           .array(
             z.looseObject({
               name: z.string(),
+              kind: z.enum(VIEW_KINDS).optional(),
               default: z.boolean().optional(),
               about: z.string().optional(), // the question the view answers
             }),

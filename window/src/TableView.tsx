@@ -11,6 +11,7 @@ import type {
   SavedView,
   TableView as TableData,
   TableSummary,
+  ViewConfig,
 } from '@alpha/core/api'
 import { Search } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
@@ -40,7 +41,7 @@ import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { MapView } from './table/views/MapView.tsx'
-import { blankFor, useWorkingList } from './table/working.ts'
+import { blankFor, drawnAs, useCoreView, useKept, useWorkingList, viewOf } from './table/working.ts'
 import { Select } from './ui/field.tsx'
 
 export function TableView({
@@ -80,10 +81,21 @@ export function TableView({
   const [views, setViews] = useState<SavedView[]>(data.views)
   useEffect(() => setViews(data.views), [data.views])
   const blank = blankFor(own?.layout) // All, as the list opens: a kept list may say how
-  const working = useWorkingList(key, data.views, views, loading, blank)
+  const { layout: left, change } = useLayout()
+  const mine = useKept(data.id, data.startView)
+  const working = useWorkingList(key, data.views, views, loading, mine.order, mine.view, blank)
   const { viewId, setViewId, config, setConfig } = working
-  const saved = complete(views.find((v) => v.id === viewId)?.config ?? blank)
+  // the list as saved, drawn as the table is drawn now: how it is drawn is the person's, not the list's
+  const saved = complete(
+    drawnAs(views.find((v) => v.id === viewId)?.config ?? blank, viewOf(config)),
+  )
   const dirty = differs(config, saved)
+  // the view is picked here and kept per person; the lists only pick rows
+  useCoreView(mine, data.drawn, setConfig)
+  const setView = (c: ViewConfig) => {
+    setConfig(c)
+    mine.keepView(c)
+  }
   const [problem, setProblem] = useState<string | null>(null)
   // a link that names a value opens where it came from; one that names a row opens the row
   const namedField = openField
@@ -97,7 +109,6 @@ export function TableView({
   const [searching, setSearching] = useState(false)
   const layout = layoutOf(config, setConfig) // frozen and wrapped columns, kept with the list
   // rows to a page, the person's choice, kept by Alpha per person
-  const { layout: left, change } = useLayout()
   const size = left.pageSize ?? PAGE
   const resize = (n: number) => {
     change({ pageSize: n })
@@ -177,7 +188,7 @@ export function TableView({
   }
   const pick = (id: string | null) => {
     setViewId(id)
-    setConfig(complete(views.find((v) => v.id === id)?.config ?? blank))
+    setConfig(complete(drawnAs(views.find((v) => v.id === id)?.config ?? blank, viewOf(config))))
     setProblem(null)
   }
   const replace = (v: SavedView) =>
@@ -263,7 +274,7 @@ export function TableView({
           <div className="mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
             <ViewTabs
               picker={
-                <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
+                <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setView} />
               }
               tools={
                 <>
@@ -367,18 +378,15 @@ export function TableView({
                   if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
                 })
               }
-              onDefault={(id, on) =>
-                act(async () => {
-                  replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
-                })
-              }
+              order={mine.order}
+              onOrder={mine.keepOrder}
               onRemove={() =>
                 act(async () => {
                   if (!viewId) return
                   await api.delete(`/api/views/${viewId}`)
                   setViews((vs) => vs.filter((v) => v.id !== viewId))
                   setViewId(null)
-                  setConfig(blank)
+                  setConfig(drawnAs(blank, viewOf(config)))
                 })
               }
             />

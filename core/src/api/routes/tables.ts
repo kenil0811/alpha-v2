@@ -6,6 +6,7 @@ import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { managedBy } from '../../world/maintained.ts'
 import { resetWords } from '../../world/records/index.ts'
 import { findField } from '../../world/shape/index.ts'
+import { drawnTable } from '../../world/table-prefs.ts'
 import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
 import {
@@ -15,6 +16,7 @@ import {
   type RowView,
   type SavedView,
   type TableView,
+  type ViewOf,
 } from '../types.ts'
 import { readByOf } from './readnow.ts'
 import { fieldViews } from './rows.ts'
@@ -369,6 +371,8 @@ export function registerTables(ctx: Ctx): void {
         documents: t.documents,
         fields: t.fields.map(fieldViews(world.shape)),
         views: world.views.list(t.id).map(savedView),
+        startView: t.startView as ViewOf | null,
+        drawn: drawnTable(world.db, user.id, t.id) as ViewOf | null,
         readBy: readByOf(ctx, t.id),
         rows: [],
         names: {},
@@ -385,6 +389,8 @@ export function registerTables(ctx: Ctx): void {
       documents: t.documents,
       fields: t.fields.map(fieldViews(world.shape)),
       views: world.views.list(t.id).map(savedView),
+      startView: t.startView as ViewOf | null,
+      drawn: drawnTable(world.db, user.id, t.id) as ViewOf | null,
       readBy: readByOf(ctx, t.id),
       rows: listed.map((r) => cellSources(rowOut(t, r))),
       names: {

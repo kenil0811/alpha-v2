@@ -7,6 +7,7 @@ import { setPer } from '../../world/records/fold.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
 import { notAPeriod } from '../../world/shape/naming.ts'
+import { drawnOf, setDrawn } from '../../world/table-prefs.ts'
 import { namedConfig, ViewConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
 import type { ToolEntry } from '../registry.ts'
@@ -194,6 +195,10 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
         },
         c,
       )
+      // a list Alpha lays out for someone opens for them as it was made: a list only picks rows, so
+      // the person's own view of the table takes the list's (ui-rules T1)
+      if (a.view && c.actor.kind !== 'person' && c.user && world.user(c.user))
+        setDrawn(world.db, c.user, t.id, drawnOf(v.config))
       return say(
         `${was ? 'Saved' : 'Made'} the view ${v.name} on ${t.name}${v.isDefault ? ', which the table opens on' : ''}.`,
       )

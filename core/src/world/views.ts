@@ -3,23 +3,16 @@
 // views; given and shown by field name. Each change is journaled; removing a table removes its
 // views (shape.removeTable).
 import { createHash } from 'node:crypto'
+import { VIEW_KINDS } from '@alpha/kit-sdk'
 import { z } from 'zod'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
 import { findPlace, placeHolds } from './places.ts'
 import { findField, type Shape, type Table, type WriteCtx } from './shape/index.ts'
+import { forgetList } from './table-prefs.ts'
 
-export const VIEW_KINDS = [
-  'table',
-  'board',
-  'list',
-  'gallery',
-  'calendar',
-  'chart',
-  'form',
-  'map',
-] as const
+export { VIEW_KINDS }
 
 export const FILTER_OPS = [
   'is',
@@ -364,6 +357,7 @@ export class Views {
       if (!v) throw new Refused('That view is not there.')
       const table = this.shape.table(v.table)
       run(this.db, 'DELETE FROM views WHERE id = ?', id)
+      forgetList(this.db, v.table, id)
       append(this.db, {
         actor: ctx.actor,
         kind: 'view',

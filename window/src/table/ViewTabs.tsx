@@ -1,12 +1,13 @@
 // A table's toolbar, one row that never wraps: the view as an icon, then every saved list as a pill
-// in one row that scrolls sideways (the one the table opens on first, then All and each list,
-// shared by everyone; the picked one filled), and on the right search and filter (`tools`) and the table's actions (`right`). A list behaves like a
+// in one row that scrolls sideways (in the person's own order, dragged or moved with Alt+← and
+// Alt+→; the first is the one the table opens on, then All and each list, shared by everyone; the
+// picked one filled), and on the right search and filter (`tools`) and the table's actions (`right`). A list behaves like a
 // tab: a right-click gives Rename, Duplicate, Move to the front and Delete, and a double-click
 // renames it in place. Resting on a pill says what the list holds. A list Alpha keeps itself
 // (people, tasks) holds no saved lists, so it shows neither Save nor its menu, and Cancel alone.
 import type { FieldView, SavedView } from '@alpha/core/api'
 import { ArrowLeftToLine, CopyPlus, PencilLine, Trash2 } from 'lucide-react'
-import { type FormEvent, type ReactNode, useState } from 'react'
+import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
@@ -27,7 +28,8 @@ export function ViewTabs({
   onPick,
   onSaveAs,
   onRename,
-  onDefault,
+  order,
+  onOrder,
   onRemove,
   links,
 }: {
@@ -43,7 +45,8 @@ export function ViewTabs({
   onPick: (id: string | null) => void
   onSaveAs: (name: string) => void
   onRename: (name: string) => void
-  onDefault: (id: string, on: boolean) => void // the core keeps the list the table opens on
+  order: string[] // the person's order of the lists ('all' is All), kept by the core; first opens
+  onOrder: (ids: string[]) => void
   onRemove: () => void
   // a list Alpha keeps itself may hold its own lists (Tasks: Today, This week…): pills that go to
   // them, in place of All, in the same one row
@@ -57,10 +60,34 @@ export function ViewTabs({
   const view = views.find((v) => v.id === current)
   const close = () => onList.close()
   const allReason = view ? undefined : 'All keeps its name and stays.'
-  const mark = views.find((v) => v.isDefault) // the list the table opens on; none, All
-  const starred = (v: SavedView | null) => (v ? v.isDefault : !mark)
-  // every list in one row that scrolls sideways, the one the table opens on first
-  const ordered = [null, ...views].sort((a, b) => Number(starred(b)) - Number(starred(a)))
+  const idOf = (v: SavedView | null) => v?.id ?? 'all'
+  const mark = views.find((v) => v.isDefault) // the core's default; the person's own order beats it
+  // every list in one row that scrolls sideways, in the person's order (lists it does not name
+  // after, as they were: the core's default first, then in the order made)
+  const old = [null, ...views].sort(
+    (a, b) => Number(b ? b.isDefault : !mark) - Number(a ? a.isDefault : !mark),
+  )
+  const named = order.flatMap((id) => old.filter((v) => idOf(v) === id))
+  const ordered = [...named, ...old.filter((v) => !order.includes(idOf(v)))]
+  const dragging = useRef<string | null>(null)
+  const row = useRef<HTMLFieldSetElement>(null)
+  // `id` goes to the place of `before` (the end when none), and the order is kept
+  const move = (id: string, before: string | null) => {
+    const rest = ordered.map(idOf).filter((x) => x !== id)
+    const at = before === null ? rest.length : rest.indexOf(before)
+    onOrder(rest.toSpliced(at < 0 ? rest.length : at, 0, id))
+  }
+  const nudge = (id: string, by: -1 | 1) => {
+    const ids = ordered.map(idOf)
+    const to = ids.indexOf(id) + by
+    if (to < 0 || to >= ids.length) return
+    const rest = ids.filter((x) => x !== id)
+    onOrder(rest.toSpliced(to, 0, id))
+    // the pill is moved in the row, so keep it in focus
+    requestAnimationFrame(() =>
+      row.current?.querySelector<HTMLElement>(`[data-pill="${id}"]`)?.focus(),
+    )
+  }
 
   // what a list holds, one line each; on the picked one, that it changed and how to rename it
   const tipOf = (v: SavedView | null) => {
@@ -98,15 +125,14 @@ export function ViewTabs({
       </MenuItem>
       <MenuItem
         reason={
-          (view ? view.isDefault : !mark)
+          idOf(ordered[0] ?? null) === (current ?? 'all')
             ? 'It is already first; the table opens on it.'
             : undefined
         }
         onClick={() => {
           close()
-          // the first list is the one the table opens on, kept by the core
-          if (view) onDefault(view.id, true)
-          else if (mark) onDefault(mark.id, false)
+          // the first list is the one the table opens on, kept per person by the core
+          move(current ?? 'all', ordered[0] ? idOf(ordered[0]) : null)
         }}
       >
         <ArrowLeftToLine className="size-3.5 text-ink-3" />
@@ -144,7 +170,22 @@ export function ViewTabs({
         key={v?.id ?? 'all'}
         type="button"
         aria-pressed={mine}
+        data-pill={idOf(v)}
         data-tip={tipOf(v)}
+        draggable={keeps}
+        onDragStart={(e) => {
+          dragging.current = idOf(v)
+          e.dataTransfer.effectAllowed = 'move'
+        }}
+        onDragOver={(e) => dragging.current && e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault()
+          if (dragging.current && dragging.current !== idOf(v)) move(dragging.current, idOf(v))
+          dragging.current = null
+        }}
+        onDragEnd={() => {
+          dragging.current = null
+        }}
         onClick={() => onPick(v?.id ?? null)}
         onDoubleClick={() => mine && v && keeps && rename()}
         onContextMenu={
@@ -155,7 +196,12 @@ export function ViewTabs({
               }
             : undefined
         }
-        onKeyDown={mine && keeps ? onList.on.onKeyDown : undefined}
+        onKeyDown={(e) => {
+          if (keeps && e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            e.preventDefault()
+            nudge(idOf(v), e.key === 'ArrowLeft' ? -1 : 1)
+          } else if (mine && keeps) onList.on.onKeyDown(e)
+        }}
         className={cn(
           'flex h-7 max-w-44 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-md',
           mine ? 'bg-accent-soft font-medium text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink',
@@ -171,7 +217,10 @@ export function ViewTabs({
   return (
     <div className="relative flex min-h-11 items-center gap-1 border-hair border-b pr-3 pl-1">
       {picker}
-      <fieldset className="scroll-quiet m-0 flex min-w-0 gap-1 overflow-x-auto border-0 p-0">
+      <fieldset
+        ref={row}
+        className="scroll-quiet m-0 flex min-w-0 gap-1 overflow-x-auto border-0 p-0"
+      >
         <legend className="sr-only">Saved lists</legend>
         {links
           ? links.map((l) => (

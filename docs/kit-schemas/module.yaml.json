@@ -455,6 +455,28 @@
               }
             ]
           },
+          "view": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "table",
+                  "board",
+                  "list",
+                  "gallery",
+                  "calendar",
+                  "chart",
+                  "form",
+                  "map"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": {}
+          },
           "views": {
             "default": [],
             "type": "array",
@@ -463,6 +485,19 @@
               "properties": {
                 "name": {
                   "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "table",
+                    "board",
+                    "list",
+                    "gallery",
+                    "calendar",
+                    "chart",
+                    "form",
+                    "map"
+                  ]
                 },
                 "default": {
                   "type": "boolean"

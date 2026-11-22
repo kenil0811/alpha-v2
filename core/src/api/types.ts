@@ -29,7 +29,10 @@ export type {
   ModuleFileView,
   RowFileView,
 } from './file-types.ts'
-export type { Layout, Me } from './me-types.ts'
+
+import type { ViewOf } from './me-types.ts'
+
+export type { Layout, Me, ViewOf } from './me-types.ts'
 export type { FieldView, Pick, RowAround, RowPageView } from './row-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
@@ -313,6 +316,8 @@ export interface TableView {
   rows: RowView[]
   names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
+  startView: ViewOf | null // how its kit says it first opens, until the person picks a view
+  drawn: ViewOf | null // how the asking person draws it, as the core keeps it (a list Alpha laid out for them)
   readBy: ReadByView[] // the connections that fill it, read again from its ⋮
 }
 
