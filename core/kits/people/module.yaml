@@ -2,7 +2,7 @@
 # meetings; every address book Alpha reads lands in its Contacts (a Mac's own through Alpha
 # Bridge, Outlook, Google), found by its lasting keys.
 name: People
-version: 0.1.0
+version: 0.1.1
 api: 3
 core: true
 people: true
@@ -15,7 +15,7 @@ business_case:
   decides: Who to talk to, and what was last said
 tables:
   - name: Contacts
-    about: "Your contacts as your address books have them, read and never written back. Connect one in Intelligence › Connections: your Mac's own through Alpha Bridge, Outlook, or Google."
+    about: "Your contacts as your address books have them, read and never written back. Connect one in Settings › Connections: your Mac's own through Alpha Bridge, Outlook, or Google."
     fields:
       - { name: Name, kind: text, about: "The person, or the organization when the card has no name." }
       - { name: Company, kind: text, about: "Where they work." }

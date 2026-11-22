@@ -1,7 +1,7 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { NO_LAYOUT } from './layout.ts'
-import { placeOf } from './place.ts'
+import { forward, placeOf } from './place.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 import { More } from './ui/more.tsx'
@@ -95,9 +95,10 @@ describe('the window', () => {
       section: 'permissions',
       open: null,
     })
-    expect(placeOf('#/intelligence')).toEqual({ at: 'intelligence', section: null, open: null })
+    expect(placeOf('#/intelligence')).toEqual({ at: 'settings', section: null, open: null })
+    expect(forward('#/intelligence/files?module=m1')).toBe('#/settings/files?module=m1')
     expect(placeOf('#/intelligence/connections?connect=gmail')).toEqual({
-      at: 'intelligence',
+      at: 'settings',
       section: 'connections',
       open: 'gmail',
     })
@@ -127,8 +128,8 @@ describe('the window', () => {
     expect(html).toContain('>2<')
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
-    // Intelligence and Settings at the foot, each its own place
-    expect(html).toContain('href="#/intelligence"')
+    // Settings at the foot, Intelligence gone
+    expect(html).not.toContain('Intelligence')
     expect(html).toContain('href="#/settings"')
     expect(html).not.toContain('Alpha is running')
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen

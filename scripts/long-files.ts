@@ -15,7 +15,7 @@ const LEFT: Record<string, number> = {
   // the window's big screens it began with: they may only shrink
   'window/src/table/Grid.tsx': 1043,
   'window/src/TableView.tsx': 658,
-  'window/src/Tasks.tsx': 676,
+  'window/src/Tasks.tsx': 618,
 }
 const long: string[] = []
 function walk(dir: string) {

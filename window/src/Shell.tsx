@@ -1,24 +1,17 @@
 // The shell: the rail on the left, a 48px bar over every screen and the assistant on the right,
 // their headers on one line. The rail has the person's name at its top, what they pinned as tiles,
 // then Home with a badge for what waits on the person, Agents, Tasks, the modules by name with the
-// modules inside them, New module last in the list, and Intelligence and Settings at its foot; no
-// headings and no status lines. Its rows are in RailEntries.tsx. It folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
-// buttons.
+// modules inside them, New module last in the list, and Settings at its foot; no headings and no
+// status lines. Its rows are in RailEntries.tsx. It folds to a strip of icons. In Alpha's own Mac
+// window its top row leaves room for the window buttons.
 import type { Layout, ModuleSummary } from '@alpha/core/api'
-import {
-  ChevronDown,
-  ChevronRight,
-  PanelLeft,
-  Plus,
-  SlidersHorizontal,
-  Sparkles,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, PanelLeft, Plus, SlidersHorizontal } from 'lucide-react'
 import { createContext, type ReactNode, useContext, useState } from 'react'
 import { api } from './api.ts'
 import { HiddenMenu, type Hiding, ModuleMenu } from './ModuleMenu.tsx'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
-import { inIntelligence, type Place } from './place.ts'
+import { inSettings, type Place } from './place.ts'
 import { type Entry, entriesOf, FixedItem, Nav, PinnedTile } from './RailEntries.tsx'
 import { MOD } from './time.ts'
 import { ancestors, childrenOf, inside, landingOf } from './tree.ts'
@@ -175,19 +168,13 @@ export function Rail({
             New module
           </button>
         </div>
-        {/* Intelligence and Settings at the foot, each its own place */}
+        {/* Settings at the foot */}
         <div className="flex flex-col pt-2">
-          <Nav
-            href="#/intelligence"
-            icon={<Sparkles className="size-4" />}
-            label="Intelligence"
-            current={inIntelligence(place)}
-          />
           <Nav
             href="#/settings"
             icon={<SlidersHorizontal className="size-4" />}
             label="Settings"
-            current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
+            current={inSettings(place)}
           />
         </div>
       </nav>
@@ -411,18 +398,7 @@ function Strip({
           <Plus className="size-4" />
         </button>
       </div>
-      {icon(
-        '#/intelligence',
-        'Intelligence',
-        place.at === 'intelligence',
-        <Sparkles className="size-4" />,
-      )}
-      {icon(
-        '#/settings',
-        'Settings',
-        place.at === 'settings',
-        <SlidersHorizontal className="size-4" />,
-      )}
+      {icon('#/settings', 'Settings', inSettings(place), <SlidersHorizontal className="size-4" />)}
     </nav>
   )
 }

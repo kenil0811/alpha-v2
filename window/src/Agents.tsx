@@ -1,4 +1,4 @@
-// The firm's agents: Intelligence › Agents lists them with the Chief of staff first, and an
+// The firm's agents: Settings › Agents lists them with the Chief of staff first, and an
 // agent's page shows what it is, its memories and its skills. An agent is made and changed in a
 // conversation with the Chief of staff, so nothing here is a form to fill in.
 import type { AgentDetail, AgentView, MemoryView, Stream } from '@alpha/core/api'
@@ -376,7 +376,7 @@ export function AgentPage({
               await api.post(`/api/agents/${a.id}/remove`)
               gone.current = true
               // on Agents the list goes back to the Chief of staff by itself
-              if (!inAgents) window.location.hash = '#/intelligence/agents'
+              if (!inAgents) window.location.hash = '#/settings/agents'
             })
           }}
         >

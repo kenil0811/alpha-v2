@@ -106,6 +106,7 @@ export function makeViews(ctx: BaseCtx) {
       priority: t.priority,
       owner: world.tasks.ownerWords(t),
       ownerKind: t.owner.kind,
+      ownerId: t.owner.kind === 'alpha' ? (t.owner.id ?? null) : null,
       place: placeOf(t.place),
       parent: t.parent,
       children: kids.length,

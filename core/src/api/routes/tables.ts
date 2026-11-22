@@ -53,7 +53,7 @@ export function registerTables(ctx: Ctx): void {
   const { app, world, engine, user, asPerson, live } = ctx
   const { sourceView, savedView, rowOut } = ctx.views
 
-  // In the sidebar or out of it (Intelligence › Connections).
+  // In the sidebar or out of it (Settings › Connections).
   // What a table, a field or a view means, in the person's own sentence (the semantic layer):
   // theirs from then on, so a kit's update or Alpha's guess never writes over it.
   app.post('/api/tables/:id/about', async (req) => {

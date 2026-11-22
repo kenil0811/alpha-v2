@@ -182,7 +182,7 @@ export function ComputerPage({
           setLeaving(false)
           void act(async () => {
             await api.delete(`/api/computers/${c.id}`)
-            window.location.hash = '#/intelligence/connections'
+            window.location.hash = '#/settings/connections'
           })
         }}
       >

@@ -42,12 +42,12 @@ export function entriesOf(service: ConnectorService): ToolEntry[] {
 export function describeConnections(service: ConnectorService, world: World): string {
   const conns = world.connections.list()
   if (!conns.length)
-    return 'None yet. The person connects accounts and folders in Intelligence › Connections.'
+    return 'None yet. The person connects accounts and folders in Settings › Connections.'
   return conns
     .map((k) => {
       const c = service.find(k.connector)
       if (!c)
-        return `### ${k.connector}: ${k.account} (its connector is not loaded; the person adds it in Intelligence › Connections)`
+        return `### ${k.connector}: ${k.account} (its connector is not loaded; the person adds it in Settings › Connections)`
       const state =
         k.state === 'connected'
           ? 'connected'

@@ -129,7 +129,7 @@ export function sitesLayer(
 ): string {
   if (!sites) return ''
   if (!sites.length)
-    return '## Sites\nNone signed in yet. The person signs in to a site in Intelligence › Connections › Sites; then browse reaches it as them.'
+    return '## Sites\nNone signed in yet. The person signs in to a site in Settings › Connections › Sites; then browse reaches it as them.'
   const where = (id: string | null) =>
     id ? ` (on their computer ${world.computers.get(id)?.name ?? ''}, while it is on)` : ''
   return `## Sites\nSigned in by the person in Alpha's browser. browse reaches these as them, for what no connection reads:\n${sites.map((s) => `- ${s.site}${where(s.computer)}`).join('\n')}`

@@ -27,8 +27,7 @@ export type Place =
       tab: 'overview' | 'setup' | 'details' | null
       page: string | null
     }
-  | { at: 'settings'; section: string | null; open: null }
-  | { at: 'intelligence'; section: string | null; open: string | null }
+  | { at: 'settings'; section: string | null; open: string | null }
   | { at: 'file'; place: FilePlace }
   | { at: 'computer'; id: string }
   | { at: 'people'; kind: 'person' | 'company'; id: string | null }
@@ -36,6 +35,7 @@ export type Place =
       at: 'tasks'
       list: 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done'
       id: string | null
+      setup: boolean // Tasks' Setup, the bar's second tab
     }
 
 export function placeOf(address: string): Place {
@@ -75,26 +75,25 @@ export function placeOf(address: string): Place {
       },
     }
   }
-  const c = /^#\/intelligence\/connections\?connect=([\w-]+)$/.exec(hash)
-  if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
+  // #/intelligence was Settings' other half: its old addresses read as Settings' (forwarded)
+  const c = /^#\/(?:settings|intelligence)\/connections\?connect=([\w-]+)$/.exec(hash)
+  if (c) return { at: 'settings', section: 'connections', open: c[1] ?? null }
   // Files on one module's files, from its Setup
-  const fm = /^#\/intelligence\/files\?module=([\w-]+)$/.exec(hash)
-  if (fm) return { at: 'intelligence', section: 'files', open: fm[1] ?? null }
-  const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
-  if (s)
-    return s[1] === 'settings'
-      ? { at: 'settings', section: s[2] ?? null, open: null }
-      : { at: 'intelligence', section: s[2] ?? null, open: null }
+  const fm = /^#\/(?:settings|intelligence)\/files\?module=([\w-]+)$/.exec(hash)
+  if (fm) return { at: 'settings', section: 'files', open: fm[1] ?? null }
+  const s = /^#\/(?:settings|intelligence)(?:\/(\w+))?$/.exec(hash)
+  if (s) return { at: 'settings', section: s[1] ?? null, open: null }
   const work = /^#\/tasks\/([\w-]+)\/work$/.exec(hash)
   if (work?.[1]) return { at: 'work', id: work[1] }
   const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+))?$/.exec(hash)
   if (tk)
     return {
       at: 'tasks',
+      setup: tk[1] === 'setup',
       list:
         (tk[2] as 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done' | undefined) ??
         'today',
-      id: tk[1] ?? null,
+      id: tk[1] === 'setup' ? null : (tk[1] ?? null),
     }
   const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
@@ -123,9 +122,14 @@ export function placeOf(address: string): Place {
   return { at: 'home' }
 }
 
-// A schedule's own page sits under Intelligence on the rail.
-export const inIntelligence = (p: Place): boolean =>
-  p.at === 'intelligence' ||
+// An agent's, a computer's, a schedule's and a rule's own page sit under Settings on the rail.
+// Old Intelligence addresses become Settings' (bookmarks, links kept elsewhere).
+export const forward = (hash: string): string =>
+  hash.replace(/^#\/intelligence(?=$|[/?])/, '#/settings')
+
+export const inSettings = (p: Place): boolean =>
+  p.at === 'settings' ||
+  (p.at === 'item' && p.kind === 'rule') ||
   p.at === 'agent' ||
   p.at === 'computer' ||
   (p.at === 'item' && p.kind === 'schedule')

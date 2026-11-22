@@ -1,4 +1,4 @@
-// Intelligence › Connections › Your computers: each computer of the person's own that lends Alpha
+// Settings › Connections › Your computers: each computer of the person's own that lends Alpha
 // a folder through the Bridge, connected now or when it was last seen, with what it lends. Add
 // this computer shows the Bridge's download for it and a one-time pairing link; the folder is lent
 // on the computer itself, never named here.

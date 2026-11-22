@@ -12,7 +12,7 @@ export interface FileView {
   lines?: { line: number; words: string }[]
 }
 
-// Intelligence › Files: every file Alpha has kept, the newest first.
+// Settings › Files: every file Alpha has kept, the newest first.
 export interface KeptFileView {
   hash: string
   name: string

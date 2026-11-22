@@ -101,6 +101,21 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('names the agent that holds a task', async () => {
+    const me = world.owner('Kenil')
+    const person = { actor: { kind: 'person' as const, id: me.id }, user: me.id }
+    world.tasks.add({ title: 'Chase it', owner: { kind: 'alpha', id: 'ag_scout' } }, person)
+    world.tasks.add({ title: 'Mine' }, person)
+    const a = app()
+    const lines = (await a.inject({ url: '/api/tasks?list=open', headers: ok })).json().lines
+    expect(
+      lines.map((l: { title: string; ownerId: string | null }) => [l.title, l.ownerId]).sort(),
+    ).toEqual([
+      ['Chase it', 'ag_scout'],
+      ['Mine', null],
+    ])
+  })
+
   it('gives the Mac app the reminders and cards since it last asked, each with its place', async () => {
     const shell = { seen: 0 }
     const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700], shell })

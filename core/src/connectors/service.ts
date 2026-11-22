@@ -510,7 +510,7 @@ export class ConnectorService {
       : conns[0]
     if (!conn)
       throw new Refused(
-        `${c.manifest.title} is not connected: the person connects it in Intelligence › Connections.`,
+        `${c.manifest.title} is not connected: the person connects it in Settings › Connections.`,
       )
     if (!account && conns.length > 1)
       throw new Refused(
@@ -541,7 +541,7 @@ export class ConnectorService {
     const named = connector ?? this.mailer()
     if (!named)
       throw new Refused(
-        'Nothing connected sends mail: the person connects their mail in Intelligence › Connections.',
+        'Nothing connected sends mail: the person connects their mail in Settings › Connections.',
       )
     const c = this.connector(named)
     const spec = c.tools[name]

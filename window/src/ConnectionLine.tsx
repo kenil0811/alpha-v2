@@ -124,7 +124,7 @@ export function useConnection(
         // the browser; a password goes in Alpha's own form
         if (k.inBrowser) void act(() => api.post(`/api/connections/${k.id}/sign-in`))
         else if (k.signsInWith) void act(() => signInWith(k.id))
-        else window.location.hash = `#/intelligence/connections?connect=${k.connector}`
+        else window.location.hash = `#/settings/connections?connect=${k.connector}`
       }}
     >
       {k.inBrowser

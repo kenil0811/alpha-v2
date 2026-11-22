@@ -603,6 +603,7 @@ export interface TaskLineView {
   priority: 'high' | 'normal' | 'low'
   owner: string // in words: You or Alpha
   ownerKind: 'person' | 'alpha'
+  ownerId: string | null // the agent's id when an agent holds it
   place: { words: string; path: string[]; href: string | null }
   parent: string | null
   children: number

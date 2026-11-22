@@ -7,7 +7,7 @@ import { useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Section } from './ui/section.tsx'
 
-// Intelligence's Schedules: every schedule in one shared table, each opening its page.
+// Settings' Schedules: every schedule in one shared table, each opening its page.
 export function Schedules({ version }: { version: number }) {
   // every module's schedules as one table from the core: On or Paused changes in its cell
   const [data, setData] = useState<KeptTable | null>(null)

@@ -124,7 +124,7 @@ describe('Read now on a table', () => {
       (await a.inject({ url: `/api/tables/${mail.id}`, headers: ok })).json() as TableView
     ).readBy
     expect(by.find((r) => r.connection === other.id)?.reason).toBe(
-      'Gmail needs you to sign in again, in Intelligence › Connections.',
+      'Gmail needs you to sign in again, in Settings › Connections.',
     )
     const res = await a.inject({ method: 'POST', url: `/api/tables/${mail.id}/read`, headers: ok })
     expect(res.json()).toEqual({ read: ['Gmail'] })

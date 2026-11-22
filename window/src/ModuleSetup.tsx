@@ -34,7 +34,15 @@ import { Words } from './ui/words.tsx'
 
 // A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, its
 // content; no card around it.
-function Part({ title, about, children }: { title: string; about?: string; children: ReactNode }) {
+export function Part({
+  title,
+  about,
+  children,
+}: {
+  title: string
+  about?: string
+  children: ReactNode
+}) {
   return (
     <section className="flex flex-col">
       <div className="mb-2.5 flex items-center gap-1.5">
@@ -147,7 +155,7 @@ function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   )
 }
 
-function OneSchedule({
+export function OneSchedule({
   a,
   agents,
   onChange,
@@ -289,7 +297,7 @@ function Tables({ m }: { m: ModuleView }) {
 }
 
 // The files on the module's rows, the newest first, each with its row and when it came there; the
-// rest in Intelligence › Files on this module. No part for a module with none.
+// rest in Settings › Files on this module. No part for a module with none.
 const FEW = 12
 
 function Files({ m }: { m: ModuleView }) {
@@ -327,7 +335,7 @@ function Files({ m }: { m: ModuleView }) {
       </ul>
       {got.count > got.files.length && (
         <a
-          href={`#/intelligence/files?module=${m.id}`}
+          href={`#/settings/files?module=${m.id}`}
           className="mt-2 flex items-center gap-1 self-start text-accent text-md hover:underline"
         >
           See all in Files

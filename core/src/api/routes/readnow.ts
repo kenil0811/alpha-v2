@@ -12,7 +12,7 @@ import type { ReadByView } from '../types.ts'
 // Why a connection can't be read now, or null when it can.
 export function whyNot(conn: Connection, title: string): string | null {
   if (conn.state === 'needs_sign_in')
-    return `${title} needs you to sign in again, in Intelligence › Connections.`
+    return `${title} needs you to sign in again, in Settings › Connections.`
   if (conn.state === 'waiting') return conn.health ?? `${title} is waiting for the customer.`
   return null
 }

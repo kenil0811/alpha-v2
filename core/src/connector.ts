@@ -32,7 +32,7 @@ async function add(path: string): Promise<void> {
   })
   const said = (await answer.json().catch(() => ({}))) as { title?: string; problem?: string }
   if (!answer.ok) throw new Error(said.problem ?? `Alpha answered ${answer.status}.`)
-  console.log(`Added ${said.title}. Connect it in Intelligence › Connections.`)
+  console.log(`Added ${said.title}. Connect it in Settings › Connections.`)
 }
 
 if (verb === 'check' && folder) {

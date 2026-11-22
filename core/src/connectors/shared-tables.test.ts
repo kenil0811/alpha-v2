@@ -29,8 +29,8 @@ describe('Calendar and People, Alpha’s own', () => {
   it('are there from the start, and a calendar and an address book land in them', async () => {
     const said = await keepDefaults(world, system)
     expect(said).toEqual([
-      "Installed Calendar 0.2.0, Alpha's own.",
-      "Installed People 0.1.0, Alpha's own.",
+      "Installed Calendar 0.2.1, Alpha's own.",
+      "Installed People 0.1.1, Alpha's own.",
     ])
     const cal = world.shape.ownModule('Calendar')
     const people = world.shape.ownModule('People')

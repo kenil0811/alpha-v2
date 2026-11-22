@@ -1,4 +1,4 @@
-// The window's contract for Intelligence › Connections, beside types.ts, which re-exports it: the
+// The window's contract for Settings › Connections, beside types.ts, which re-exports it: the
 // connectors loaded, the person's connections and what each may reach.
 
 // A connector as it describes itself (its manifest): the window draws every one the same way.

@@ -160,7 +160,7 @@ export class SignIn {
     const p = this.providerOf(c)
     if (!this.app(p.name))
       throw new Refused(
-        `${p.title}'s sign-in app is not set up yet: set it up in Intelligence › Connections › Sign-in apps, with your IT if you are not its admin.`,
+        `${p.title}'s sign-in app is not set up yet: set it up in Settings › Connections › Sign-in apps, with your IT if you are not its admin.`,
       )
   }
 
@@ -329,7 +329,7 @@ export class SignIn {
     const app = this.app(p.name)
     if (!app)
       throw new Problem(
-        `${p.title}'s sign-in app is not set up: Intelligence › Connections › Sign-in apps.`,
+        `${p.title}'s sign-in app is not set up: Settings › Connections › Sign-in apps.`,
       )
     const kept = conn.secretRef ? await this.options.secrets.get(conn.secretRef) : null
     if (!kept) throw new Problem(`Sign in with ${p.title} to finish connecting.`, 'sign_in')

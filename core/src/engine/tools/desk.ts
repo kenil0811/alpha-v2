@@ -197,7 +197,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
           if (!connectors) throw new Refused('Connectors are not set up in this core.')
           const c = connectors.connector(connector)
           return ok(
-            `The sign-in for ${c.manifest.title} is open in the person's window, under Intelligence › Connections. They type their own details there.`,
+            `The sign-in for ${c.manifest.title} is open in the person's window, under Settings › Connections. They type their own details there.`,
           )
         }),
     ),

@@ -9,12 +9,14 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useStat
 import { api, Problem } from './api.ts'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
+import { RepeatField, WhenField } from './TaskFields.tsx'
+import { TasksSetup } from './TasksSetup.tsx'
 import { TaskWorkLine } from './TaskThread.tsx'
 import { frameOf } from './table/frame.ts'
 import { dueWords, toLocalInput } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { DateField, parseDay } from './ui/date-field.tsx'
+import { DateField } from './ui/date-field.tsx'
 import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { More } from './ui/more.tsx'
@@ -23,6 +25,7 @@ import { MenuItem, Popover } from './ui/popover.tsx'
 import { PageTitle } from './ui/rename.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { Tabs } from './ui/tabs.tsx'
 
 const TASKS_FRAME = frameOf('tasks', 'Tasks', { id: 'tasks', name: 'Tasks' })
 
@@ -53,24 +56,26 @@ const setState = (id: string, state: TaskLineView['state']) =>
 export function Tasks({
   list,
   id,
+  setup = false,
   version,
   onName,
 }: {
   list: List
   id: string | null
+  setup?: boolean
   version: number
   onName: (name: string) => void
 }) {
   return id ? (
     <TaskPage id={id} version={version} onName={onName} />
   ) : (
-    <TaskLists list={list} version={version} />
+    <TaskLists list={list} setup={setup} version={version} />
   )
 }
 
 // The saved lists are the switch in the bar; the tasks are drawn by the shared table view, with its
 // table, board, calendar and grouping, each opening on its own page.
-function TaskLists({ list, version }: { list: List; version: number }) {
+function TaskLists({ list, setup, version }: { list: List; setup: boolean; version: number }) {
   // the core serves a saved list's tasks as a table: changed in a cell, or by a card dragged
   // across the board
   const [data, setData] = useState<KeptTable | null>(null)
@@ -84,27 +89,38 @@ function TaskLists({ list, version }: { list: List; version: number }) {
   const [adding, setAdding] = useState(false)
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1">
-        {/* its frame from the first moment, its rows filling in */}
-        <TableView
-          key={list}
-          data={data ?? TASKS_FRAME}
-          loading={!data}
-          lists={LISTS.map((l) => ({
-            key: l.value,
-            href: `#/tasks?list=${l.value}`,
-            label: l.label,
-            count: l.value !== 'done' && counts[l.value] ? counts[l.value] : undefined,
-            sel: l.value === list,
-          }))}
-          kept={{
-            open: (id) => {
-              window.location.hash = `#/tasks/${id}`
-            },
-            onNew: () => setAdding(true),
-          }}
-        />
-      </div>
+      <Tabs
+        label="Tasks"
+        tabs={[
+          { key: 'tasks', href: '#/tasks', label: 'Tasks', sel: !setup },
+          { key: 'setup', href: '#/tasks/setup', label: 'Setup', sel: setup },
+        ]}
+      />
+      {setup ? (
+        <TasksSetup version={version} fields={data?.fields ?? []} />
+      ) : (
+        <div className="min-h-0 flex-1">
+          {/* its frame from the first moment, its rows filling in */}
+          <TableView
+            key={list}
+            data={data ?? TASKS_FRAME}
+            loading={!data}
+            lists={LISTS.map((l) => ({
+              key: l.value,
+              href: `#/tasks?list=${l.value}`,
+              label: l.label,
+              count: l.value !== 'done' && counts[l.value] ? counts[l.value] : undefined,
+              sel: l.value === list,
+            }))}
+            kept={{
+              open: (id) => {
+                window.location.hash = `#/tasks/${id}`
+              },
+              onNew: () => setAdding(true),
+            }}
+          />
+        </div>
+      )}
       <Dialog open={adding} title="New task" onClose={() => setAdding(false)}>
         <NewTask
           onAdded={() => {
@@ -572,76 +588,6 @@ function Labelled({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-ink-3 text-sm">{label}</span>
       {children}
     </div>
-  )
-}
-
-// A day, or a day and a time, saved once the person has settled on it: a day as soon as it is
-// picked; a time when they leave the field, or a moment after they stop changing it, so stepping
-// through the minutes is one change, not ten. A time with no day yet is today's; a day with no
-// time yet is at 09:00.
-function WhenField({
-  type,
-  label,
-  value,
-  onSave,
-}: {
-  type: 'date' | 'datetime-local'
-  label: string
-  value: string
-  onSave: (v: string) => void
-}) {
-  const [v, setV] = useState(value)
-  const timer = useRef<number | undefined>(undefined)
-  useEffect(() => setV(value), [value])
-  const save = (next: string) => {
-    window.clearTimeout(timer.current)
-    if (next !== value) onSave(next)
-  }
-  const [day = '', time = ''] = v.split('T')
-  const pickDay = (d: string) => {
-    const next = d && type === 'datetime-local' ? `${d}T${time || '09:00'}` : d
-    setV(next)
-    save(next)
-  }
-  return (
-    <div className="flex gap-2">
-      <DateField aria-label={label} value={day} onChange={pickDay} className="w-40" />
-      {type === 'datetime-local' && (
-        <Field
-          type="time"
-          aria-label={`${label}, time`}
-          value={time}
-          onChange={(e) => {
-            if (!e.target.value) return
-            const next = `${day || parseDay('today')}T${e.target.value}`
-            setV(next)
-            window.clearTimeout(timer.current)
-            timer.current = window.setTimeout(() => save(next), 1500)
-          }}
-          onBlur={() => save(v)}
-        />
-      )}
-    </div>
-  )
-}
-
-function RepeatField({
-  value,
-  onSave,
-}: {
-  value: string | null
-  onSave: (v: string | null) => void
-}) {
-  const [words, setWords] = useState(value ?? '')
-  useEffect(() => setWords(value ?? ''), [value])
-  return (
-    <Field
-      aria-label="Repeats"
-      placeholder="every Monday, monthly…"
-      value={words}
-      onChange={(e) => setWords(e.target.value)}
-      onBlur={() => (words.trim() || null) !== value && onSave(words.trim() || null)}
-    />
   )
 }
 

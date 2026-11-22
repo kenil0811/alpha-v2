@@ -1,4 +1,4 @@
-// What a connection may reach and what it was refused, under it in Intelligence › Connections:
+// What a connection may reach and what it was refused, under it in Settings › Connections:
 // its connector runs in its own sandbox, reaching only these hosts.
 // A connector of sites the person chooses offers Allow beside a refusal.
 import type { ConnectionView } from '@alpha/core/api'

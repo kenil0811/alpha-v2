@@ -59,7 +59,7 @@ export async function openModule(name: string): Promise<boolean> {
 
 // A connection's own page, where it is connected.
 export const openConnection = (connector: string) =>
-  go(`#/intelligence/connections?connect=${connector}`)
+  go(`#/settings/connections?connect=${connector}`)
 
 // An agent its kit carries, its chat opened in Agents, by the agent's name: false when it is not
 // here.

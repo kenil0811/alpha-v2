@@ -128,7 +128,7 @@ function CardBody({
       if (card.connects != null && a === card.options[0])
         window.location.hash = `#/intelligence/connections${card.connects ? `?connect=${card.connects}` : ''}`
       if (card.gate === 'sign_in' && a === card.options[0])
-        window.location.hash = `#/intelligence/connections${card.connector ? `?connect=${card.connector}` : ''}`
+        window.location.hash = `#/settings/connections${card.connector ? `?connect=${card.connector}` : ''}`
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That answer did not go in.')
       setBusy(false)

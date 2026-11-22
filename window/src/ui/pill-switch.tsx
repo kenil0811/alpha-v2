@@ -1,5 +1,5 @@
 // The pill switch in the bar: a screen's own pages (a module's tables and pages, Network's People
-// and Organizations, Intelligence's parts, Tasks' lists) as pills, every label in full, the chosen
+// and Organizations, Tasks' lists) as pills, every label in full, the chosen
 // one raised; a row too long scrolls sideways. Cuts of one list are cut buttons (ui/cut.tsx),
 // never pills.
 import type { ReactNode } from 'react'
