@@ -46,6 +46,17 @@ describe('the route to Claude', () => {
     expect(again.env()).toEqual({ DISABLE_AUTOUPDATER: '1' })
   })
 
+  it('keeps a pasted token or key without the spaces, line breaks and invisible marks it came with', async () => {
+    const secrets = new MemorySecrets()
+    const route = new ModelRoute(world, secrets, home)
+    await route.setToken(' sk-ant-oat01-abcdefghij\nklmnopqrstuvwxyz \u200B', 'u_1')
+    expect(await secrets.get('anthropic:oauth-token')).toBe(
+      'sk-ant-oat01-abcdefghijklmnopqrstuvwxyz',
+    )
+    await route.set('key', '\tsk-ant-api03-abcdefghij klmnopqrstuvwxyz\r\n', 'u_1')
+    expect(route.env().ANTHROPIC_API_KEY).toBe('sk-ant-api03-abcdefghijklmnopqrstuvwxyz')
+  })
+
   it('takes a server’s token off: deleted from the secret store, gone from sessions, journaled', async () => {
     const secrets = new MemorySecrets()
     const route = new ModelRoute(world, secrets, home)

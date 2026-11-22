@@ -29,7 +29,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
-import { Field } from './ui/field.tsx'
+import { pastedKey, SecretField } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -408,14 +408,12 @@ function KeyForm({
         void onSave(key.trim()).then((ok) => ok && setKey(''))
       }}
     >
-      <Field
+      <SecretField
         className="w-72"
-        type="password"
-        autoComplete="off"
         aria-label="API key"
         placeholder="Paste the key"
         value={key}
-        onChange={(e) => setKey(e.target.value)}
+        onChange={(e) => setKey(pastedKey(e.target.value))}
       />
       <Button size="sm" type="submit" disabled={busy || !key.trim()} data-tip={title}>
         Save

@@ -13,7 +13,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { cutTip } from './ui/cut-tip.ts'
 import { Confirm } from './ui/dialog.tsx'
-import { Field } from './ui/field.tsx'
+import { Field, SecretField } from './ui/field.tsx'
 import { List, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
@@ -383,12 +383,10 @@ export function ConnectForm({
       {c.secret && (
         <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
           <span className="text-ink-2">{c.secret.label}</span>
-          <Field
+          <SecretField
             id={`${c.name}-secret`}
-            type="password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
-            autoComplete="off"
           />
           <span className="text-ink-3 text-sm">
             {c.secret.help}{' '}

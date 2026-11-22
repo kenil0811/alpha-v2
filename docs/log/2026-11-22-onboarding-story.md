@@ -174,3 +174,11 @@ chapter showed a Back that did nothing; a workflow agreed in its table read Ques
 without a Yes on its playback; Get to know you's empty sources said "ask again" from the chat
 days (they now point a step back to Connect). His Mac greets "kenil" because that is the Mac
 account's full name. Alpha Bridge goes to 0.5.2 for the key and token shapes.
+
+## A pasted token
+
+On his word, after someone he shared his server with had Claude refuse a good token: it had
+come with extra spaces. A token or key pasted in (the Claude chapter, Settings' token and API key)
+now has every space, line break and invisible mark taken out, in the field as it is typed and again
+in the core before it is checked or kept; and every hidden field for a token, a key or a secret
+has an eye to show it and check it first.

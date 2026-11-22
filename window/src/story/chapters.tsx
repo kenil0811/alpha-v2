@@ -33,7 +33,7 @@ import { Refusal, useAct } from '../ui/act.tsx'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { CopyButton } from '../ui/copy.tsx'
-import { Field } from '../ui/field.tsx'
+import { Field, pastedKey, SecretField } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { squared } from '../Workspace.tsx'
 import { Connect } from './connect.tsx'
@@ -164,14 +164,12 @@ function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
     <div className="flex flex-col gap-6">
       <Steps steps={screen.steps} />
       {screen.how === 'token' ? (
-        <Field
+        <SecretField
           className="w-full"
-          type="password"
-          autoComplete="off"
           aria-label="Claude token"
           placeholder="Paste the token"
           value={token}
-          onChange={(e) => setToken(e.target.value)}
+          onChange={(e) => setToken(pastedKey(e.target.value))}
         />
       ) : (
         <div className="flex items-center gap-3">

@@ -15,7 +15,10 @@ export const KEY_REF = 'anthropic:api-key'
 export const TOKEN_REF = 'anthropic:oauth-token'
 
 // A subscription's token, as claude setup-token prints it.
-export const isClaudeToken = (t: string): boolean => /^sk-ant-[\w-]{20,}$/.test(t.trim())
+// A token or a key as pasted, with every space, line break and invisible mark taken out: a token
+// or a key never holds one, and a copy from a terminal or a page often brings some along.
+export const pasted = (t: string): string => t.replace(/[\s\u200B-\u200D\u2060\uFEFF]/g, '')
+export const isClaudeToken = (t: string): boolean => /^sk-ant-[\w-]{20,}$/.test(pasted(t))
 
 // A fresh Alpha's way to Claude in a journey: none yet, until a token is given it (the story's
 // Claude chapter), as a new server's is.
@@ -86,7 +89,7 @@ export class ModelRoute {
 
   // A server has no browser for Claude's sign-in, so a subscription comes as a token.
   async setToken(token: string, by: string): Promise<void> {
-    const given = token.trim()
+    const given = pasted(token)
     if (!isClaudeToken(given))
       throw new Refused('That is not a Claude token: it starts with sk-ant-.')
     await this.secrets.set(TOKEN_REF, given)
@@ -123,7 +126,7 @@ export class ModelRoute {
 
   async set(name: RouteName, key: string | null, by: string): Promise<void> {
     if (name === 'key') {
-      const given = key?.trim()
+      const given = key ? pasted(key) : key
       if (given) {
         if (!/^sk-ant-[\w-]{20,}$/.test(given))
           throw new Refused('That is not an Anthropic API key: it starts with sk-ant-.')

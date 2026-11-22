@@ -4,7 +4,7 @@
 import { z } from 'zod'
 import { config } from '../config.ts'
 import { tableOf } from '../connectors/places.ts'
-import { isClaudeToken } from '../engine/route.ts'
+import { isClaudeToken, pasted } from '../engine/route.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import { businessCase } from '../world/shape/manifest.ts'
@@ -215,7 +215,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
             : 'Claude is not signed in yet: press Sign in, finish in your browser, then Continue.',
         )
       }
-      const token = b.token.trim()
+      const token = pasted(b.token)
       if (!isClaudeToken(token))
         throw new Refused('That is not a Claude token: it starts with sk-ant-.')
       // the live check: Claude answered with this token before it is kept (call 7)

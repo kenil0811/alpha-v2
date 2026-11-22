@@ -8,7 +8,7 @@ import { type FormEvent, useState } from 'react'
 import { api } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import { Field } from './ui/field.tsx'
+import { Field, SecretField } from './ui/field.tsx'
 import { Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
@@ -156,14 +156,11 @@ export function AppSetup({
         {a.fields.secret && (
           <label className="flex flex-col gap-1 text-md" htmlFor={`${a.provider}-secret`}>
             <span className="text-ink-2">{a.fields.secret.label}</span>
-            <Field
+            <SecretField
               id={`${a.provider}-secret`}
-              type="password"
               value={secret}
               placeholder={a.set?.secret ? 'Kept. Type a new one to replace it' : ''}
               onChange={(e) => setSecret(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
             />
           </label>
         )}

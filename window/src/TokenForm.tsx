@@ -7,7 +7,7 @@ import { api } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
-import { Field } from './ui/field.tsx'
+import { pastedKey, SecretField } from './ui/field.tsx'
 
 export function TokenForm({ has, onSaved }: { has: boolean; onSaved: (m: ModelView) => void }) {
   const [token, setToken] = useState('')
@@ -24,14 +24,12 @@ export function TokenForm({ has, onSaved }: { has: boolean; onSaved: (m: ModelVi
         })
       }}
     >
-      <Field
+      <SecretField
         className="w-72"
-        type="password"
-        autoComplete="off"
         aria-label="Claude token"
-        placeholder={has ? 'A token is saved. Paste a new one to replace it' : 'Paste the key'}
+        placeholder={has ? 'A token is saved. Paste a new one to replace it' : 'Paste the token'}
         value={token}
-        onChange={(e) => setToken(e.target.value)}
+        onChange={(e) => setToken(pastedKey(e.target.value))}
       />
       <Button size="sm" type="submit" disabled={busy || !token.trim()}>
         Save

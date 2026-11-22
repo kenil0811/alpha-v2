@@ -1,6 +1,6 @@
 // A field: one line of text, a choice, or the composer's words. Focus shows in the accent.
 
-import { ChevronDown, Plus, Search } from 'lucide-react'
+import { ChevronDown, Eye, EyeOff, Plus, Search } from 'lucide-react'
 import {
   type ChangeEvent,
   Children,
@@ -24,6 +24,40 @@ const FIELD =
 export function Field({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(FIELD, className)} {...props} />
 }
+
+// A token, a key or a secret pasted in: hidden, with an eye to show it and check it before it is
+// saved.
+export function SecretField({
+  className,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [shown, setShown] = useState(false)
+  return (
+    <span className={cn('relative inline-flex min-w-0', className)}>
+      <input
+        autoComplete="off"
+        spellCheck={false}
+        {...props}
+        type={shown ? 'text' : 'password'}
+        className={cn(FIELD, 'w-full pr-8')}
+      />
+      <button
+        type="button"
+        aria-label={shown ? 'Hide it' : 'Show it'}
+        aria-pressed={shown}
+        data-tip={shown ? 'Hide it' : 'Show it'}
+        onClick={() => setShown((v) => !v)}
+        className="absolute inset-y-0 right-0 grid w-8 place-items-center rounded-r-md text-ink-3 hover:text-ink"
+      >
+        {shown ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+      </button>
+    </span>
+  )
+}
+
+// A token or a key as pasted, without the spaces, line breaks and invisible marks a copy brings
+// along: what is shown is what is sent (the core takes them out again).
+export const pastedKey = (s: string) => s.replace(/[\s\u200B-\u200D\u2060\uFEFF]/g, '')
 
 type Option = { value: string; label: string; disabled: boolean }
 
