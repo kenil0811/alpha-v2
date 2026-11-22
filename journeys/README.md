@@ -23,3 +23,14 @@ pattern fits the card: a choice or the person's own words, and on a card of line
 the first so many dropped and the rest kept; `until` stops at a card and leaves it waiting.
 The stand-in computer of a `bridge` step lends its Calendar, Contacts or browsing history on
 recorded answers, and `due: { days: 31 }` is the scheduler's tick that many days on.
+
+Set up Alpha, the onboarding story, is pressed through its own routes (`/api/story`, the
+contract in `core/src/journeys/story-steps.ts`). A `story` step does a chapter's act with what the
+person gives it (`body`), its Skip (`skip`, with `refused: true` where the story must refuse it),
+every chapter before one skipped (`skip_to`), or What I learned answered question by question,
+About you's first so many lines dropped and each playback taken by the first answer whose pattern
+fits. `as: <name>` takes the step as a member the owner added with a `member` step. `claude:
+unset` starts the Alpha with no way to Claude until its Claude chapter is given the runner's own
+token as `{claude}`, which no report shows. The `story` check reads where a person's story
+stands (its chapters, where it is, done, Home's row), `story_says` what a chapter's screen says
+and never says, and `needs_you` how many cards wait on the person.

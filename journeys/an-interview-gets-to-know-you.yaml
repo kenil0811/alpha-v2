@@ -1,12 +1,15 @@
 name: an-interview-gets-to-know-you
-title: The Interviewer gets to know the owner of a small firm from what they allow it to read, and ends with About you and a report of their work
+title: The owner of a small firm goes through Set up Alpha, allows what Alpha may read, and ends with About you and a report of their work
 why: >
-  Onboarding (Kenil's plan, 18 Nov, calls 5 to 34): the Interviewer asks for each source on its
-  own card, reads what is allowed and never what is skipped, drafts About you and the report from
-  what it read, and asks only for the blanks. Nothing lands in How to work without the person's
-  Keep, a declined proposal never comes back, hours are computed in code or marked estimated
-  with their basis, and every report row cites what it rests on. A made-up renovation firm, on
-  recorded mail, events, contacts and browsing, and a made-up site.
+  Onboarding redesigned (Kenil's calls, 22 Nov): Set up Alpha is a story of chapters drawn by code,
+  never a chat (calls 1 to 3). Welcome, Your workspace with who the work is for in the owner's own
+  words, Connect with counts from code, Get to know you on one consent screen where a source
+  switched off is never read or cited (calls 15, 16), Your people, What I learned with About you,
+  the blanks and each workflow's playback (calls 17, 18), Done. Nothing lands in How to work
+  without the person's Keep, a declined proposal never comes back, hours are computed in code or
+  marked estimated with their basis, every report row cites what it rests on, and none of it sits
+  in Needs you. A made-up renovation firm, on recorded mail, events, contacts and browsing, and a
+  made-up site.
 plugins: [interviews]
 fixtures: an-interview-gets-to-know-you
 steps:
@@ -14,9 +17,13 @@ steps:
   - connect: { connector: gmail, account: sam@oakstreetbuilders.example }
     checks:
       - rows_in: { table: Mail, count: 31 }
-      # call 6: on first sign-in, Home asks to get to know them
-      - plugin_route: { name: interviews, get: home, matches: 'get to know you' }
-  # the person's computer: a folder lent (to be skipped), Calendar, Contacts and browsing
+      # a fresh Alpha's owner is in the story, its interview chapters there with interviews on, and
+      # no Claude chapter while a model is set (calls 4, 7)
+      - story:
+          chapters: [welcome, workspace, connect, know, people, learned, done]
+          at: welcome
+          done: false
+  # the person's computer: a folder lent (to be switched off), Calendar, Contacts and browsing
   - bridge:
       lend: '{tmp}/Office'
       put: { name: Oak Street staff bonus plan.csv, text: "Name,Bonus\nLee,1200\n" }
@@ -28,58 +35,70 @@ steps:
   - bridge: { browsing: true }
     checks:
       - errors: 0
-  - plugin: { name: interviews, post: start }
+  - story: { chapter: welcome }
     checks:
-      - errors: 0
-  - interview:
-      agent: Interviewer
-      answers:
-        # who it is for: the owner, whose For everyone here is still empty (call 10)
-        - card: 'website|web site|your site(?! visit)'
-          choice: 'Yes, our site is {site}'
-        - card: '\bwho\b|business|team|just you|on your own'
-          choice: 'Oak Street Builders, my renovation firm: me, Lee who runs the sites, and four carpenters.'
-        # the sources, one card each (call 8): the folder skipped, the rest allowed
-        - card: '^A folder'
-          choice: Skip
-        - card: '^(Mail|Calendar|Browsing|AI work|What you have in Alpha)'
-          choice: Allow
-        # About you (call 27): the first line dropped, the rest kept
-        - card: '^About you'
-          drop: 1
-        # the playback (call 31): the first proposal declined, the rest taken
-        - card: "We'd build"
-          choice: Not this
-          times: 1
-        - card: "We'd build"
-          choice: "Yes, that's it"
-        # the blanks only the person can fill
-        - card: 'quote'
-          choice: 'About 45 minutes each, at the kitchen table in the evening, from my notes of the site visit.'
-        - card: 'invoice|overdue|payment|chas'
-          choice: 'About 10 minutes each, every Friday afternoon. It is the job I like least.'
-        - card: 'electric|Ravi|subcontract|schedul|carpenter'
-          choice: 'About 20 minutes a week, texting each of them one by one.'
+      # the three promises, the never-use list among them in one sentence (call 25)
+      - story_says: { chapter: welcome, matches: 'banking' }
+  # who the work is for, in the owner's own words, and their site confirmed (call 20)
+  - story:
+      chapter: workspace
+      body:
+        for: 'Oak Street Builders, my renovation firm: me, Lee who runs the sites, and four carpenters.'
+        site: '{site}'
     checks:
-      # what was allowed was read (calls 14, 17, 18)
+      - story: { at: connect }
+  # Connect: what landed, counted by code, never in a model's words (calls 8, 13)
+  - story: { chapter: connect }
+    checks:
+      - story_says: { chapter: connect, matches: '31' }
+  # Get to know you: one screen, every source on but the folder, read together (calls 15, 16)
+  - story: { chapter: know, body: { off: [folder] } }
+    checks:
       - rows_in: { table: Sites, at_least: 3 }
       - rows_in: { table: AI requests, at_least: 3 }
-      # the report (calls 29 to 32): every row cites what it rests on, each workflow closes
+      - errors: 0
+  # Your people fills the time the draft takes (calls 19, 22)
+  - story: { chapter: people, body: { add: [{ name: Lee, email: lee@oakstreetbuilders.example }] } }
+  - story:
+      chapter: learned
+      # About you (call 18): the first line dropped, the rest kept
+      drop: 1
+      answers:
+        # the playback: the first proposal declined, the rest taken
+        - match: "We'd build"
+          choice: Not this
+          times: 1
+        - match: "We'd build"
+          choice: "Yes, that's it"
+        # the blanks only the person can fill, as a set, one at a time (call 17)
+        - match: 'quote'
+          choice: 'About 45 minutes each, at the kitchen table in the evening, from my notes of the site visit.'
+        - match: 'invoice|overdue|payment|chas'
+          choice: 'About 10 minutes each, every Friday afternoon. It is the job I like least.'
+        - match: 'electric|Ravi|subcontract|schedul|carpenter'
+          choice: 'About 20 minutes a week, texting each of them one by one.'
+    checks:
+      # the report: every row cites what it rests on, each workflow closes
       - rows_in: { table: Workflows, at_least: 2 }
       - cited: { table: Workflows }
       - cited: { table: Steps }
       - cited: { table: Proposals }
       - each_has: { table: Workflows, part: Proposals }
-      # hours from code, or estimated with what they rest on (call 26, rules I2)
+      # hours from code, or estimated with what they rest on (rules I2)
       - numbers: { table: Workflows, field: Hours a month }
-      # the folder was skipped: nothing rests on it, and no name only it held appears (call 28, I3)
+      # the folder was switched off: nothing rests on it, and no name only it held appears (I3)
       - never_cited: { module: Your work, source: Files }
       - nowhere: { matches: 'bonus plan', module: Your work }
-      # nothing in How to work without the person's Keep (calls 10, 27)
+      # nothing in How to work without the person's Keep
       - how_to_work: { for: me, kept: true, at_least: 1 }
       - how_to_work: { for: everyone, kept: true, at_least: 1 }
       # a declined proposal never comes back (rules I4)
       - asked_once: { matches: "We'd build", answered: 'Not this' }
+  - story: { chapter: done }
+    checks:
+      - story: { done: true, row: null }
+      # none of it waited in Needs you beside the firm's real asks
+      - needs_you: { count: 0 }
       # nothing went out, and nothing failed
       - connector_calls: { words: 'Gmail: send', count: 0 }
       - errors: 0

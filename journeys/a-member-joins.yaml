@@ -1,0 +1,36 @@
+name: a-member-joins
+title: A member added to a workspace already set up goes through their own shorter story, never seeing Claude or Your people, and is told only what is true about what is shared
+why: >
+  Onboarding redesigned (Kenil's calls, 22 Nov): a member joins something already alive (call 4).
+  Their story is Welcome to the workspace, What's here, Connect your own and Done, with no Claude,
+  no workspace and no people chapters; What's here shows the workspace's real modules and says
+  only what is true today, that the tables are everyone's here, and promises no private chats
+  (call 23). Their story is theirs: the owner's stays done. Interviews off, so no interview
+  chapters. A made-up bookshop whose owner went through the story first.
+steps:
+  - story: { chapter: welcome }
+  - story: { chapter: workspace, body: { name: Harbor Books, for: 'Harbor Books, our bookshop.' } }
+  - story: { skip_to: done }
+  - story: { chapter: done }
+    checks:
+      - story: { done: true }
+  - member: { name: Priya, email: priya@harborbooks.example }
+    checks:
+      - story:
+          as: Priya
+          chapters: [welcome, here, connect, done]
+          at: welcome
+          done: false
+  - story: { as: Priya, chapter: welcome }
+    checks:
+      # the workspace she joined, and what is shared, said only as it is true
+      - story_says: { as: Priya, chapter: here, matches: 'Harbor Books' }
+      - story_says: { as: Priya, chapter: here, matches: "everyone", never: 'private' }
+  - story: { as: Priya, chapter: here }
+  - story: { as: Priya, chapter: connect }
+  - story: { as: Priya, chapter: done }
+    checks:
+      - story: { as: Priya, done: true, row: null }
+      # the owner's own story is as the owner left it
+      - story: { done: true }
+      - errors: 0

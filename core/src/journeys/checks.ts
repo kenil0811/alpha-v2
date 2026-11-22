@@ -11,6 +11,7 @@ import { AgentChecks, agentCheck } from './agent-checks.ts'
 import { CellChecks, cellCheck } from './cell-checks.ts'
 import { InterviewChecks } from './interview-checks.ts'
 import { ScheduleChecks, scheduleCheck } from './schedule-checks.ts'
+import { StoryChecks } from './story-steps.ts'
 import { SiteRequests, StepPictures, WebCalls } from './web-checks.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
@@ -35,6 +36,7 @@ export const Check = z.union([
   }),
   ...AgentChecks, // the firm's agents (agent-checks.ts)
   ...InterviewChecks, // an interview, and plugins switched on or not (interview-checks.ts)
+  ...StoryChecks, // where a person's Set up Alpha stands, and what its screens say (story-steps.ts)
   // asks between agents, by how they answered
   z.object({ asks: z.object({ count: z.number(), status: z.string().optional() }) }),
   // where a table sits in its module: a main table, part of a row, or setup
