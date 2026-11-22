@@ -9,6 +9,7 @@ import { api, Problem } from './api.ts'
 import { openLink } from './opened.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
+import { CoreImage } from './ui/core-file.tsx'
 import { Field, Select } from './ui/field.tsx'
 
 const SURE: Record<FilingView['sure'], string> = {
@@ -73,8 +74,8 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
             className="w-28 shrink-0 overflow-hidden rounded-sm border border-line bg-surface"
             onClick={() => openLink(`#/file/${filing.file}`)}
           >
-            <img
-              src={api.tokened(`/api/files/${filing.file}/page/1`)}
+            <CoreImage
+              path={`/api/files/${filing.file}/page/1`}
               alt={`The first page of ${filing.name}`}
               className="block w-full"
             />

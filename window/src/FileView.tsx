@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { CoreImage, saveCoreFile } from './ui/core-file.tsx'
 import { cutTip } from './ui/cut-tip.ts'
 
 export interface FilePlace {
@@ -67,10 +68,7 @@ export function FileView({ place, onName }: { place: FilePlace; onName: (n: stri
             {place.sheet ? `${place.sheet}, ` : ''}cell {place.cell}
           </span>
         )}
-        <Button
-          size="sm"
-          onClick={() => window.open(api.fileUrl(data.hash), '_blank', 'noreferrer')}
-        >
+        <Button size="sm" onClick={() => void saveCoreFile(`/api/files/${data.hash}`, data.name)}>
           <Download className="size-3.25" />
           The file
         </Button>
@@ -212,9 +210,9 @@ function Pages({ data, place }: { data: FileData; place: FilePlace }) {
         </IconButton>
       </div>
       <div className="relative w-full border border-line bg-surface shadow-sm">
-        <img
+        <CoreImage
           key={page}
-          src={api.tokened(`/api/files/${data.hash}/page/${page}`)}
+          path={`/api/files/${data.hash}/page/${page}`}
           alt={`Page ${page} of ${data.name}`}
           className="block w-full"
           onLoad={(e) =>

@@ -210,6 +210,27 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('takes the token in a header, a socket’s in its protocol, never in an address', async () => {
+    const a = app()
+    await a.ready()
+    const host = { host: '127.0.0.1:4700' }
+    // an address carrying it is turned away: a link, a picture or history would show it
+    expect((await a.inject({ url: `/api/me?t=${token}`, headers: host })).statusCode).toBe(403)
+    expect((await a.inject({ url: '/api/me', headers: ok })).statusCode).toBe(200)
+    // the window's socket names it among its protocols (a browser's socket sets no other header)
+    const ws = await a.injectWS('/ws', {
+      headers: { ...host, 'sec-websocket-protocol': `alpha, alpha-token.${token}` },
+    })
+    ws.terminate()
+    await expect(a.injectWS(`/ws?t=${token}`, { headers: host })).rejects.toThrow(/403/)
+    await expect(
+      a.injectWS('/ws', {
+        headers: { ...host, 'sec-websocket-protocol': 'alpha, alpha-token.wrong' },
+      }),
+    ).rejects.toThrow(/403/)
+    await a.close()
+  })
+
   it('shows a stored file inline only when it is harmless, HTML in a sandbox, the rest as a download', async () => {
     const a = app()
     const person = { actor: { kind: 'person' as const, id: world.owner('Kenil').id } }

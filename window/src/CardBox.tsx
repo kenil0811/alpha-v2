@@ -14,6 +14,7 @@ import { ReviewCard } from './ReviewCard.tsx'
 import { Button } from './ui/button.tsx'
 import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
+import { CorePicture } from './ui/core-file.tsx'
 import { Answer, Question } from './ui/question.tsx'
 import { answerWords } from './vocabulary.ts'
 import { WatchPage } from './WatchPage.tsx'
@@ -167,18 +168,12 @@ function CardBody({
       <div className="font-medium text-ink text-lg">{card.words}</div>
       {/* a step in the browser: the page as it is, the element it is about outlined */}
       {card.acting?.picture && (
-        <a
-          href={api.tokened(`/api/pictures/${card.acting.picture}`)}
-          target="_blank"
-          rel="noreferrer"
-          className="w-fit"
-        >
-          <img
-            src={api.tokened(`/api/pictures/${card.acting.picture}`)}
-            alt="The page the step is on"
-            className="max-h-72 w-auto rounded-md border border-line"
-          />
-        </a>
+        <CorePicture
+          path={`/api/pictures/${card.acting.picture}`}
+          alt="The page the step is on"
+          boxClassName="w-fit"
+          className="max-h-72 w-auto rounded-md border border-line"
+        />
       )}
       {/* a gate's detail is what would go, as it would go */}
       {card.detail && <Preview detail={card.detail} />}

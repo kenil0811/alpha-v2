@@ -3,6 +3,9 @@ import type { LiveEvent } from '@alpha/core/api'
 
 const KEY = 'alpha-token'
 
+// The address the core prints carries the token once: the window keeps it in this tab's storage and
+// takes it out of the address as it loads, so no link, history entry or picture shows it. It goes
+// to the core in a header only, a socket's among its protocols.
 export function token(): string {
   const fromUrl = new URLSearchParams(window.location.search).get('t')
   if (fromUrl) {
@@ -18,6 +21,34 @@ export function token(): string {
   } catch {
     return ''
   }
+}
+
+// The address without its token, or null when it carries none.
+export function withoutToken(href: string): string | null {
+  const url = new URL(href)
+  if (!url.searchParams.has('t')) return null
+  url.searchParams.delete('t')
+  return url.href
+}
+
+// As the window loads: the token out of the address, once this tab's storage holds it (where it
+// cannot, a private window, it stays, or a reload would lose it).
+if (typeof window !== 'undefined') {
+  const t = token()
+  const clean = withoutToken(window.location.href)
+  let kept = false
+  try {
+    kept = !!t && sessionStorage.getItem(KEY) === t
+  } catch {
+    // no storage: kept stays false
+  }
+  if (clean && kept) window.history.replaceState(window.history.state, '', clean)
+}
+
+// The protocols a socket asks for: Alpha's own, and the token as another, where there is one.
+export const socketProtocols = (): string[] => {
+  const t = token()
+  return t ? ['alpha', `alpha-token.${t}`] : ['alpha']
 }
 
 export class Problem extends Error {}
@@ -77,10 +108,16 @@ export const api = {
       'content-type': file.type || 'application/octet-stream',
       'x-file-name': encodeURIComponent(file.name),
     }),
-  // a core address the browser opens itself (a picture, a download), with the token
-  tokened: (path: string) =>
-    `${path}${path.includes('?') ? '&' : '?'}t=${encodeURIComponent(token())}`,
-  fileUrl: (hash: string) => `/api/files/${hash}?t=${encodeURIComponent(token())}`,
+  // a picture or a file the core keeps, fetched with the token in its header: shown from a blob
+  // address (ui/core-file.tsx), never from one that carries the token
+  blob: async (path: string): Promise<Blob> => {
+    const res = await fetch(path, { headers: { 'x-alpha-token': token() } })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { problem?: string }
+      throw new Problem(data.problem ?? NOT_ANSWERING)
+    }
+    return res.blob()
+  },
   // a file the core makes (an export), saved by the browser under the name given
   download: async (path: string, body: unknown, name: string) => {
     const res = await fetch(path, {
@@ -120,7 +157,7 @@ export function listen(on: (e: LiveEvent) => void): () => void {
   let retry: ReturnType<typeof setTimeout> | undefined
   const open = () => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    ws = new WebSocket(`${proto}://${window.location.host}/ws?t=${encodeURIComponent(token())}`)
+    ws = new WebSocket(`${proto}://${window.location.host}/ws`, socketProtocols())
     ws.onmessage = (m) => on(JSON.parse(String(m.data)) as LiveEvent)
     ws.onopen = () => {
       on({ type: 'lines' })

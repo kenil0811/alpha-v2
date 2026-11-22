@@ -52,6 +52,14 @@ import { watchTab } from './watch.ts'
 // (scripts/release.ts); a core run from a repository has none.
 // Where a person's computer connects (the Bridge).
 const BRIDGE = '/ws/bridge'
+// The window's sockets ask for Alpha's protocol and carry the token as another: `alpha-token.<it>`.
+const PROTOCOL = 'alpha'
+const socketToken = (protocols: string | undefined): string | undefined =>
+  protocols
+    ?.split(',')
+    .map((p) => p.trim())
+    .find((p) => p.startsWith(`${PROTOCOL}-token.`))
+    ?.slice(PROTOCOL.length + '-token.'.length)
 
 const versionFile = join(import.meta.dirname, '..', '..', '..', 'VERSION')
 export const VERSION = existsSync(versionFile)
@@ -147,7 +155,9 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const back = path === BACK
     const host = req.headers.host ?? ''
     const origin = req.headers.origin
-    const given = req.headers['x-alpha-token'] ?? (req.query as { t?: string }).t
+    // the token comes in a header, a socket's among its protocols (the one header a browser lets a
+    // socket set): never in an address, where a link, a picture or history would show it
+    const given = req.headers['x-alpha-token'] ?? socketToken(req.headers['sec-websocket-protocol'])
     if (hosts.size && !hosts.has(host)) return deny(reply, 'This address is not Alpha’s.')
     if (origin && hosts.size && !hosts.has(origin.replace(/^https?:\/\//, '')))
       return deny(reply, 'This page is not Alpha’s.')
@@ -240,7 +250,10 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         }),
     })
 
-  void app.register(websocket)
+  // a socket that names its token among its protocols is answered on Alpha's own
+  void app.register(websocket, {
+    options: { handleProtocols: (asked: Set<string>) => (asked.has(PROTOCOL) ? PROTOCOL : false) },
+  })
   void app.register(async (scope) => {
     scope.get('/ws/live/:card', { websocket: true }, (socket, req) => {
       const { card } = req.params as { card: string }

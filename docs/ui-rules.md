@@ -96,6 +96,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | R8 | A short list (How to work first, the others as they are touched): Add on its heading, ✕ on an entry when hovered, a double-click edits the entry in place (Enter keeps, Escape puts it back); where Alpha must understand an entry, Add starts the conversation | 1 Nov | test |
 | R9 | A card has its own page (#/card/<id>), opened from ↗ on its head wherever it shows (the stream, Home): the same card across the page, a long letter whole, answered there as on the card; once answered the page says with what | 1 Nov | test (route), journey |
 | R10 | A screen doesn't explain itself in sentences: what helps sits in the ⓘ beside its heading or row; what a switch does to safety moves there and never goes; a step to take now (sign in there, then quit Chrome) stays | 17 Nov | — |
+| R11 | The per-install token is in no address: the window keeps it in the tab and takes it out of the address bar as it loads; it goes to the core in a header, a socket's among its protocols. A picture or a file the core keeps is fetched so and shown from a blob: a picture opens full size in a dialog, a file is saved under its own name | 22 Nov | test (token) |
 
 ## Assistant and chat
 
