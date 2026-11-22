@@ -32,7 +32,7 @@ import {
 import { type FormEvent, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
-import { Field, Select } from '../ui/field.tsx'
+import { Field, SEARCH_PAST, SearchLine, Select } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
 import { MenuItem, MenuLine } from '../ui/popover.tsx'
 import {
@@ -320,6 +320,7 @@ export function RuleEditor({
   const [value, setValue] = useState(String(rule?.value ?? ''))
   const [value2, setValue2] = useState(String(rule?.value2 ?? ''))
   const [values, setValues] = useState<string[]>(rule?.values ?? [])
+  const [words, setWords] = useState('')
   const need = needs(op)
   const read = (v: string) => (fam === 'number' || op === 'next_days' ? Number(v) : v)
   const kind = op === 'next_days' || fam === 'number' ? 'number' : fam === 'date' ? 'date' : 'text'
@@ -389,31 +390,36 @@ export function RuleEditor({
           {op === 'next_days' && <span className="text-ink-3">days</span>}
         </div>
       )}
+      {need === 'list' && options.length > SEARCH_PAST && (
+        <SearchLine words={words} onWords={setWords} />
+      )}
       {need === 'list' && (
         <div className="flex max-h-60 flex-col overflow-y-auto">
-          {options.map((c) => (
-            <label
-              key={c}
-              className="flex h-7.5 shrink-0 items-center gap-2 rounded-sm px-1.5 hover:bg-hover"
-            >
-              <input
-                type="checkbox"
-                className="accent-accent"
-                checked={values.includes(c)}
-                onChange={(e) =>
-                  setValues((vs) => (e.target.checked ? [...vs, c] : vs.filter((x) => x !== c)))
-                }
-              />
-              <span className="flex min-w-0 flex-1">
-                {fam === 'rows' ? (
-                  <span className="truncate">{c}</span>
-                ) : (
-                  <Choice of={field} value={c} />
-                )}
-              </span>
-              <span className="text-ink-3 text-sm tabular-nums">{counts.get(c) ?? 0}</span>
-            </label>
-          ))}
+          {options
+            .filter((c) => c.toLowerCase().includes(words.trim().toLowerCase()))
+            .map((c) => (
+              <label
+                key={c}
+                className="flex h-7.5 shrink-0 items-center gap-2 rounded-sm px-1.5 hover:bg-hover"
+              >
+                <input
+                  type="checkbox"
+                  className="accent-accent"
+                  checked={values.includes(c)}
+                  onChange={(e) =>
+                    setValues((vs) => (e.target.checked ? [...vs, c] : vs.filter((x) => x !== c)))
+                  }
+                />
+                <span className="flex min-w-0 flex-1">
+                  {fam === 'rows' ? (
+                    <span className="truncate">{c}</span>
+                  ) : (
+                    <Choice of={field} value={c} />
+                  )}
+                </span>
+                <span className="text-ink-3 text-sm tabular-nums">{counts.get(c) ?? 0}</span>
+              </label>
+            ))}
         </div>
       )}
       <div className="flex gap-2">

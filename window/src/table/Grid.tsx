@@ -38,6 +38,7 @@ import { Field, Select } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
 import { Popover, useContextMenu } from '../ui/popover.tsx'
 import { tipNow } from '../ui/tooltip.tsx'
+import { useRoomBelow } from './below.tsx'
 import { CellHistory } from './CellHistory.tsx'
 import { ColumnMenu, TotalItems } from './ColumnMenu.tsx'
 import { EditCell } from './EditCell.tsx'
@@ -59,6 +60,7 @@ import {
   MARK,
   NUMERIC,
   readValue,
+  rowCount,
   show,
   TINT,
   whyFixed,
@@ -218,6 +220,7 @@ export function Grid({
   const top = vitems[0]?.start ?? 0
   const bottom = virtual.getTotalSize() - (vitems.at(-1)?.end ?? 0)
   const span = shown.length + 2
+  const [tableAt, underRows] = useRoomBelow(box, items.length, span)
   const reach = range ? drawn.findIndex((r) => r.id === range.row) : -1
   const inRange = (row: string, field: string) => {
     if (!range?.n || field !== range.field) return false
@@ -313,13 +316,18 @@ export function Grid({
       onKeyDown={keys}
       className="scroll-shown min-h-0 flex-1 overflow-auto bg-surface"
     >
-      <table className="table-fixed border-separate border-spacing-0 text-md" style={{ width }}>
+      {/* at least the frame's width, the + column taking what is over, so + sits at its right edge */}
+      <table
+        ref={tableAt}
+        className="table-fixed border-separate border-spacing-0 text-md"
+        style={{ width: `max(${width}px, 100%)` }}
+      >
         <colgroup>
           <col style={{ width: TICK }} />
           {shown.map((f, i) => (
             <col key={f.id} style={{ width: widths[i] }} />
           ))}
-          <col style={{ width: trail }} />
+          <col />
         </colgroup>
         <thead>
           <tr>
@@ -348,12 +356,8 @@ export function Grid({
                 onConfig={onConfig}
               />
             ))}
-            <th
-              className={cn(
-                'sticky top-0 z-2 h-9 border-line border-b bg-surface p-0',
-                rowAction && 'right-0 z-3',
-              )}
-            >
+            {/* + held at the frame's right edge, whatever the width or scroll; cells pass under it */}
+            <th className="sticky top-0 right-0 z-3 h-9 border-line border-b bg-surface p-0">
               <AddField tableId={tableId} />
             </th>
           </tr>
@@ -483,7 +487,7 @@ export function Grid({
                         const b = e.currentTarget.getBoundingClientRect()
                         setMenu({ row: r, field: null, x: b.left, y: b.bottom })
                       }}
-                      className="mx-auto grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
+                      className="grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
                     >
                       <EllipsisVertical className="size-3.5" />
                     </button>
@@ -497,13 +501,7 @@ export function Grid({
               <td colSpan={span} style={{ height: bottom }} />
             </tr>
           )}
-          {/* an empty table keeps its frame: blank rows and the footer; no sentence */}
-          {items.length === 0 &&
-            [0, 1, 2].map((n) => (
-              <tr key={`blank${n}`} aria-hidden>
-                <td colSpan={span} className="h-9.5 border-hair border-b p-0" />
-              </tr>
-            ))}
+          {underRows}
         </tbody>
         <tfoot>
           <tr>
@@ -512,7 +510,7 @@ export function Grid({
               <Foot
                 key={f.id}
                 field={f}
-                first={i === 0}
+                count={i === 0 ? rowCount((counted ?? rows).length, allRows.length) : undefined}
                 left={stick(i)}
                 edge={i === layout.frozen - 1}
                 rows={counted ?? rows}
@@ -959,7 +957,7 @@ function GroupRow({
 // A column's foot: its total over every row shown, or a quiet place to choose one.
 function Foot({
   field: f,
-  first,
+  count,
   left,
   edge,
   rows,
@@ -969,7 +967,7 @@ function Foot({
   onConfig,
 }: {
   field: FieldView
-  first: boolean
+  count: string | undefined // the first column's: how many rows
   left: number | undefined
   edge: boolean
   rows: RowView[]
@@ -995,7 +993,7 @@ function Foot({
         ref={anchor}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        data-tip={op ? undefined : 'Choose a total'}
+        data-tip={op ? undefined : 'A count, sum or average of this column'}
         className={cn(
           'group/foot flex h-8.5 w-full items-center gap-1.5 px-2.5 tabular-nums hover:bg-hover',
           numeric && 'justify-end',
@@ -1006,12 +1004,10 @@ function Foot({
             <span className="text-ink-3">{TOTAL_WORDS[op]}</span>
             <span className="truncate font-medium text-ink">{total(op, f, rows, names, true)}</span>
           </>
-        ) : first ? (
-          <span className="text-ink-3">
-            {loading ? '' : `${rows.length} row${rows.length === 1 ? '' : 's'}`}
-          </span>
+        ) : count ? (
+          <span className="text-ink-3">{loading ? '' : count}</span>
         ) : (
-          <span className="invisible text-ink-3 group-hover/foot:visible">Total</span>
+          <span className="invisible text-ink-3 group-hover/foot:visible">Summarize</span>
         )}
       </button>
       <Popover
@@ -1062,7 +1058,7 @@ function AddField({ tableId }: { tableId: string }) {
         data-tip={fixed ?? 'Add a property'}
         disabled={!!fixed}
         onClick={() => setOpen((o) => !o)}
-        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
+        className="ml-auto grid h-9 w-11 place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
       >
         <Plus className="size-3.75" />
       </button>

@@ -76,7 +76,8 @@ export function Board({
     s.frame = requestAnimationFrame(step)
   }
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-4">
+    // one scroll box filling the frame, so its sideways bar sits at the bottom however few cards
+    <div className="flex min-h-0 flex-1 flex-col p-4">
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a dragged card near an edge scrolls the board; each card's own picker moves it by keyboard */}
       <div
         ref={strip}
@@ -84,7 +85,7 @@ export function Board({
         onDragLeave={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node)) stop()
         }}
-        className="flex gap-3 overflow-x-auto pb-2"
+        className="scroll-shown flex min-h-0 flex-1 gap-3 overflow-auto pb-2"
       >
         {columns.map((choice) => {
           const rows = data.rows.filter((r) => (r.values[by.slug] ?? '') === choice)

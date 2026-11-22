@@ -34,7 +34,7 @@ import { Showing } from './table/Showing.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
-import { canType, show } from './table/values.ts'
+import { canType, rowCount, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
@@ -248,6 +248,12 @@ export function TableView({
   const pages = Math.max(1, Math.ceil(rows.length / size))
   const at = Math.min(page, pages - 1)
   const paged = rows.slice(at * size, (at + 1) * size)
+  // the grid's totals row counts the rows; a view without one counts them at the foot
+  const totalsRow =
+    config.kind === 'table' ||
+    (config.kind === 'board' && !boardBy) ||
+    (config.kind === 'calendar' && !dateBy)
+  const count = loading || totalsRow ? null : rowCount(rows.length, data.rows.length)
 
   return (
     <TableName.Provider value={data.name}>
@@ -477,7 +483,8 @@ export function TableView({
               <ChartView
                 rows={rows}
                 group={fields.find((f) => f.id === config.group) ?? (dateBy ? undefined : boardBy)}
-                by={dateBy}
+                // with neither picked, the bars go by the first date, as a board starts on Stage
+                by={dateBy ?? (boardBy ? undefined : fields.find((f) => f.kind === 'date'))}
                 measure={fields.find((f) => f.id === config.measure)}
                 names={data.names}
                 onBar={(field, key) =>
@@ -558,13 +565,7 @@ export function TableView({
               onSaveAs={saveAs}
             >
               {readByWords(data.readBy) && <span className="mr-3">{readByWords(data.readBy)}</span>}
-              {!grid && !loading && (
-                <span className="tabular-nums">
-                  {rows.length === data.rows.length
-                    ? `${data.rows.length.toLocaleString()} row${data.rows.length === 1 ? '' : 's'}`
-                    : `${rows.length.toLocaleString()} of ${data.rows.length.toLocaleString()}`}
-                </span>
-              )}
+              {count && <span className="tabular-nums">{count}</span>}
               {rows.length > Math.min(size, ...SIZES) && grid && (
                 <>
                   <Select

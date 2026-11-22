@@ -1,8 +1,8 @@
 // The calendar: a month of days, a week or a day of hours, each row on the day and time of the
 // view's date, the earlier and later ones a click away. With the view's end date (until), a row in a
 // week or a day is as long as it lasts; a row that takes the whole day sits above the hours. A row
-// opens whole; the rows with no date are counted. With no rows yet, the table says where they come
-// from (its about).
+// opens whole; the rows with no date are counted. With no rows yet it is an empty month, with no
+// words over it (T5).
 import type { RowView, TableView as TableData, ViewConfig } from '@alpha/core/api'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -120,7 +120,6 @@ export function CalendarView({
           ]}
         />
       </div>
-      {rows.length === 0 && data.about && <p className="mb-2 text-ink-3 text-md">{data.about}</p>}
       {span === 'month' ? (
         <Month
           anchor={anchor}
