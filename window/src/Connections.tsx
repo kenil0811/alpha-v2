@@ -20,7 +20,7 @@ import { MenuItem } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 
 // The pictures a connector can ask for (its manifest's icon).
-const ICONS: Record<ConnectorView['icon'], ReactNode> = {
+export const ICONS: Record<ConnectorView['icon'], ReactNode> = {
   mail: <Mail className="size-4" />,
   calendar: <CalendarDays className="size-4" />,
   people: <UserRound className="size-4" />,
@@ -299,8 +299,8 @@ function DeleteConnector({
 }
 
 // Connecting an account: its address (or what the Mac asks), a password where it takes one, or
-// the provider's own sign-in page.
-function ConnectForm({
+// the provider's own sign-in page. In Settings and in place on Set up Alpha's tiles.
+export function ConnectForm({
   connector: c,
   appSet,
   onDone,

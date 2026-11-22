@@ -16,6 +16,7 @@ import {
   workspaceSite,
 } from '../world/workspace.ts'
 import type { Ctx } from './ctx.ts'
+import { connectTiles } from './story-connect.ts'
 import type {
   ClaudeScreen,
   ConnectScreen,
@@ -150,7 +151,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       key: 'connect',
       title: user.role === 'owner' ? 'Connect' : 'Connect your own',
       says: 'Show me where your work happens.',
-      connections: connections(),
+      tiles: connectTiles(ctx, room.onServer),
     }),
     people: async (): Promise<PeopleScreen> => ({
       key: 'people',

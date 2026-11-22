@@ -14,7 +14,8 @@ import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 import { buildServer, type ServerOptions } from './server.ts'
 import { chaptersOf, storyView } from './story.ts'
-import type { StoryView } from './story-types.ts'
+import { appsAmong } from './story-connect.ts'
+import type { ConnectScreen, StoryView } from './story-types.ts'
 
 const AS = { host: '127.0.0.1:4700', 'x-alpha-token': 't', 'x-alpha-cli': '1' }
 const TOKEN = `sk-ant-oat01-${'a'.repeat(40)}`
@@ -145,6 +146,29 @@ describe('Set up Alpha', () => {
     expect((await story(app)).done).toBe(true)
   })
 
+  it('shows the owner tiles that connect in place, and a member only what is theirs to connect', async () => {
+    await route.setToken(TOKEN, owner.id)
+    const screen = async (app: ReturnType<typeof as>) =>
+      (await app.inject({ url: '/api/story/connect', headers: AS })).json() as ConnectScreen
+    const mine = await screen(as())
+    expect(mine.tiles.map((t) => t.key)).toEqual(['calendar', 'computer', 'apps', 'file'])
+    // without interviews, no Alpha Bridge Apps reader (rules P1): Apps you use reads mail alone
+    expect(mine.tiles.find((t) => t.key === 'apps')?.reader).toBeNull()
+    // on a server, a computer pairs through Alpha Bridge; every tile says what it reads first
+    expect(mine.tiles.find((t) => t.key === 'computer')).toMatchObject({
+      server: true,
+      title: 'Your computer',
+    })
+    expect(mine.tiles.every((t) => t.reads.length > 0)).toBe(true)
+    const priya = world.accounts.add('Priya', 'priya@example.com', {
+      actor: { kind: 'person', id: owner.id },
+      user: owner.id,
+    })
+    const hers = await screen(as(world.user(priya.id) as User))
+    expect(hers.title).toBe('Connect your own')
+    expect(hers.tiles.map((t) => t.key)).toEqual(['calendar', 'computer'])
+  })
+
   it('takes the row off Home on Decline, and opens from the start again on Reopen', async () => {
     const app = as()
     await post(app, '/api/story/welcome')
@@ -206,5 +230,72 @@ describe('a plugin’s chapters', () => {
     expect(v.at).toBe('connect')
     expect(v.chapters.find((c) => c.key === 'workspace')?.state).toBe('skipped')
     expect(v.row).toBe('Carry on setting up: 2 of 7 done')
+  })
+})
+
+describe('Apps you use', () => {
+  const known = {
+    recent_days: 30,
+    min_mails: 2,
+    shown: 10,
+    apps: [
+      { name: 'QuickBooks', sites: ['quickbooks.intuit.com'], connector: 'quickbooks' },
+      { name: 'Slack', sites: ['slack.com'] },
+      { name: 'Zoom', sites: ['zoom.us'], desktop: ['zoom.us'] },
+      { name: 'Xero', sites: ['xero.com'] },
+      { name: 'Stripe', sites: ['dashboard.stripe.com'] },
+    ],
+  }
+  const now = Date.parse('2026-11-22T12:00:00Z')
+  const day = (d: number) => new Date(now - d * 86_400_000).toISOString()
+  const here = { ships: (c: string) => c === 'quickbooks', connected: () => false }
+
+  it('lists the computer’s apps used lately and the work apps in mail as one list, each once', () => {
+    const desktop = [
+      { name: 'Slack.app', last: day(1), times: 40 },
+      { name: 'zoom.us', last: day(3), times: 55 },
+      { name: 'Figma', last: day(5), times: 30 },
+      { name: 'Old Thing', last: day(90), times: 999 }, // not used in the last 30 days
+      { name: 'Never opened', last: null, times: null },
+    ]
+    const mail = new Map([
+      ['notification.intuit.com', 3], // QuickBooks, by its site's domain
+      ['slack.com', 6], // Slack, on the computer too
+      ['post.xero.com', 1], // one mail: under the least
+      ['stripe.com', 2],
+      ['notslack.com', 9],
+    ])
+    const found = appsAmong({ desktop, mail }, known, now, here)
+    expect(found.map((a) => [a.name, a.times, a.mails, a.connector])).toEqual([
+      // what Alpha can connect or sign in to first, the most used first
+      ['Zoom', 55, 0, null],
+      ['Slack', 40, 6, null],
+      ['QuickBooks', null, 3, 'quickbooks'],
+      ['Stripe', null, 2, null],
+      ['Figma', 30, 0, null],
+    ])
+  })
+
+  it('never lists an app the person left out', () => {
+    const desktop = [
+      { name: 'Slack', last: day(1), times: 40 },
+      { name: 'Figma', last: day(1), times: 30 },
+    ]
+    const found = appsAmong({ desktop, mail: new Map() }, known, now, {
+      ...here,
+      left: new Set(['figma']),
+    })
+    expect(found.map((a) => a.name)).toEqual(['Slack'])
+  })
+
+  it('shows so many at most', () => {
+    const desktop = Array.from({ length: 20 }, (_, i) => ({
+      name: `App ${i}`,
+      last: day(1),
+      times: i,
+    }))
+    expect(appsAmong({ desktop, mail: new Map() }, { ...known, shown: 4 }, now, here)).toHaveLength(
+      4,
+    )
   })
 })

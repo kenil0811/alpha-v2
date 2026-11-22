@@ -55,3 +55,25 @@ holds up to Claude and needs a token (the Mac has none to give it).
 
 Found on the look: the Mac's own Alpha isn't signed in to Claude (its journal says so twice today),
 so its story rightly puts Claude second.
+
+## Step 3: Connect in place
+
+On Kenil's look at step 2 ("can we have the connections here itself"), step 3 came next on the
+same branch. Connect is now tiles drawn by the core (`core/src/api/story-connect.ts`), each saying
+what it reads before anything is connected: Outlook and Gmail (Gmail's app password guided in three
+steps, Google's pages opening in a new tab), Calendar and contacts (a Mac's own connected on the
+tile; on a server, Outlook's and the Bridge's, with this month's events and Network's people and
+organizations counted), Google, Your computer (Alpha Bridge downloaded and paired from the tile on a
+server; folders added by path on Alpha's own Mac), Apps you use (one list of both, on Kenil's
+word: the apps on the person's computer as Alpha Bridge's Apps reader lists them, used in the last
+30 days, and the work apps in `core/config/apps.yaml` with two mails or more from their site's
+domain, an app seen both ways once; those Alpha can connect or sign in to first; the computer's part
+only where interviews are on, since the reader comes with them; an ✕ on a row leaves that app out
+for good, kept per person), the systems the installed modules read (a
+kit's `uses`), and Something you work from (dropped, it goes to the Module builder as New module's
+Import does). A provider's sign-in app is set up on its tile, from the same sheet as Settings. A
+member sees only what is theirs to connect, and the firm's systems once connected for everyone.
+The window reuses Settings' pieces (the connect form, the sign-in app's sheet, the Bridge's install
+steps, the site sign-in), each now shared. New ui-rule U5. On his look ("why are we wasting so much space") the tiles became one compact
+row each down a wider column: name, one line of what it reads (the rest in its ⓘ), its act at the
+right, what landed under it; on a phone the act moves under the name.

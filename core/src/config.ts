@@ -60,6 +60,20 @@ const Words = z.object({
   }),
 })
 
+const Apps = z.object({
+  recent_days: z.number().int().min(1),
+  min_mails: z.number().int().min(1),
+  shown: z.number().int().min(1),
+  apps: z.array(
+    z.object({
+      name: z.string().min(1),
+      sites: z.array(z.string().min(1)).min(1),
+      connector: z.string().min(1).optional(),
+      desktop: z.array(z.string().min(1)).optional(),
+    }),
+  ),
+})
+
 const People = z.object({
   mail_services: z.array(z.string().min(1)),
   second_levels: z.array(z.string().min(1)),
@@ -114,6 +128,7 @@ export const config = {
   people: (dir?: string) => load('people.yaml', yamlOf(People, 'people.yaml'), dir),
   words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
   sites: (dir?: string) => load('sites.yaml', yamlOf(Sites, 'sites.yaml'), dir),
+  apps: (dir?: string) => load('apps.yaml', yamlOf(Apps, 'apps.yaml'), dir),
   never: (dir?: string) => load('never.yaml', yamlOf(Never, 'never.yaml'), dir).kinds,
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),

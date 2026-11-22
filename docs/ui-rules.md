@@ -134,6 +134,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | U2 | Each chapter's screen is Alpha's face with its one line as the title, the chapter under it, and a foot with Back, Skip and the chapter's own act at the right edge; Claude has no Skip while no model is set, nor has Done; a refusal shows beside the act (R5). What it says is connected, and every count, comes from the core | 22 Nov | — |
 | U3 | Every part of a screen keeps its place from the first frame, so nothing moves as it loads; the only motion is a short fade and rise as a chapter comes in, none with reduced motion; no confetti | 22 Nov | — |
 | U4 | Home holds one row while a person's story waits, "Carry on setting up" and how far, with Decline and Carry on, until they finish or decline; never a checklist. Set up Alpha opens again from the workspace tile's menu, from the start | 22 Nov | — |
+| U5 | Connect is tiles that connect in place, never a link away, one compact row each down the page: its icon, its name and one line of what it reads before anything is connected (the rest in its ⓘ), and its act at the right, a plain button like every tile's (the screen's one accent button is the act at the story's foot). It connects as Settings › Connections does (its form, a provider's sign-in app set up on the tile, Alpha Bridge paired from it), then shows what is landing under it as counts from the core | 22 Nov | — |
 
 ## Wording
 

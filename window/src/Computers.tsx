@@ -14,7 +14,7 @@ import { Section } from './ui/section.tsx'
 import { updatedWords } from './ui/update-now.tsx'
 
 // The download for the computer this window is on, first.
-const mine = (d: BridgeDownload) =>
+export const mine = (d: BridgeDownload) =>
   /Windows/.test(navigator.userAgent)
     ? d.platform.startsWith('win')
     : d.platform.startsWith('darwin')
@@ -76,7 +76,7 @@ function LinkLine({ link }: { link: string }) {
 }
 
 // On the computer being added: install the app, open the link in it, lend a folder.
-function Install({
+export function Install({
   link,
   open,
   downloads,
@@ -124,7 +124,7 @@ function Install({
 }
 
 // Step 1's way, while this Alpha has only the zip: what to do on the computer, in a terminal.
-function Pairing({ link, downloads }: { link: string; downloads: BridgeDownload[] }) {
+export function Pairing({ link, downloads }: { link: string; downloads: BridgeDownload[] }) {
   return (
     <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-surface p-3 text-ink-2 text-md">
       <p>On the computer you are adding:</p>

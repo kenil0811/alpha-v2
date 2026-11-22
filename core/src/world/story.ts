@@ -4,6 +4,8 @@
 // say (api/story.ts), from who they are and what this Alpha has.
 import { type Db, one, run } from './db.ts'
 
+const LEFT_OUT = 'story:apps_left_out'
+
 export type ChapterState = 'done' | 'skipped'
 
 // The core's own chapters, by key: a plugin's chapter takes another.
@@ -65,4 +67,31 @@ export function declineStory(db: Db, user: string): void {
 // Opened again from the workspace tile's menu: from the start, what was done shown as done.
 export function reopenStory(db: Db, user: string): void {
   save(db, user, { chapters: {}, doneAt: null, declinedAt: null })
+}
+
+// The apps a person left out of Connect's Apps you use, by name: never listed for them again.
+export function appsLeftOut(db: Db, user: string): string[] {
+  const r = one<{ value: string }>(
+    db,
+    'SELECT value FROM preferences WHERE user_id = ? AND key = ?',
+    user,
+    LEFT_OUT,
+  )
+  try {
+    return r ? (JSON.parse(r.value) as string[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function leaveAppOut(db: Db, user: string, name: string): void {
+  const now = appsLeftOut(db, user)
+  if (now.some((n) => n.toLowerCase() === name.toLowerCase())) return
+  run(
+    db,
+    'INSERT INTO preferences (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value',
+    user,
+    LEFT_OUT,
+    JSON.stringify([...now, name]),
+  )
 }

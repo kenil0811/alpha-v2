@@ -7,6 +7,7 @@ import { Refused } from '../../world/kinds.ts'
 import {
   declineStory,
   finishStory,
+  leaveAppOut,
   markChapter,
   progressOf,
   reopenStory,
@@ -105,6 +106,13 @@ export function registerStory(ctx: Ctx): void {
     reopenStory(world.db, user.id)
     ctx.live()
     return view()
+  })
+
+  // an app left out of Connect's Apps you use, for good
+  app.post('/api/story/apps/remove', async (req) => {
+    const { name } = z.object({ name: z.string().trim().min(1).max(200) }).parse(req.body)
+    leaveAppOut(world.db, user.id, name)
+    return { ok: true }
   })
 
   app.get('/api/story/:chapter', async (req): Promise<ChapterScreen> => {

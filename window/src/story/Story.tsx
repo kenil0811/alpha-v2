@@ -91,7 +91,7 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
     <div className="fixed inset-0 z-(--z-overlay) flex flex-col bg-canvas text-base text-ink md:flex-row">
       <Path list={list} at={at} nowAt={nowAt} onPick={setAt} onLater={onClose} />
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex min-h-full max-w-[640px] flex-col gap-8 px-4 py-10 md:px-8 md:py-16">
+        <div className="mx-auto flex min-h-full max-w-[820px] flex-col gap-8 px-4 py-10 md:px-8 md:py-16">
           <header className="flex min-h-18 items-start gap-4">
             <div className="size-12 shrink-0">
               <Face mood={busy ? 'working' : 'quiet'} />

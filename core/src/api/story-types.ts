@@ -46,14 +46,50 @@ export interface WorkspaceScreen extends Screen {
 
 export interface ConnectScreen extends Screen {
   key: 'connect'
-  connections: {
-    id: string
-    title: string // Gmail
-    account: string
-    state: string
-    by: string // who connected it: You, a name, or Alpha
-    landed: string[] // what it holds, counted by code ("412 mails")
-  }[]
+  tiles: ConnectTile[]
+}
+
+// A connection as a tile shows it: whose it is, how it stands, and what it holds, counted by code.
+export interface TileConnection {
+  id: string
+  connector: string
+  account: string
+  state: string
+  by: string // who connected it: You, a name, or Alpha
+  landed: string[] // "412 mails"
+}
+
+// One tile of Connect (the redesign's calls 8 to 14): what it reads, said before anything is
+// connected, the connectors it connects in place, and what has landed. Each keeps its size from
+// the first frame: a tile that connects changes its words, never its shape.
+export interface ConnectTile {
+  key: string
+  kind: 'connector' | 'calendar' | 'computer' | 'apps' | 'file'
+  title: string
+  reads: string
+  connectors: string[] // connected in place, by name, as Settings › Connections connects them
+  steps: { words: string; url: string | null }[] // a guided setup before the form (Gmail's)
+  connections: TileConnection[]
+  landed: string[] // what landed beyond its connections (Network filling, this month's events)
+  note: string | null
+  apps: AppFound[] // Apps you use, from the person's computer and mail
+  // Apps you use: the computer's Apps reader where it comes with this Alpha, its connection once on
+  reader: { id: string | null; read: boolean } | null
+  server: boolean // the computer tile: Alpha runs on a server, so a computer pairs through Alpha Bridge
+}
+
+// An app the person uses: on their computer, as Alpha Bridge's Apps reader listed it (when it was
+// last used and how often), or among their mail's senders (how many mails), or both; and how Alpha
+// reaches it where it knows the app (a connector that ships, or its site, signed in to in Alpha's
+// browser).
+export interface AppFound {
+  name: string
+  last: string | null
+  times: number | null
+  mails: number
+  site: string | null
+  connector: string | null
+  connected: boolean
 }
 
 export interface PeopleScreen extends Screen {
