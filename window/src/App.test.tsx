@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { NO_LAYOUT } from './layout.ts'
+import { askFor, NewModule } from './NewModule.tsx'
 import { forward, placeOf } from './place.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
@@ -157,6 +158,42 @@ describe('the window', () => {
     const named = rail({ workspace: { name: 'Bakery HQ', picture: null } })
     expect(named).toContain('aria-label="Bakery HQ"')
     expect(named).not.toContain('Kenil&#x27;s workspace')
+  })
+
+  it('lights New module in the rail on its page, and the page asks what it should do', () => {
+    const html = renderToString(
+      <Rail
+        modules={modules}
+        place={{ at: 'new', setup: false, task: null }}
+        here={null}
+        name="Kenil"
+        waiting={0}
+        onNew={() => undefined}
+        tasksDue={0}
+        layout={open}
+        onLayout={() => undefined}
+      />,
+    )
+    expect(html).toContain('aria-current="page"') // no other row is current on #/new
+    expect(placeOf('#/new/setup')).toEqual({ at: 'new', setup: true, task: null })
+    // the build it started is in the address, so leaving and coming back finds it
+    expect(placeOf('#/new')).toEqual({ at: 'new', setup: false, task: null })
+    expect(placeOf('#/new/k_5ptz')).toEqual({ at: 'new', setup: false, task: 'k_5ptz' })
+    // the files brought in go to the builder by their ids, not only their names
+    expect(
+      askFor('A deal tracker', [
+        { name: 'invoice.pdf', hash: 'ab12' },
+        { name: 'invoice.pdf', hash: 'cd34' },
+      ]),
+    ).toBe(
+      'A deal tracker\n\nFiles I brought in (open each by its id): invoice.pdf, id ab12; invoice.pdf, id cd34',
+    )
+    const page = renderToString(
+      <NewModule setup={false} task={null} version={0} onBuild={async () => ''} />,
+    )
+    expect(page).toContain('What are you planning to build today?')
+    expect(page).toContain('Send')
+    expect(page).toContain('Import')
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {

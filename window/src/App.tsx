@@ -26,6 +26,7 @@ import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { applyLive, clearLive } from './live.ts'
 import { ModuleScreen } from './Module.tsx'
+import { NewModule } from './NewModule.tsx'
 import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
 import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
@@ -148,17 +149,6 @@ export function App() {
   const chosen = agents.some((a) => a.id === asked) ? asked : CHIEF
   const agentHere = agents.find((a) => a.id === chosen) ?? null
   const pickAgent = useCallback((id: string) => changeLayout({ agent: id }), [changeLayout])
-  // New module opens the Module builder's conversation, the Chief of staff's once it has gone
-  const openBuilder = useCallback(() => {
-    const go = (id: string) => {
-      pickAgent(id)
-      window.location.hash = '#/conversation'
-    }
-    api.get<{ id: string | null }>('/api/agents/builder').then(
-      (b) => go(b.id ?? CHIEF),
-      () => go(CHIEF),
-    )
-  }, [pickAgent])
   const chosenRef = useRef(chosen)
   chosenRef.current = chosen
   const askableRef = useRef(askable)
@@ -386,6 +376,8 @@ export function App() {
         return 'Settings'
       case 'parts':
         return 'Parts'
+      case 'new':
+        return 'New module'
       case 'plugin':
         return screenOf(place.name)?.title ?? ''
       case 'file':
@@ -422,7 +414,7 @@ export function App() {
             waiting={stream?.cards.length ?? 0}
             signals={moduleSignals(stream)}
             onNew={() => {
-              openBuilder()
+              window.location.hash = '#/new'
             }}
             tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
           />
@@ -461,6 +453,8 @@ export function App() {
                       busyTurn={busyTurn}
                       version={version}
                     />
+                  ) : place.at === 'new' ? (
+                    <NewModule setup={place.setup} task={place.task} version={version} />
                   ) : place.at === 'parts' ? (
                     <Parts />
                   ) : place.at === 'plugin' ? (

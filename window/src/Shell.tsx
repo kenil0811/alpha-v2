@@ -48,7 +48,7 @@ export function Rail({
   tasksDue: number // tasks due today or overdue
   layout: Layout
   onLayout: (change: Partial<Layout>) => void
-  onNew: () => void // New module: a conversation with the Module builder
+  onNew: () => void // New module: its page
 }) {
   // the rail's width, dragged by its edge, kept by Alpha per person
   const width = layout.railWidth ?? 216
@@ -163,7 +163,11 @@ export function Rail({
           <button
             type="button"
             onClick={onNew}
-            className="flex h-7.5 w-full items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink"
+            aria-current={place.at === 'new' ? 'page' : undefined}
+            className={cn(
+              'flex h-7.5 w-full items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+              place.at === 'new' && 'bg-rail-sel font-medium text-rail-ink',
+            )}
           >
             <Plus className="size-4 shrink-0" />
             New module
@@ -378,7 +382,8 @@ function Strip({
           aria-label="New module"
           data-tip="New module"
           onClick={onNew}
-          className={stripItem()}
+          aria-current={place.at === 'new' ? 'page' : undefined}
+          className={stripItem(place.at === 'new')}
         >
           <Plus className="size-4" />
         </button>

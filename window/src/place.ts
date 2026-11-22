@@ -7,6 +7,7 @@ export type Place =
   | { at: 'home' }
   | { at: 'conversation'; setup: boolean } // Agents: the chosen agent's chat, or its Setup
   | { at: 'parts' }
+  | { at: 'new'; setup: boolean; task: string | null } // New module: what it should do, then the build's task
   | { at: 'plugin'; name: string } // a plugin's own page
   | { at: 'item'; kind: 'schedule' | 'run' | 'rule'; id: string }
   | { at: 'agent'; id: string }
@@ -99,6 +100,12 @@ export function placeOf(address: string): Place {
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
   if (hash === '#/conversation' || hash === '#/conversation/setup')
     return { at: 'conversation', setup: hash.endsWith('/setup') }
+  // New module, its Setup, or the build it started: the task in the address, so it reopens there
+  const nm = /^#\/new(?:\/([\w-]+))?$/.exec(hash)
+  if (nm)
+    return nm[1] === 'setup'
+      ? { at: 'new', setup: true, task: null }
+      : { at: 'new', setup: false, task: nm[1] ?? null }
   if (hash === '#/parts') return { at: 'parts' }
   const pl = /^#\/p\/([a-z][a-z0-9-]*)$/.exec(hash)
   if (pl?.[1]) return { at: 'plugin', name: pl[1] }

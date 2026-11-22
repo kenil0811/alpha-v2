@@ -111,7 +111,7 @@ export function rowTools({ world, here, ctx }: Tooling): ToolEntry[] {
     ),
     tool(
       'file',
-      'Files the person dropped in. read: a file’s contents with each piece’s place (sheet and cell, or line), from offset. import: a sheet’s rows into a table, with columns mapping each header to a field; every value keeps its cell as its source; a file imported into that table before goes in again only with again: true, on the person’s word. place: put the file on the row it belongs to (a deal’s CIM on that deal), by table and row id, with kind one of the kinds that table’s rows take when it names them; the module’s readers then read it there. off: take it off that row; the file stays.',
+      'Files the person dropped in, each named by its id (exactly that file) or its name (the newest of that name). read: a file’s contents with each piece’s place (sheet and cell, or line), from offset. import: a sheet’s rows into a table, with columns mapping each header to a field; every value keeps its cell as its source; a file imported into that table before goes in again only with again: true, on the person’s word. place: put the file on the row it belongs to (a deal’s CIM on that deal), by table and row id, with kind one of the kinds that table’s rows take when it names them; the module’s readers then read it there. off: take it off that row; the file stays.',
       {
         action: z.enum(['read', 'import', 'place', 'off']),
         file: z.string(),
