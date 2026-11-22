@@ -302,6 +302,8 @@ describe('the desk', () => {
     desk.close()
   })
 
+  // It starts every standard connector as its own process (loadSet): about 0.6 s on a Mac, but past
+  // vitest's 5 s on GitHub's two-core machine while the other test files run beside it.
   it('waits on a card showing the whole email before a send, and saves a draft at once', async () => {
     const connectors = new ConnectorService(world, {
       secrets: new MemorySecrets(),
@@ -337,5 +339,6 @@ describe('the desk', () => {
     await done
     expect(decisions.slice(2)).toEqual(['draft:allow', 'send:allow'])
     desk.close()
-  })
+    connectors.close()
+  }, 20_000)
 })
