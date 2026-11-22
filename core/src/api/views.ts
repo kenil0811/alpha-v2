@@ -17,7 +17,7 @@ import { besideFrom, type RecordOut, resetWords } from '../world/records/index.t
 import type { Module, Table } from '../world/shape/index.ts'
 import { manifestSays } from '../world/shape/manifest.ts'
 import { moduleNumber, tableNumber } from '../world/shape/numbers.ts'
-import { placeOf } from '../world/shape/parts.ts'
+import { peoplesContacts, placeOf } from '../world/shape/parts.ts'
 import type { Task } from '../world/tasks/index.ts'
 import { taskOfTurn } from '../world/tasks/index.ts'
 import type { View } from '../world/views.ts'
@@ -34,6 +34,9 @@ import type {
   TaskLineView,
   TaskView,
 } from './types.ts'
+
+// The tables a module lists: none hidden, and never People's own Contacts, which is People itself.
+export const listed = (t: Table): boolean => !t.hidden && !peoplesContacts(t)
 
 // A table as a module lists it: its rows, and where it sits.
 export function tableSummary(world: BaseCtx['world'], t: Table): TableSummary {
@@ -254,12 +257,12 @@ export function makeViews(ctx: BaseCtx) {
       pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
-        .filter((t) => !t.hidden)
+        .filter(listed)
         .map((t) => tableSummary(world, t)),
     }))
     const shown = new Set<string>()
     for (const m of all) {
-      if (!m.tables.length && !m.pages.length) continue
+      if (!m.tables.length && !m.pages.length && !m.people) continue
       for (let p: ModuleSummary | undefined = m; p && !shown.has(p.id); ) {
         shown.add(p.id)
         p = all.find((x) => x.id === p?.parent)

@@ -37,7 +37,7 @@ export async function install(
   const kitName = `${manifest.name} ${manifest.version}`
   const kitCtx: WriteCtx = { ...ctx, actor: { kind: 'system', id: `kit:${manifest.name}` } }
   const module = tx(world.db, () => {
-    const m = known ?? world.shape.makeModule(manifest.name, kitCtx, manifest.name)
+    const m = known ?? world.shape.makeModule(titleOf(world, manifest), kitCtx, manifest.name)
     for (const f of files) {
       mkdirSync(dirname(join(m.dir, f)), { recursive: true })
       copyFileSync(join(kitDir, f), join(m.dir, f))
@@ -300,3 +300,8 @@ function updateSites(
       module: module.id,
     })
 }
+
+// The name a kit's module goes in under: its title, unless another module answers to it, then the
+// kit's own name.
+export const titleOf = (world: World, manifest: { name: string; title?: string | undefined }) =>
+  manifest.title && !world.shape.module(manifest.title) ? manifest.title : manifest.name

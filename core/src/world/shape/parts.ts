@@ -2,6 +2,7 @@
 // Financials are part of the deal), and a table can be setup (what the module's schedules read). A
 // module's tabs are its main tables: neither part of another nor setup. No roles, no order to keep,
 // no cap: the place falls out of what the rows are.
+import { CONTACTS } from '@alpha/connector-sdk'
 import { all, json, one, parse, run, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
@@ -13,13 +14,22 @@ import type { Table, WriteCtx } from './types.ts'
 import { findField } from './types.ts'
 
 // people: a one-row-per-person table of the module People lives in: its rows are People's columns
-// and a person's page, so it is no tab of its own either
+// and a person's page, so it is no tab of its own either; and that module's own Contacts
 export type Place = 'main' | 'part' | 'setup' | 'people'
+
+// People's own address book: the Contacts every address book lands in (CONTACTS, found by its
+// lasting key by every connector and Bridge), in the module People lives in. Its rows are the
+// people's sources, so it is People itself and no place a person browses: no tab, not in Setup,
+// Find or a module's list of tables.
+export const peoplesContacts = (t: Table): boolean =>
+  (t.key ?? t.name) === CONTACTS.name && manifestSays(t.module, 'people')
 
 export function placeOf(t: Table): Place {
   if (t.setup) return 'setup'
   if (t.fields.some((f) => f.partOf)) return 'part'
-  return t.fields.some((f) => f.per) && manifestSays(t.module, 'people') ? 'people' : 'main'
+  return (t.fields.some((f) => f.per) || peoplesContacts(t)) && manifestSays(t.module, 'people')
+    ? 'people'
+    : 'main'
 }
 
 // The tables whose rows are part of this one's, each with the relation that says so.

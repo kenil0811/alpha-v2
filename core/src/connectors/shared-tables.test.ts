@@ -9,6 +9,9 @@ import { CONTACTS } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { livesPeople } from '../api/views.ts'
 import { keepDefaults } from '../modules/defaults.ts'
+import { MIGRATIONS } from '../world/migrations.ts'
+import type { Table } from '../world/shape/index.ts'
+import { placeOf } from '../world/shape/parts.ts'
 import { World } from '../world/world.ts'
 import { landIn } from './places.ts'
 
@@ -30,7 +33,7 @@ describe('Calendar and People, Alpha’s own', () => {
     const said = await keepDefaults(world, system)
     expect(said).toEqual([
       "Installed Calendar 0.2.1, Alpha's own.",
-      "Installed People 0.1.1, Alpha's own.",
+      "Installed People 0.1.2, Alpha's own.",
     ])
     const cal = world.shape.ownModule('Calendar')
     const people = world.shape.ownModule('People')
@@ -46,6 +49,13 @@ describe('Calendar and People, Alpha’s own', () => {
     expect(world.shape.tables(people?.id ?? '').map((t) => t.name)).toEqual(['Contacts'])
     expect(world.shape.ownTable(cal?.id ?? '', 'Events')?.id).toBe(events?.id)
     expect(world.shape.ownModule('Contacts')).toBeUndefined()
+    // People's module reads Network; its own Contacts keeps its key, every connector's and every
+    // Bridge's, and is People's source, never a place of its own: no tab, and none can be made
+    expect(people?.name).toBe('Network')
+    const book = world.shape.ownTable(people?.id ?? '', CONTACTS.name) as Table
+    expect(book.key).toBe('Contacts')
+    expect(placeOf(book)).toBe('people')
+    expect(() => world.shape.setTab(book.id, true, system)).toThrow(/not as a tab/)
   })
 
   it('adopt the Events a calendar made before them, rows and all', async () => {
@@ -74,9 +84,36 @@ describe('Calendar and People, Alpha’s own', () => {
     })
     await keepDefaults(world, system)
     const people = world.shape.ownModule('People')
-    expect(people?.name).toBe('People')
+    expect(people?.name).toBe('Network')
     expect(world.shape.ownModule('Contacts')).toBeUndefined()
     expect(world.shape.ownTable(people?.id ?? '', 'Contacts')?.id).toBe(before[0]?.id)
     expect(people && livesPeople(people)).toBe(true)
+  })
+})
+
+// Migration 10: People's module, named People before, reads Network; a name the person gave it,
+// or a Network already there, is left as it is.
+describe('People’s module, named before it read Network', () => {
+  const migrate = () => (MIGRATIONS[9] as (db: typeof world.db) => void)(world.db)
+  const named = (name: string) =>
+    world.db.prepare("UPDATE modules SET name = ? WHERE key = 'People'").run(name)
+  const name = () => world.shape.ownModule('People')?.name
+
+  it('reads Network, and keeps a name the person gave it', async () => {
+    await keepDefaults(world, system)
+    named('People')
+    migrate()
+    expect(name()).toBe('Network')
+    named('Friends')
+    migrate()
+    expect(name()).toBe('Friends')
+  })
+
+  it('leaves it People when the person has a module called Network', async () => {
+    world.shape.makeModule('Network', system)
+    await keepDefaults(world, system)
+    expect(name()).toBe('People')
+    migrate()
+    expect(name()).toBe('People')
   })
 })

@@ -1,8 +1,9 @@
-# Alpha's own People: the people and organizations Alpha knows, joined across contacts, mail and
-# meetings; every address book Alpha reads lands in its Contacts (a Mac's own through Alpha
-# Bridge, Outlook, Google), found by its lasting keys.
+# Alpha's own People, which reads Network: the people and organizations Alpha knows, joined across
+# contacts, mail and meetings; every address book Alpha reads lands in its Contacts (a Mac's own
+# through Alpha Bridge, Outlook, Google), found by its lasting keys, People's source and never a tab.
 name: People
-version: 0.1.1
+title: Network
+version: 0.1.2
 api: 3
 core: true
 people: true

@@ -18,6 +18,7 @@ import {
 } from '../../world/workspace.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FoundRow, Layout, Me, ViewOf } from '../types.ts'
+import { listed } from '../views.ts'
 
 export function registerMe(ctx: Ctx): void {
   const { app, world, user, options } = ctx
@@ -227,7 +228,8 @@ export function registerMe(ctx: Ctx): void {
         .filter((h) => h.what === 'record')
         .flatMap((h) => {
           const rec = world.records.get(h.id)
-          if (!rec || rec.table.hidden) return []
+          // People's own Contacts is found as the people above, not again as its rows
+          if (!rec || !listed(rec.table)) return []
           return [
             {
               label: world.rowName(rec.table, rec.record.values),

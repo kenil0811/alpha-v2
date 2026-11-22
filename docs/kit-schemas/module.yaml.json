@@ -69,6 +69,10 @@
     "people": {
       "type": "boolean"
     },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
     "history": {
       "type": "object",
       "properties": {

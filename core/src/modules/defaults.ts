@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { run } from '../world/db.ts'
 import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
-import { install, installedKits, readKit, update } from './kits/index.ts'
+import { install, installedKits, readKit, titleOf, update } from './kits/index.ts'
 import { schedules } from './schedules.ts'
 
 export const DEFAULT_KITS = join(import.meta.dirname, '..', '..', 'kits')
@@ -85,7 +85,7 @@ async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<str
       manifest.tables.map((t) => t.name),
     )
     if (home) {
-      world.shape.renameModule(home.id, manifest.name, ctx)
+      world.shape.renameModule(home.id, titleOf(world, manifest), ctx)
       world.shape.rekeyModule(home.id, manifest.name)
       m = world.shape.ownModule(manifest.name)
     }

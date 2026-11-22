@@ -81,6 +81,8 @@ export const Manifest = z.object({
   core: z.boolean().optional(),
   // the module People and Organizations live in, as its tabs: Network's
   people: z.boolean().optional(),
+  // the module's name as the person sees it, when it is not the kit's name (its lasting key)
+  title: z.string().min(1).optional(),
   // what changed between versions, so an update renames in place and leaves a removal removed
   history: z
     .object({

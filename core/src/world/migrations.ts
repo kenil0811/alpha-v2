@@ -96,4 +96,12 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   // 9, 22 Nov 2026: every module, table and row numbered (1.3.4), each from a counter that only
   // goes up (shape/numbers.ts)
   numbers,
+  // 10, 22 Nov 2026: the module People and Organizations live in reads Network (its kit's title);
+  // its lasting key stays People. A name the person gave it is theirs, and a Network already there
+  // leaves it as it is.
+  (db) => {
+    db.exec(`UPDATE modules SET name = 'Network' WHERE key = 'People' AND name = 'People'
+      AND NOT EXISTS (SELECT 1 FROM modules AS o WHERE o.id != modules.id
+        AND (lower(o.name) = 'network' OR o.slug = 'network'))`)
+  },
 ]
