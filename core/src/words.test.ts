@@ -1,5 +1,6 @@
 // Where Alpha's words send a person must be a place in the window. Intelligence went into Settings
-// (22 Nov), so nothing Alpha says, to the model or to people, sends anyone to Intelligence.
+// and Settings › Model reads LLM (22 Nov), so nothing Alpha says, to the model or to people, sends
+// anyone to either by its old name.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -28,12 +29,12 @@ function files(dir: string): string[] {
 }
 
 describe('where Alpha sends people', () => {
-  it('never to Intelligence, which is in Settings now', () => {
+  it('never to Intelligence, which is in Settings now, nor to Settings › Model, now LLM', () => {
     const found = WHERE.flatMap((d) => files(join(ROOT, d))).flatMap((f) =>
       readFileSync(f, 'utf8')
         .split('\n')
         .flatMap((line, i) =>
-          /Intelligence ›/.test(line) ? [`${relative(ROOT, f)}:${i + 1}`] : [],
+          /Intelligence ›|Settings › Model/.test(line) ? [`${relative(ROOT, f)}:${i + 1}`] : [],
         ),
     )
     expect(found).toEqual([])

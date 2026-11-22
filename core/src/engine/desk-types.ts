@@ -25,7 +25,7 @@ export interface DeskOptions {
   // the model behind the desk, or how to pick it when a session opens (the route can change);
   // Claude Code when not given
   provider?: Provider | (() => Provider)
-  // every provider the person can choose, by route, for Settings › Model
+  // every provider the person can choose, by route, for Settings › LLM
   providers?: { route: 'subscription' | 'key'; title: string; provider: Provider }[]
   query?: QueryFn // a scripted session for the Claude Code provider (tests)
   emit?: (e: DeskEvent) => void

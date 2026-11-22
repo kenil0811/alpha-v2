@@ -1,7 +1,8 @@
 // The chart: a bar for each of the view's groups (a choice in its order), or for each month of its
-// date, as long as the rows it holds or the sum of a number. A bar's click shows those rows in the
-// table.
+// date, as long as the rows it holds or the sum of a number, drawn with the window's one chart
+// pieces (ui/chart.tsx). A bar's click shows those rows in the table.
 import type { FieldView, RowView } from '@alpha/core/api'
+import { Bars } from '../../ui/chart.tsx'
 import { groupRows, numberOf } from '../engine.ts'
 import { money } from '../values.ts'
 
@@ -46,7 +47,6 @@ export function ChartView({
   const words = (n: number) =>
     currency ? money(n, currency, true) : Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1)
   const values = all.map((g) => amountOf(g.rows))
-  const top = Math.max(1, ...values)
   const sum = values.reduce((a, b) => a + b, 0)
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -59,29 +59,14 @@ export function ChartView({
             {measure ? `${words(sum)} in all` : `${sum} row${sum === 1 ? '' : 's'}`}
           </span>
         </div>
-        <div className="flex flex-col gap-1.5">
-          {all.map((g, i) => (
-            <button
-              key={g.key || 'none'}
-              type="button"
-              onClick={() => onBar(axis, g.key)}
-              data-tip="Show these rows in the table"
-              className="grid grid-cols-[160px_1fr_88px] items-center gap-3 rounded-sm px-1 py-0.5 text-left text-md hover:bg-hover"
-            >
-              <span className="truncate text-ink">{g.label}</span>
-              <span className="h-4.5 overflow-hidden rounded-sm bg-sunk">
-                <span
-                  className="block h-full rounded-sm bg-accent"
-                  style={{
-                    width: `${((values[i] ?? 0) / top) * 100}%`,
-                    minWidth: values[i] ? 2 : 0,
-                  }}
-                />
-              </span>
-              <span className="text-right text-ink-2 tabular-nums">{words(values[i] ?? 0)}</span>
-            </button>
-          ))}
-        </div>
+        <Bars
+          parts={all.map((g, i) => ({ label: g.label, value: values[i] ?? 0 }))}
+          fmt={words}
+          onPick={(i) => onBar(axis, all[i]?.key ?? '')}
+          pickTip="Show these rows in the table"
+          // a choice's bars wear its choices' colours; months and others the accent
+          colours={axis.kind === 'choice' ? 'parts' : 'accent'}
+        />
       </div>
     </div>
   )

@@ -49,14 +49,14 @@ describe('a turn Claude would not answer', () => {
     expect(refusedWords('server_error', {})).toBeNull()
   })
 
-  it('links the owner to Settings › Model, and tells a member who fixes it', () => {
+  it('links the owner to Settings › LLM, and tells a member who fixes it', () => {
     const e = { text: 'Alpha can’t reach Claude yet.', data: { refused: 'authentication_failed' } }
     expect(failedOf(e, owner)).toEqual({
       words: 'Alpha can’t reach Claude yet.',
-      data: { fix: { at: '#/settings/model', words: 'Open Settings › Model' } },
+      data: { fix: { at: '#/settings/model', words: 'Open Settings › LLM' } },
     })
     expect(failedOf(e, member)).toEqual({
-      words: 'Alpha can’t reach Claude yet. The firm’s owner can fix it in Settings › Model.',
+      words: 'Alpha can’t reach Claude yet. The firm’s owner can fix it in Settings › LLM.',
       data: {},
     })
     expect(failedOf({ text: '', data: {} }, owner).words).toBe(

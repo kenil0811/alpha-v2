@@ -180,7 +180,7 @@ describe('the stream', () => {
 
   it('keeps where a turn’s failure is fixed, only as a place in the window', () => {
     const turn = 't1'
-    const fix = { at: '#/settings/model', words: 'Open Settings › Model' }
+    const fix = { at: '#/settings/model', words: 'Open Settings › LLM' }
     const [ok] = group([
       line('said', 'open my Drive', { actor: 'person', turn }),
       line('error', 'Alpha can’t reach Claude yet.', { turn, data: { fix } }),

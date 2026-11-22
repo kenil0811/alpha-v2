@@ -158,7 +158,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
 }
 
 // Claude's own sign-in, started from here: the browser opens, and the line turns green once the
-// person has signed in there (asked again every few seconds for a while). Settings › Model uses it
+// person has signed in there (asked again every few seconds for a while). Settings › LLM uses it
 // too.
 export function useSignIn(onChange: () => void): [boolean, () => void] {
   const [waiting, setWaiting] = useState(false)

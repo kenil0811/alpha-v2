@@ -66,7 +66,7 @@ export function limitLine(
 }
 
 // A turn that failed, said for the person: when Claude refused this install, why, and where that is
-// fixed (Settings › Model, which only the owner sees); otherwise that it went wrong.
+// fixed (Settings › LLM, which only the owner sees); otherwise that it went wrong.
 export function failedOf(
   e: { text: string; data: Record<string, unknown> },
   user: User,
@@ -74,10 +74,10 @@ export function failedOf(
   if (!e.data.refused || !e.text)
     return { words: 'Something went wrong, and nothing more was done.', data: {} }
   if (user.role !== 'owner')
-    return { words: `${e.text} The firm’s owner can fix it in Settings › Model.`, data: {} }
+    return { words: `${e.text} The firm’s owner can fix it in Settings › LLM.`, data: {} }
   return {
     words: e.text,
-    data: { fix: { at: '#/settings/model', words: 'Open Settings › Model' } },
+    data: { fix: { at: '#/settings/model', words: 'Open Settings › LLM' } },
   }
 }
 

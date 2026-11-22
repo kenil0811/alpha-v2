@@ -1,13 +1,13 @@
-// What the model was used for and what it cost, a month at a time: Settings › Usage: the month's
-// total, then by module, by schedule and by model, largest first. On the subscription the cost is
+// What the model was used for and what it cost, a month at a time, at the top of Settings › LLM:
+// the month's figures, then one chart card split by a choice (its Table look holds the numbers). On the subscription the cost is
 // what it would be on an API key, and says so.
-import type { UsageRow, UsageView } from '@alpha/core/usage'
+import type { UsageView } from '@alpha/core/usage'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { Figures, SpendChart } from './SpendChart.tsx'
 import { money } from './table/values.ts'
-import { cutTip } from './ui/cut-tip.ts'
 import { Info } from './ui/info.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 
 // The models by their names, never their ids (W6)
@@ -50,67 +50,19 @@ export function UsageSection() {
             ) : (
               <span className="text-ink text-md">{monthName(u.month)}</span>
             )}
-            <span className="font-medium text-ink text-lg tabular-nums">
-              {usdWords(u.total.usd)}
-            </span>
             {u.atApiPrices && (
               <Info help="Your Claude subscription doesn't charge per reply: this is what the same use would cost paid by use." />
             )}
             <span className="text-ink-3 text-md">
-              {[
-                u.atApiPrices ? 'at API prices' : '',
-                plural(u.total.turns, 'reply', 'replies'),
-                plural(u.total.runs, 'run'),
-                plural(u.total.tokens, 'token'),
-              ]
+              {[u.atApiPrices ? 'at API prices' : '', plural(u.total.tokens, 'token')]
                 .filter(Boolean)
                 .join(' · ')}
             </span>
           </div>
-          <UsageTable title="By module" rows={u.byModule} />
-          {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
-          {u.bySchedule.length > 0 && <UsageTable title="By schedule" rows={u.bySchedule} />}
-          <UsageTable
-            title="By model"
-            rows={u.byModel.map((r) => ({ ...r, name: MODEL_NAMES[r.name] ?? r.name }))}
-          />
+          <Figures u={u} />
+          <SpendChart u={u} names={MODEL_NAMES} />
         </div>
       )}
     </Section>
-  )
-}
-
-function UsageTable({ title, rows }: { title: string; rows: UsageRow[] }) {
-  return (
-    <table className="w-full table-fixed border-collapse text-md">
-      <thead>
-        <tr className="text-left text-ink-3 text-sm">
-          <th className="border-line border-b py-1 pr-3 font-normal">{title}</th>
-          <th className="w-20 border-line border-b py-1 pr-3 text-right font-normal">Replies</th>
-          <th className="w-20 border-line border-b py-1 pr-3 text-right font-normal">Runs</th>
-          <th className="w-32 border-line border-b py-1 pr-3 text-right font-normal">Tokens</th>
-          <th className="w-28 border-line border-b py-1 text-right font-normal">Cost</th>
-        </tr>
-      </thead>
-      <tbody className="tabular-nums">
-        {rows.map((r) => (
-          <tr key={r.name}>
-            <td className="truncate border-hair border-b py-1.5 pr-3 text-ink" {...cutTip(r.name)}>
-              {r.name}
-            </td>
-            <td className="border-hair border-b py-1.5 pr-3 text-right text-ink-2">
-              {r.turns || '–'}
-            </td>
-            <td className="border-hair border-b py-1.5 pr-3 text-right text-ink-2">
-              {r.runs || '–'}
-            </td>
-            <td className="border-hair border-b py-1.5 pr-3 text-right text-ink-2">
-              {r.tokens.toLocaleString()}
-            </td>
-            <td className="border-hair border-b py-1.5 text-right text-ink">{usdWords(r.usd)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   )
 }
