@@ -155,3 +155,22 @@ on it. And on his second yes, the never-use list leaves out a key or token by it
 its credentials kind: Hugging Face, OpenAI and Anthropic, GitHub, GitLab, AWS, Google, Slack,
 Stripe, private keys, signed web tokens), from every connection (N1). Alpha leaves them out as they
 land now; on a computer, before they leave it, from the Bridge's next version.
+
+## Step 6: the look
+
+On his "Yes start". Every chapter, owner and member, drawn by the core for a made-up firm on a
+fresh server, shot in WebKit and Chromium, light and dark, a window and a phone. What it found,
+fixed: the window had never had the plugins' own styles (the `@source` glob for plugins' window
+parts matched nothing since 2 Nov), so Get to know you and What I learned had gone without some
+of their spacing and widths; a server's Calendar and contacts tile had nothing to press and said
+nothing (it now says they come with Outlook or Alpha Bridge); a member's mail tile offered to set
+up the provider's sign-in app, which is the owner's (it now waits on them, by name); on a phone,
+tiles' acts sat beside or under their names by chance and cut a title, About you lines were
+squeezed beside their buttons, a workflow's name was cut by its hours, and the Welcome's promise
+and Get to know you's lines were cut (each now wraps or goes under its name); What's here listed
+people in a sentence (now rows) and said "already has" with nothing there; Done said "Here's
+where I'll start" with nothing connected, and told a member they could add people; the first
+chapter showed a Back that did nothing; a workflow agreed in its table read Questions first
+without a Yes on its playback; Get to know you's empty sources said "ask again" from the chat
+days (they now point a step back to Connect). His Mac greets "kenil" because that is the Mac
+account's full name. Alpha Bridge goes to 0.5.2 for the key and token shapes.

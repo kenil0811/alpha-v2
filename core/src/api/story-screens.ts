@@ -163,7 +163,10 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     here: async (): Promise<HereScreen> => ({
       key: 'here',
       title: 'What’s here',
-      says: `Here’s what ${workspace()} already has.`,
+      says:
+        views.summaries().length || world.agents.list().length
+          ? `Here’s what ${workspace()} already has.`
+          : `Here’s who is in ${workspace()}.`,
       workspace: workspace(),
       modules: views.summaries().map((m) => {
         const made = world.shape.module(m.id)
@@ -178,15 +181,24 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       shared:
         'The tables here are everyone’s: what you add, everyone here can see, and what they add, you can.',
     }),
-    done: async (): Promise<DoneScreen> => ({
-      key: 'done',
-      title: 'Done',
-      says: 'I’m ready. Here’s where I’ll start.',
-      connected: connections()
+    done: async (): Promise<DoneScreen> => {
+      const connected = connections()
         .filter((k) => k.state === 'connected')
-        .map((k) => `${k.title}, ${k.account}${k.landed.length ? `: ${k.landed.join(', ')}` : ''}`),
-      people: user.role === 'owner' ? others().map((a) => a.name) : [],
-    }),
+        .map((k) => `${k.title}, ${k.account}${k.landed.length ? `: ${k.landed.join(', ')}` : ''}`)
+      return {
+        key: 'done',
+        title: 'Done',
+        says: connected.length
+          ? 'I’m ready. Here’s where I’ll start.'
+          : 'I’m ready. I’ll start with what you connect.',
+        connected,
+        people: user.role === 'owner' ? others().map((a) => a.name) : [],
+        none:
+          user.role === 'owner'
+            ? 'You can connect things and add people any time in Settings.'
+            : 'You can connect your own any time in Settings.',
+      }
+    },
   }
 
   // What each act does with what the person gave; the story moves on after it.

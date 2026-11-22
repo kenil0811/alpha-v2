@@ -81,16 +81,29 @@ export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
     connections: [],
     landed: [],
     note: null,
+    waits: null,
     apps: [],
     reader: null,
     server,
     ...t,
   })
 
+  // a provider's sign-in app is the owner's to set up (call 10): until it is, a member's tile
+  // says it waits on them, with nothing to press
+  const signIn = engine.connectors?.signIn
+  const ownerName = world.users().find((u) => u.role === 'owner')?.name ?? 'the owner'
+  const waitsOnApp = (name: string): string | null => {
+    const o = loaded(name)?.manifest.oauth
+    if (owner || !o || !signIn || signIn.app(o.provider)) return null
+    const p = signIn.providers().find((x) => x.name === o.provider)
+    return `Waits on ${ownerName} to set up ${p?.title ?? 'its'} sign-in`
+  }
+
   const tiles: ConnectTile[] = []
   for (const name of MAIL) {
     const c = loaded(name)
     if (!c) continue
+    const waits = waitsOnApp(name)
     tiles.push(
       tile({
         key: name,
@@ -98,9 +111,10 @@ export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
         title: c.manifest.title,
         reads: READS[name] ?? `Read from ${c.manifest.title}`,
         note: MAIL_NOTE,
-        connectors: [name],
+        connectors: waits ? [] : [name],
         steps: name === 'gmail' ? GMAIL_STEPS : [],
         connections: of([name], false),
+        waits,
       }),
     )
   }
@@ -120,19 +134,23 @@ export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
       note: server
         ? 'Outlook brings them with your mail; a Mac’s own calendar and contacts come through Alpha Bridge on that Mac. Read, never written back.'
         : 'Read, never written back.',
+      waits: server ? 'Come with Outlook or Alpha Bridge' : null,
     }),
   )
-  if (loaded('google'))
+  if (loaded('google')) {
+    const waits = waitsOnApp('google')
     tiles.push(
       tile({
         key: 'google',
         kind: 'connector',
         title: 'Google',
         reads: READS.google ?? 'Your Google calendar and contacts',
-        connectors: ['google'],
+        connectors: waits ? [] : ['google'],
         connections: of(['google'], false),
+        waits,
       }),
     )
+  }
 
   // the person's computer: Alpha Bridge on a server, folders by their path on Alpha's own Mac
   // what else Alpha Bridge reads, beyond a folder and a Mac's calendar and contacts

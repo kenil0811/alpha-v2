@@ -72,6 +72,7 @@ export interface ConnectTile {
   connections: TileConnection[]
   landed: string[] // what landed beyond its connections (Network filling, this month's events)
   note: string | null
+  waits: string | null // what it waits on where nothing is pressed on it (a server's calendar)
   apps: AppFound[] // Apps you use, from the person's computer and mail
   // Apps you use: the computer's Apps reader where it comes with this Alpha, its connection once on
   reader: { id: string | null; read: boolean } | null
@@ -111,6 +112,7 @@ export interface DoneScreen extends Screen {
   key: 'done'
   connected: string[]
   people: string[] // who the owner added
+  none: string // what to say where nothing is there yet: the owner's and a member's differ
 }
 
 // A chapter a plugin adds: its own screen's fields beside these, drawn by its own window part.

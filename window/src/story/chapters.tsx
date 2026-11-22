@@ -96,7 +96,8 @@ function Item({
         {icon}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-ink">{head}</span>
+        {/* a row's words wrap on a narrow screen: a promise is never cut */}
+        <span className="break-words text-ink">{head}</span>
         {sub && <span className="truncate text-ink-3 text-sm">{sub}</span>}
       </span>
       {end}
@@ -400,7 +401,11 @@ function Here({ screen, next }: Props & { screen: HereScreen }) {
         </ul>
       )}
       {screen.people.length > 0 && (
-        <p className="text-ink-2">Also here: {screen.people.join(', ')}.</p>
+        <ul className="flex flex-col">
+          {screen.people.map((n) => (
+            <Item key={n} icon={<UserRound className="size-4" />} head={n} sub="Works here" />
+          ))}
+        </ul>
       )}
       <p className="text-ink-2">{screen.shared}</p>
     </div>
@@ -433,7 +438,7 @@ function Done({ screen, next }: Props & { screen: DoneScreen }) {
         />
       ))}
       {!screen.connected.length && !builds.length && !screen.people.length && (
-        <li className="text-ink-3">You can connect things and add people any time in Settings.</li>
+        <li className="text-ink-3">{screen.none}</li>
       )}
     </ul>
   )

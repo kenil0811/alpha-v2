@@ -137,7 +137,7 @@ export const SOURCES: Source[] = [
         `Most from: ${top(rows, (r) => String(r.values.From ?? '')).join('; ')}.`,
         `Subjects that come back: ${top(rows, (r) => gist(r.values.Subject)).join('; ')}.`,
       ].join('\n'),
-    'No mail is here yet: connect Gmail or Outlook in Connections, then ask again.',
+    'No mail is here yet: connect Gmail or Outlook in Connect, a step back.',
     ['gmail', 'outlook'],
   ),
   rowsSource(
@@ -151,7 +151,7 @@ export const SOURCES: Source[] = [
         `${rows.length} events in the last ${days} days.`,
         `Ones that come back: ${top(rows, (r) => gist(r.values.Title)).join('; ')}.`,
       ].join('\n'),
-    'No calendar is here yet: connect one, then ask again.',
+    'No calendar is here yet: connect one in Connect, a step back.',
     ['calendar', 'outlook', 'google'],
   ),
   rowsSource(
@@ -165,7 +165,7 @@ export const SOURCES: Source[] = [
         `${rows.length} contacts.`,
         `Companies most of them are at: ${top(rows, (r) => String(r.values.Company ?? '')).join('; ')}.`,
       ].join('\n'),
-    'No contacts are here yet: connect them, then ask again.',
+    'No contacts are here yet: connect them in Connect, a step back.',
     ['contacts', 'outlook', 'google'],
   ),
   {
@@ -179,7 +179,7 @@ export const SOURCES: Source[] = [
       const files = host.files('folder').filter((f) => within(f.at, days))
       if (!files.length)
         return {
-          words: 'No folder is lent yet: lend one in Alpha Bridge, then ask again.',
+          words: 'No folder is lent yet: lend one in Alpha Bridge on your computer.',
           cites: [],
           text: '',
         }

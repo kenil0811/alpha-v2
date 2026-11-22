@@ -12,7 +12,7 @@
 @import "@fontsource-variable/geist-mono";
 @import "@fontsource-variable/source-serif-4";
 /* the plugins' screens are the window's too: their classes are read from where they live */
-@source "../../plugins/*/window";
+@source "../../plugins/*/window/**/*.tsx";
 
 /*
   One layering scale for what floats over the page, written z-(--z-pop) and so on. Inside a box (a

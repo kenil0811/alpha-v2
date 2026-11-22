@@ -142,13 +142,16 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
             )}
           </section>
           <footer className="flex flex-wrap items-center gap-2 border-line border-t pt-5">
-            <Button
-              variant="ghost"
-              disabled={busy || here <= 0}
-              onClick={() => setAt(list[here - 1]?.key ?? at)}
-            >
-              Back
-            </Button>
+            {/* the first chapter has nothing to go back to */}
+            {here > 0 && (
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => setAt(list[here - 1]?.key ?? at)}
+              >
+                Back
+              </Button>
+            )}
             {skippable && (
               <Button variant="ghost" disabled={busy} onClick={() => go(true)}>
                 Skip

@@ -85,7 +85,8 @@ function Know({ screen, reload, next }: ChapterProps) {
                   {s.name}
                   <Info help={s.reads} />
                 </p>
-                <p className="truncate text-ink-3 text-sm">{s.has}</p>
+                {/* what it holds, or what to do first: whole on a phone, one line on a window */}
+                <p className="text-ink-3 text-sm sm:truncate">{s.has}</p>
               </div>
               {f ? (
                 <Pill tone={f.on ? 'good' : 'faint'}>{f.on ? 'Read' : 'Not read'}</Pill>
@@ -104,7 +105,7 @@ function Know({ screen, reload, next }: ChapterProps) {
             </div>
             {f?.on &&
               (f.shown ?? []).map((l) => (
-                <p key={l} className="truncate text-ink-2 text-sm">
+                <p key={l} className="text-ink-2 text-sm sm:truncate">
                   {l}
                 </p>
               ))}
@@ -302,7 +303,7 @@ function AboutRow({
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2.5">
       {editing === null ? (
-        <p className="flex min-w-60 flex-1 items-start gap-1.5 text-ink text-md">
+        <p className="flex min-w-0 basis-full items-start gap-1.5 text-ink text-md sm:min-w-60 sm:flex-1 sm:basis-auto">
           {a.line}
           <Info
             help={`${a.for === 'everyone' ? 'For everyone here. ' : ''}${restsWords(a.rests)}`}
@@ -310,7 +311,7 @@ function AboutRow({
         </p>
       ) : (
         <Field
-          className="min-w-60 flex-1"
+          className="min-w-0 basis-full sm:min-w-60 sm:flex-1 sm:basis-auto"
           aria-label="The line, in your words"
           value={editing}
           onChange={(e) => setEditing(e.target.value)}
@@ -366,7 +367,8 @@ function FlowRow({
 }) {
   const build = useAct()
   const [built, setBuilt] = useState(false)
-  const agreed = !!p && (p.answer === 'Yes' || p.answer === 'Yes and also')
+  const agreed =
+    w.status === 'Agreed' || (!!p && (p.answer === 'Yes' || p.answer === 'Yes and also'))
   // one that waits on the person's answer opens by itself; the others open on a click
   const waits = !!p && !p.decided
   const [open, setOpen] = useState(waits)
@@ -388,14 +390,17 @@ function FlowRow({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left hover:bg-hover"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-3.5 py-3 text-left hover:bg-hover"
       >
         <ChevronRight
           className={`size-3.5 shrink-0 text-ink-3 transition-transform ${open ? 'rotate-90' : ''}`}
         />
         <span className="min-w-0 flex-1 truncate font-medium text-ink text-md">{w.name}</span>
-        {w.hours !== null && <span className="text-ink-3 text-sm">{w.hours} hours a month</span>}
-        <Pill tone={state[1]}>{state[0]}</Pill>
+        {/* on a phone its hours and state go under its name, so the name is never cut */}
+        <span className="flex w-full items-center gap-3 pl-6.5 sm:w-auto sm:pl-0">
+          {w.hours !== null && <span className="text-ink-3 text-sm">{w.hours} hours a month</span>}
+          <Pill tone={state[1]}>{state[0]}</Pill>
+        </span>
       </button>
       {open && (
         <div className="flex flex-col gap-2 border-hair border-t px-3.5 pt-2.5 pb-3 pl-10">

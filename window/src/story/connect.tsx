@@ -80,7 +80,8 @@ function TileBox({
 }) {
   const icon =
     KIND_ICONS[t.kind] ??
-    ICONS[view?.connectors.find((c) => c.name === t.connectors[0])?.icon ?? 'plug']
+    // a tile waiting on the owner has no connector to press, but keeps its own icon
+    ICONS[view?.connectors.find((c) => c.name === (t.connectors[0] ?? t.key))?.icon ?? 'plug']
   const frame = { tile: t, icon }
   if (t.kind === 'computer' && t.server) return <BridgeTile {...frame} />
   if (t.kind === 'apps') return <AppsTile {...frame} view={view} again={again} />
@@ -107,10 +108,10 @@ function Frame({
         'flex min-w-0 flex-col gap-2.5 rounded-lg border border-line bg-surface px-3.5 py-3',
       )}
     >
-      <div className="flex min-h-9 flex-wrap items-center gap-3">
+      <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2">
         <Tile>{icon}</Tile>
-        {/* on a narrow screen its act moves under its name, never over it */}
-        <div className="min-w-40 flex-1">
+        {/* on a phone its act goes under its name on every tile, never beside it */}
+        <div className="min-w-0 flex-1">
           <h2 className="flex items-center gap-1 font-medium text-ink text-md">
             <span className="truncate">{t.title}</span>
             {t.note && <Info help={t.note} />}
@@ -119,7 +120,11 @@ function Frame({
             {t.reads}
           </p>
         </div>
-        {head && <div className="flex shrink-0 items-center gap-1.5">{head}</div>}
+        {head && (
+          <div className="flex w-full items-center gap-1.5 pl-12 sm:w-auto sm:shrink-0 sm:pl-0">
+            {head}
+          </div>
+        )}
       </div>
       {children}
     </section>
@@ -186,7 +191,15 @@ function ConnectorTile({
     <Frame
       tile={t}
       icon={icon}
-      head={acts.length ? acts : on ? <Pill tone="good">Connected</Pill> : null}
+      head={
+        acts.length ? (
+          acts
+        ) : on ? (
+          <Pill tone="good">Connected</Pill>
+        ) : t.waits && !t.landed.length ? (
+          <Pill tone="faint">{t.waits}</Pill>
+        ) : null
+      }
     >
       {t.connections.map((k) => (
         <ConnectionRow key={k.id} k={k} />

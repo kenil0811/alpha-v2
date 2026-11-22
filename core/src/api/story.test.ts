@@ -4,8 +4,10 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { MemorySecrets } from '@alpha/connector-sdk'
+import { type Connector, MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ConnectorService } from '../connectors/service.ts'
+import { SignIn } from '../connectors/signin.ts'
 import { Engine } from '../engine/engine.ts'
 import { ModelRoute } from '../engine/route.ts'
 import type { PluginChapter } from '../plugins/plugins.ts'
@@ -168,6 +170,49 @@ describe('Set up Alpha', () => {
     const hers = await screen(as(world.user(priya.id) as User))
     expect(hers.title).toBe('Connect your own')
     expect(hers.tiles.map((t) => t.key)).toEqual(['calendar', 'computer'])
+  })
+
+  it('has a member’s mail tile wait on the owner while the sign-in app is not set up', async () => {
+    const outlook = {
+      manifest: {
+        name: 'outlook',
+        title: 'Outlook',
+        auth: 'oauth',
+        oauth: { provider: 'microsoft', scopes: ['Mail.Read'] },
+        account: { label: 'Work address' },
+        pace: { perMinute: 60 },
+      },
+      guide: 'Mail.',
+      module: 'Mail',
+      tables: [],
+      tools: {},
+    } as unknown as Connector
+    const secrets = new MemorySecrets()
+    const signIn = new SignIn(world, { secrets, back: () => 'http://localhost:4700/back' })
+    const connectors = new ConnectorService(world, { secrets, known: [outlook], signIn })
+    const withMail = new Engine(world, { route, connectors })
+    const priya = world.accounts.add('Priya', 'priya@example.com', {
+      actor: { kind: 'person', id: owner.id },
+      user: owner.id,
+    })
+    const tile = async (user: User) =>
+      (
+        await buildServer({
+          engine: withMail,
+          user,
+          token: 't',
+          ports: [4700],
+          signIn: { days: 30 },
+        }).inject({ url: '/api/story/connect', headers: AS })
+      )
+        .json()
+        .tiles.find((t: { key: string }) => t.key === 'outlook')
+    // the owner sets the app up on their tile; a member waits on them, with nothing to press
+    expect(await tile(owner)).toMatchObject({ connectors: ['outlook'], waits: null })
+    expect(await tile(world.user(priya.id) as User)).toMatchObject({
+      connectors: [],
+      waits: 'Waits on Kenil Shah to set up Microsoft sign-in',
+    })
   })
 
   it('opens a member’s link on their Welcome, and their password is its Start', async () => {
