@@ -3,13 +3,15 @@
 // own. Its key is held in memory; its connector process is the core's child, as the zip carries it.
 // The step puts a file in the folder, sends the computer away, or brings it back, lends the
 // Mac's Calendar or Contacts or the browsing history, then reads. What its readers answer is
-// replayed from the journey's recorded answers, never this Mac's own.
+// replayed from the journey's recorded answers, never this Mac's own: Calendar and Contacts through
+// a stand-in helper, the browsing history and AI work from a computer home made up from them.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { join } from 'node:path'
 import { Bridge, pair } from '@alpha/bridge'
 import type { Config } from '@alpha/bridge/config'
 import { inMemory } from '@alpha/bridge/keys'
+import { recordedHome } from '@alpha/connector-computer/recorded'
 import { buildServer } from '../api/server.ts'
 import { bridges } from '../bridge/hub.ts'
 import { handsFor } from '../connectors/computers.ts'
@@ -49,6 +51,7 @@ export interface BridgeStep {
   calendar?: boolean | undefined // its Calendar lent, through a stand-in for Alpha's helper
   contacts?: boolean | undefined // its Contacts lent, the same way
   browsing?: boolean | undefined // its browsing history lent, to the Bridge's browsing reader
+  ai?: boolean | undefined // its AI work lent (its ChatGPT and claude.ai titles from the history)
 }
 
 // What the stand-in for Alpha's helper answers, where answers are not replayed: one event, never
@@ -98,6 +101,7 @@ async function standIn(
   user: User,
   connectors: ConnectorService,
   folder: string,
+  home: string, // the computer's own folder, made up from the recorded answers
 ): Promise<StandIn> {
   bridges.use(
     world,
@@ -117,18 +121,19 @@ async function standIn(
   const bridge = new Bridge({
     config: () => config,
     keys,
-    start: async (connector) => ({
-      command: process.execPath,
-      args: [
-        CHILD,
-        connector === 'folder'
-          ? FOLDER
-          : ['browsing', 'apps', 'ai-work'].includes(connector)
-            ? COMPUTER
-            : MAC,
-      ],
-      shell: false,
-    }),
+    start: async (connector) =>
+      ['browsing', 'apps', 'ai-work'].includes(connector)
+        ? {
+            command: process.execPath,
+            args: [CHILD, COMPUTER],
+            shell: false,
+            env: { ALPHA_COMPUTER_HOME: home },
+          }
+        : {
+            command: process.execPath,
+            args: [CHILD, connector === 'folder' ? FOLDER : MAC],
+            shell: false,
+          },
     // the Mac's helper, replayed: the recorded events; no apps (their reader asks it too)
     helper: async (args) => (args[0] === 'apps' ? [] : HELPER_EVENTS),
   })
@@ -152,12 +157,14 @@ export async function bridgeStep(
   user: User,
   connectors: ConnectorService,
   tmp: string,
+  answers: string, // the journey's recorded answers
 ): Promise<{ ok: boolean; what: string }> {
   const said: string[] = []
   if (step.lend) {
     const folder = step.lend.replaceAll('{tmp}', tmp)
     mkdirSync(folder, { recursive: true })
-    held.standIn = await standIn(world, engine, user, connectors, folder)
+    const home = recordedHome(answers, join(tmp, 'computer'))
+    held.standIn = await standIn(world, engine, user, connectors, folder, home)
     said.push(`Paired a computer with a link and lent ${folder} from it`)
   }
   const s = held.standIn
@@ -196,7 +203,10 @@ export async function bridgeStep(
       ok: false,
       what: '**The stand-in computer cannot lend its browsing history: the Bridge has no browsing reader yet.**',
     }
-  const lent = (['calendar', 'contacts', 'browsing'] as const).filter((r) => step[r])
+  const lent = [
+    ...(['calendar', 'contacts', 'browsing'] as const).filter((r) => step[r]),
+    ...(step.ai ? (['ai-work'] as const) : []),
+  ]
   for (const r of lent) {
     s.config.lends.push({ connector: r, account: s.config.name })
     s.bridge.changed()
@@ -205,7 +215,7 @@ export async function bridgeStep(
       `The ${r} lent`,
     )
     said.push(
-      `lent its ${r === 'browsing' ? 'browsing history' : r.replace(/^./, (c) => c.toUpperCase())}`,
+      `lent its ${r === 'browsing' ? 'browsing history' : r === 'ai-work' ? 'AI work' : r.replace(/^./, (c) => c.toUpperCase())}`,
     )
   }
   const read = [

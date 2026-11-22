@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./paths": "./src/paths.ts",
-    "./read": "./src/read.ts"
+    "./read": "./src/read.ts",
+    "./recorded": "./src/recorded.ts"
   },
   "dependencies": {
     "@alpha/connector-sdk": "workspace:*",

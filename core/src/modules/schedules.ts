@@ -68,9 +68,10 @@ function onItsDay(every: Every['every'], d: Date): boolean {
   return day < 0 || d.getDay() === day
 }
 
-// The least time between two runs of a daily or weekly trigger, so Run now does not bring on the
-// next one by itself.
-export const gapOf = (every: Every['every']) => (every === 'week' ? 6 * DAY + HOUR : HOUR)
+// The least time between two runs of a daily, weekly or monthly trigger, so Run now does not bring
+// on the next one by itself. A month is four weeks, the shortest a month is.
+export const gapOf = (every: Every['every']) =>
+  every === 'month' ? 27 * DAY + HOUR : every === 'week' ? 6 * DAY + HOUR : HOUR
 
 // The latest moment at or before now that a daily or weekly trigger names.
 export function latestAt(t: Every, nowMs: number): Date {

@@ -36,7 +36,7 @@ import { type ProvenanceInput, Refused } from '../world/kinds.ts'
 import { actorName, type Table, type WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
-import { CORE_CHAPTERS } from '../world/story.ts'
+import { CORE_CHAPTERS, unmarkChapter } from '../world/story.ts'
 import { workspaceFor, workspaceName, workspaceSite } from '../world/workspace.ts'
 import type { User, World } from '../world/world.ts'
 
@@ -458,6 +458,11 @@ export class Plugins {
             user: who.id,
           })
         }
+      },
+      reopen: (person, chapter) => {
+        if (!this.chapters.some((c) => c.plugin === name && c.key === chapter))
+          throw new Refused(`${l.plugin.title} has no chapter ${chapter} in Set up Alpha.`)
+        if (world.user(person)) unmarkChapter(world.db, person, chapter)
       },
       startBlock: (words) => {
         this.starts.push(words)

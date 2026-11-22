@@ -32,7 +32,7 @@ steps:
     checks:
       - rows_in: { table: Events, count: 13 }
       - errors: 0
-  - bridge: { browsing: true }
+  - bridge: { browsing: true, ai: true }
     checks:
       - errors: 0
   - story: { chapter: welcome }

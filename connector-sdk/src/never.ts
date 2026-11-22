@@ -8,6 +8,7 @@ import type { Host, Item } from './connector.ts'
 export interface NeverList {
   words: string[] // "chase" never matches "purchase"; "bank statement" matches the two in a row
   stems: string[] // "bank" matches "bankofamerica"
+  shapes?: string[] // a key or token by its form, as a regular expression: hf_ and 30 letters
 }
 
 const partsOf = (text: string) =>
@@ -16,8 +17,9 @@ const partsOf = (text: string) =>
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean)
 
-// Whether some words are on the list.
+// Whether some words are on the list, or a key or token is there by its form.
 export function onList(text: string, list: NeverList): boolean {
+  if (list.shapes?.some((s) => new RegExp(s).test(text))) return true
   const parts = partsOf(text)
   if (!parts.length) return false
   const row = ` ${parts.join(' ')} `
@@ -44,7 +46,7 @@ export const itemOnList = (item: Item, list: NeverList): boolean =>
 
 // A host that leaves out what is on the list before it lands or keeps it, and says how many.
 export function withNever(host: Host, list: NeverList): Host {
-  if (!list.words.length && !list.stems.length) return host
+  if (!list.words.length && !list.stems.length && !list.shapes?.length) return host
   return {
     ...host,
     // read through the host each time: a getter on the core's host (its place) stays live

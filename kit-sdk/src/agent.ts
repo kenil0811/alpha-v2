@@ -1,5 +1,6 @@
 // An agent a kit carries (api 3), in agents/<key>/: AGENT.md with its name, title, description
-// and model on top and its instructions below, beside skills/, files/ and schedules/, the same
+// and model on top and its instructions below, beside skills/, files/, schedules/ and the checks/
+// its schedules run, the same
 // folder an agent has in a firm. Alpha's own agents ship in the same format.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'

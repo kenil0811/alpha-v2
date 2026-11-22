@@ -11,6 +11,7 @@ import { think } from './draft.ts'
 import { KnowBody, knowScreen, readAll, settleStories } from './know.ts'
 import { LearnedBody, learnedAct, learnedScreen } from './learned.ts'
 import { proposeTool } from './propose.ts'
+import { shortTool } from './short.ts'
 import { sourceTool } from './source.ts'
 
 export const plugin: Plugin = {
@@ -19,7 +20,7 @@ export const plugin: Plugin = {
   kit: 'kit',
   register(host) {
     settleStories(host)
-    host.tools('interviewer', [sourceTool(host), proposeTool(host)])
+    host.tools('interviewer', [sourceTool(host), proposeTool(host), shortTool(host)])
     host.chapter({
       key: 'know',
       title: 'Get to know you',

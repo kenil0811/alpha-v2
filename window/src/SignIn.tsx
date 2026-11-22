@@ -1,8 +1,11 @@
 // Signing in to Alpha, on an Alpha that asks: before anything else
 // loads, the session is looked at; no session, the sign-in page or, from a one-time link, the page
 // that sets a password. A session that runs out comes back here.
+
+import { EyeOff, Lock, ShieldCheck } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import { Face } from './Face.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
 
@@ -31,10 +34,11 @@ export function Gate({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-function Page({ title, children }: { title: string; children: ReactNode }) {
+function Page({ title, head, children }: { title: string; head?: ReactNode; children: ReactNode }) {
   return (
     <main className="grid h-dvh place-items-center bg-canvas p-6 text-ink">
       <div className="flex w-full max-w-90 flex-col gap-4">
+        {head}
         <h1 className="font-serif text-2xl">{title}</h1>
         {children}
       </div>
@@ -99,10 +103,21 @@ function SignIn({ microsoft }: { microsoft: boolean }) {
   )
 }
 
+// A member's link: Set up Alpha's Welcome to the workspace, before they are signed in.
+interface Welcome {
+  workspace: string
+  picture: string | null
+  addedBy: string | null
+  promises: string[]
+}
+
+const PROMISE_ICONS = [ShieldCheck, EyeOff, Lock]
+
 function SetPassword({ token }: { token: string }) {
   const [known, setKnown] = useState<{ name: string; email: string | null } | null | undefined>(
     undefined,
   )
+  const [welcome, setWelcome] = useState<Welcome | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [again, setAgain] = useState('')
@@ -110,11 +125,14 @@ function SetPassword({ token }: { token: string }) {
   const [problem, setProblem] = useState<string | null>(null)
   useEffect(() => {
     api
-      .get<{ link: { name: string; email: string | null } | null }>(
+      .get<{ link: { name: string; email: string | null } | null; welcome?: Welcome | null }>(
         `/api/session/link?token=${encodeURIComponent(token)}`,
       )
       .then(
-        (r) => setKnown(r.link),
+        (r) => {
+          setKnown(r.link)
+          setWelcome(r.welcome ?? null)
+        },
         () => setKnown(null),
       )
   }, [token])
@@ -148,7 +166,43 @@ function SetPassword({ token }: { token: string }) {
     }
   }
   return (
-    <Page title={`Welcome, ${known.name}`}>
+    <Page
+      title={welcome ? `Welcome to ${welcome.workspace}` : `Welcome, ${known.name}`}
+      head={
+        welcome && (
+          <div className="flex items-center gap-3">
+            {welcome.picture ? (
+              <img src={welcome.picture} alt="" className="size-12 rounded-lg object-cover" />
+            ) : (
+              <div className="size-12">
+                <Face mood="quiet" />
+              </div>
+            )}
+            {welcome.addedBy && (
+              <p className="text-ink-2 text-md">{`${welcome.addedBy} added you, ${known.name}.`}</p>
+            )}
+          </div>
+        )
+      }
+    >
+      {welcome && (
+        <ul className="flex flex-col">
+          {welcome.promises.map((words, i) => {
+            const Icon = PROMISE_ICONS[i] ?? ShieldCheck
+            return (
+              <li
+                key={words}
+                className="flex items-center gap-3 border-hair border-t py-2 first:border-t-0"
+              >
+                <span className="grid size-7 shrink-0 place-items-center rounded-md bg-sunk text-ink-2">
+                  <Icon className="size-3.5" />
+                </span>
+                <span className="text-ink text-md">{words}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
       <p className="text-ink-2 text-md">Choose a password of at least 12 characters.</p>
       <form onSubmit={submit} className="flex flex-col gap-3">
         {known.email ? (
@@ -183,7 +237,7 @@ function SetPassword({ token }: { token: string }) {
         />
         {problem && <p className="text-bad text-md">{problem}</p>}
         <Button type="submit" variant="primary" disabled={busy || !password || !again}>
-          Set my password
+          {welcome ? 'Start' : 'Set my password'}
         </Button>
       </form>
     </Page>

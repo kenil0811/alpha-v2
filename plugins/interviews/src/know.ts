@@ -21,6 +21,7 @@ export interface Story {
   drafting: boolean
   rounds: number
   problem: string | null // why the last draft did not come
+  since: string | null // what changed since the last interview, as the regular check found it
 }
 
 const NONE: Story = {
@@ -31,6 +32,7 @@ const NONE: Story = {
   drafting: false,
   rounds: 0,
   problem: null,
+  since: null,
 }
 
 const file = (host: PluginHost) => join(host.dir, 'story.json')

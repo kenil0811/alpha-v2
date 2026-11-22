@@ -141,6 +141,12 @@ export function readableFor(host: PluginHost, who: Who, st: Story): Readable {
   for (const p of st.site) {
     texts.push(new URL(p.url).host, p.text)
   }
+  // who the work is for, in the owner's own words in Your workspace: theirs to cite, as an answer
+  const own = host.workspace().for
+  if (own) {
+    r.answers.set('workspace', own)
+    texts.push(own)
+  }
   for (const q of mine(host, 'Questions', who)) {
     const a = String(q.values.Answer ?? '').trim()
     if (a) {
@@ -168,9 +174,18 @@ function promptOf(host: PluginHost, who: Who, st: Story): string {
   const out: string[] = [
     `Person: ${who.name}${who.owner ? ', the owner of this workspace' : ''}.`,
     ...(ws.name ? [`Workspace: ${ws.name}.`] : []),
-    ...(ws.for ? [`Who the work is for, in the owner’s own words: ${ws.for}`] : []),
+    ...(ws.for
+      ? [`answer workspace: who the work is for, in the owner’s own words: “${ws.for}”`]
+      : []),
     '',
   ]
+  if (st.since)
+    out.push(
+      '## Since the last interview',
+      st.since,
+      'This is a short interview: ask only about what changed, a few questions at most, and change the report only where it did.',
+      '',
+    )
   for (const s of SOURCES) {
     if (!on.has(s.key)) continue
     out.push(`## ${s.name}`, ...s.lines(host, who.id, days), '')
@@ -275,6 +290,9 @@ export function apply(host: PluginHost, who: Who, d: Draft, r: Readable): string
     return !why
   }
   const seen = new Set(mine(host, 'About you', who).map((a) => sameAs(String(a.values.Line ?? ''))))
+  // an owner who works alone keeps who the work is for as their own (the 18 Nov plan, call 10)
+  const alone = /^\s*just me\b/i.test(host.workspace().for ?? '')
+  for (const a of d.about) if (alone && a.for === 'everyone') a.for = 'me'
   const lines = d.about.filter(
     (a) =>
       (a.for === 'me' || who.owner) &&

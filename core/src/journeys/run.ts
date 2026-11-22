@@ -393,7 +393,16 @@ export async function runOne(
       const out = await runner.runSchedule(s, { user: user.id, turn: null }, {}, { asked: true })
       what = `Pressed Run now on ${s.name}: ${out.words}`
     } else if (step.bridge) {
-      const out = await bridgeStep(step.bridge, computer, world, engine, user, connectors, tmp)
+      const out = await bridgeStep(
+        step.bridge,
+        computer,
+        world,
+        engine,
+        user,
+        connectors,
+        tmp,
+        answers,
+      )
       passed &&= out.ok
       what = out.what
     } else if (step.plugin) {

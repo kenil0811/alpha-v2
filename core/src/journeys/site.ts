@@ -17,10 +17,12 @@ export function serve(dir: string, state: string | null = null): Promise<Site> {
   const site = { dir, state, requests: [] as string[] } as Site
   const server = createServer((req, res) => {
     site.requests.push(req.url ?? '/')
-    const path = normalize(decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/'))
+    // a folder's address is its index.html, as a real site's front page is
+    const asked = normalize(decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/'))
+    const path = asked.endsWith('/') ? `${asked}index.html` : asked
     const now = site.state ? join(site.dir, 'states', site.state, path) : null
     const file = now && existsSync(now) ? now : join(site.dir, path)
-    if (!file.startsWith(site.dir) || !existsSync(file) || path.endsWith('/')) {
+    if (!file.startsWith(site.dir) || !existsSync(file)) {
       res.writeHead(404).end('Not found')
       return
     }

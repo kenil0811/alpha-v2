@@ -62,6 +62,13 @@ export function siteOf(given: string): string | null {
   }
 }
 
+// The picture as the data address it was given in, for a page that shows it before anyone is
+// signed in (a member's welcome, behind their link).
+export function workspacePictureData(db: Db): string | null {
+  const p = read(db, PICTURE)
+  return p && DATA.test(p) ? p : null
+}
+
 export function workspacePicture(db: Db): WorkspacePicture | null {
   const m = DATA.exec(read(db, PICTURE) ?? '')
   if (!m?.[1] || !m[2]) return null

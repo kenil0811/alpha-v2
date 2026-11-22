@@ -220,9 +220,9 @@ export class Accounts {
   }
 
   // What the page behind a link shows; none when it is used or too old.
-  linkFor(token: string): { name: string; email: string | null } | null {
+  linkFor(token: string): { name: string; email: string | null; member: boolean } | null {
     const r = this.byLink(token)
-    return r ? { name: r.name, email: r.email } : null
+    return r ? { name: r.name, email: r.email, member: r.role === 'member' } : null
   }
 
   // A password set from a link, which is then spent. The owner's first link has no email yet.

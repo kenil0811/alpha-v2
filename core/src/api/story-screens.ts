@@ -34,7 +34,7 @@ export interface StoryRoom {
 }
 
 // The three promises on Welcome (call 25): the never-use list in one sentence, no list or switch.
-const PROMISES = [
+export const PROMISES = [
   'I read only what you connect and allow.',
   'I never keep banking, health, passwords, legal matters, dating or personal money.',
   'Nothing about you is kept without your Keep.',

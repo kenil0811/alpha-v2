@@ -6,7 +6,7 @@
 import { type PluginHost, Refusal, type Row } from '@alpha/plugin-sdk'
 import { z } from 'zod'
 import { think } from './draft.ts'
-import { storyOf, type Who } from './know.ts'
+import { keepStory, storyOf, type Who } from './know.ts'
 
 const mine = (host: PluginHost, table: string, who: Who): Row[] =>
   host.own.rows(table).filter((r) => r.values.Person === who.name)
@@ -166,5 +166,7 @@ export async function learnedAct(
     if (answer === 'Not this') void think(host, who)
     return { on: false }
   }
+  // gone through: a short interview's news is spent
+  if (storyOf(host, who.id).since) keepStory(host, who.id, { since: null })
   return { on: true }
 }

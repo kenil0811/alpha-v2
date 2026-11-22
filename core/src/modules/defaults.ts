@@ -75,6 +75,12 @@ function formerHome(world: World, tables: string[]): Module | undefined {
   })
 }
 
+// A kit's schedules: its module's, and those of the agents it carries (in an agent's own folder).
+const kitSchedules = (world: World, module: string) =>
+  schedules(world).filter(
+    (a) => a.module === module || (!!a.agent && world.agents.get(a.agent)?.source === module),
+  )
+
 async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<string | null> {
   const { manifest } = readKit(folder)
   let m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
@@ -96,7 +102,7 @@ async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<str
   const connectors = !!m && world.shape.tables(m.id).every((t) => !!t.mirror)
   if (!m || (!k && connectors)) {
     const made = await install(world, folder, ctx, { adopt: true })
-    for (const a of schedules(world, made.id)) {
+    for (const a of kitSchedules(world, made.id)) {
       run(world.db, "UPDATE schedules SET state = 'on' WHERE id = ?", a.id)
       world.line({
         actor: ctx.actor,
@@ -110,9 +116,9 @@ async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<str
   } else if (k?.kit === manifest.name && newer(manifest.version, k.version)) {
     // a schedule the newer version brings starts on, being Alpha's own; one the person paused
     // stays paused (the ownership rule)
-    const before = new Set(schedules(world, m.id).map((a) => a.id))
+    const before = new Set(kitSchedules(world, m.id).map((a) => a.id))
     await update(world, manifest.name, folder, ctx)
-    for (const a of schedules(world, m.id).filter((x) => !before.has(x.id))) {
+    for (const a of kitSchedules(world, m.id).filter((x) => !before.has(x.id))) {
       run(world.db, "UPDATE schedules SET state = 'on' WHERE id = ?", a.id)
       world.line({
         actor: ctx.actor,

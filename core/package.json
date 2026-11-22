@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@alpha/connector-computer": "workspace:*",
     "@alpha/connector-gmail": "workspace:*",
     "@alpha/connector-mac": "workspace:*"
   }

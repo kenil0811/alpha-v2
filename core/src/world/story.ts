@@ -54,6 +54,14 @@ export function markChapter(db: Db, user: string, chapter: string, state: Chapte
   save(db, user, { ...p, chapters: { ...p.chapters, [chapter]: state } })
 }
 
+// A chapter opened again for the person (a plugin's, after its regular check): their story waits
+// on Home until they go through it.
+export function unmarkChapter(db: Db, user: string, chapter: string): void {
+  const p = progressOf(db, user)
+  const { [chapter]: _gone, ...rest } = p.chapters
+  save(db, user, { chapters: rest, doneAt: null, declinedAt: null })
+}
+
 // The story finished: Home's row goes.
 export function finishStory(db: Db, user: string): void {
   save(db, user, { ...progressOf(db, user), doneAt: new Date().toISOString() })

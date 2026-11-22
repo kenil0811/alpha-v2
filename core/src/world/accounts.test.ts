@@ -28,7 +28,11 @@ const priya = async () => {
 describe('an account', () => {
   it('starts from a one-time link that sets a password of at least 12 characters', async () => {
     const { link } = world.accounts.add('Priya', 'priya@example.com', ctx)
-    expect(world.accounts.linkFor(link)).toEqual({ name: 'Priya', email: 'priya@example.com' })
+    expect(world.accounts.linkFor(link)).toEqual({
+      name: 'Priya',
+      email: 'priya@example.com',
+      member: true,
+    })
     await expect(world.accounts.setPassword(link, 'short', null, 30)).rejects.toThrow(/12/)
     const session = await world.accounts.setPassword(link, PASSWORD, null, 30)
     expect(world.accounts.userOf(session)?.name).toBe('Priya')
@@ -94,7 +98,7 @@ describe('an account', () => {
     const first = world.accounts.ownerLink(owner) as string
     const second = world.accounts.ownerLink(owner) as string
     expect(world.accounts.linkFor(first)).toBeNull() // a new one replaces it
-    expect(world.accounts.linkFor(second)).toEqual({ name: 'Kenil', email: null })
+    expect(world.accounts.linkFor(second)).toEqual({ name: 'Kenil', email: null, member: false })
     await expect(world.accounts.setPassword(second, PASSWORD, null, 30)).rejects.toThrow(/email/)
     await world.accounts.setPassword(second, PASSWORD, 'kenil@example.com', 30)
     expect(world.accounts.ownerLink(owner)).toBeNull()

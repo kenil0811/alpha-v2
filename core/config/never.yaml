@@ -2,8 +2,9 @@
 # or a computer reads but Alpha never keeps. It is changed here alone, and never shown in Alpha
 # (Kenil, 19 Nov). A word matches a whole word of what is read ("loan" never
 # matches "loaned"), a phrase its words in a row, and a stem the inside of a word ("bank" matches
-# "bankofamerica"). Words that are also everyday work words (chase, hinge, court, statement) are
-# left off: a match leaves the whole mail, event or file out.
+# "bankofamerica"), and a shape a key or token by its form, anywhere in what is read (a regular
+# expression: hf_ and thirty letters or more). Words that are also everyday work words (chase,
+# hinge, court, statement) are left off: a match leaves the whole mail, event, file or request out.
 
 kinds:
   - key: banking
@@ -22,6 +23,20 @@ kinds:
     words: [passcode, credentials, otp, 2fa, mfa, two-factor, verification code, security code,
       one-time code, sign-in code, login code, lastpass, 1password, bitwarden]
     stems: [password]
+    # keys and tokens by their form: Hugging Face, OpenAI and Anthropic, GitHub, GitLab, AWS,
+    # Google, Slack, Stripe, a private key, a signed web token
+    shapes:
+      - '\bhf_[A-Za-z0-9]{30,}'
+      - '\bsk-[A-Za-z0-9_-]{20,}'
+      - '\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{30,}'
+      - '\bgithub_pat_[A-Za-z0-9_]{30,}'
+      - '\bglpat-[A-Za-z0-9_-]{20,}'
+      - '\bAKIA[0-9A-Z]{16}\b'
+      - '\bAIza[0-9A-Za-z_-]{35}'
+      - '\bxox[abprs]-[A-Za-z0-9-]{10,}'
+      - '\b[rs]k_live_[A-Za-z0-9]{20,}'
+      - '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+      - '\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'
   - key: legal
     title: Legal matters
     words: [lawsuit, attorney, lawyer, solicitor, subpoena, litigation, divorce, custody,

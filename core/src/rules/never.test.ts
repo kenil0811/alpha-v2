@@ -15,13 +15,15 @@ import type { RuleWorld } from './world.ts'
 
 const CHILD = join(import.meta.dirname, '..', 'connectors', 'child.ts')
 
-// What a read brings: three mails of kinds on the list (banking, health, a sign-in code) and an
-// ordinary one; and two files, one named on the list.
+// What a read brings: four of kinds on the list (banking, health, a sign-in code, and a key by its
+// form, made up here so nothing scanning this file takes it for one) and an ordinary one; and two
+// files, one named on the list.
 const MAIL = [
   { key: 'm1', values: { Subject: 'Your Lakeview Bank statement is ready' } },
   { key: 'm2', values: { Subject: 'Your lab results are in' } },
   { key: 'm3', values: { Subject: 'Your verification code is 482913' } },
   { key: 'm4', values: { Subject: 'Quote for the kitchen at 14 Elm St' } },
+  { key: 'm5', values: { Subject: `use this one: hf_${'Q7x'.repeat(11)}` } },
 ]
 
 const READER = {
@@ -75,7 +77,7 @@ async function overThePipe(w: RuleWorld): Promise<{ landed: string[]; told: numb
   tools: {},
   sync: async (c) => {
     await c.host.land('Mail', ${JSON.stringify(MAIL)})
-    return { rows: 4, sawNew: true }
+    return { rows: 5, sawNew: true }
   },
 }
 `,
@@ -120,7 +122,7 @@ rule('N1', 'the never-use list applies as things are read', {
     ) => {
       const { subjects, conn } = await read(w, 'person')
       return (
-        subjects.join('|') === 'Quote for the kitchen at 14 Elm St' && conn?.leftOut === 4 // 3 mails and the payslip
+        subjects.join('|') === 'Quote for the kitchen at 14 Elm St' && conn?.leftOut === 5 // 4 mails and the payslip
       )
     },
     'a file named on the list is never kept': async (w) => {
@@ -130,11 +132,11 @@ rule('N1', 'the never-use list applies as things are read', {
     },
     'it holds the same on a connection of the firm’s': async (w) => {
       const { subjects, conn } = await read(w, 'firm')
-      return subjects.join('|') === 'Quote for the kitchen at 14 Elm St' && conn?.leftOut === 4
+      return subjects.join('|') === 'Quote for the kitchen at 14 Elm St' && conn?.leftOut === 5
     },
     'on a person’s computer it is left out before it leaves the connector’s process': async (w) => {
       const { landed, told } = await overThePipe(w)
-      return landed.join('|') === 'Quote for the kitchen at 14 Elm St' && told === 3
+      return landed.join('|') === 'Quote for the kitchen at 14 Elm St' && told === 4
     },
   },
 })

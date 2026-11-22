@@ -28,6 +28,7 @@ const EVERY: [string, string][] = [
   ['saturday', 'Every Saturday'],
   ['sunday', 'Every Sunday'],
   ['week', 'Every week'],
+  ['month', 'Every month'],
   ['hour', 'Every hour'],
 ]
 

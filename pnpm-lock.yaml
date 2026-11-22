@@ -377,6 +377,9 @@ importers:
         specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
+      '@alpha/connector-computer':
+        specifier: workspace:*
+        version: link:../connectors/computer
       '@alpha/connector-gmail':
         specifier: workspace:*
         version: link:../connectors/gmail

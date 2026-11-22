@@ -14,7 +14,7 @@ export const WEEK_DAYS = [
 
 export const Trigger = z.union([
   z.object({
-    every: z.enum(['hour', 'day', 'weekday', 'week', ...WEEK_DAYS]),
+    every: z.enum(['hour', 'day', 'weekday', 'week', 'month', ...WEEK_DAYS]),
     at: z
       .string()
       .regex(/^\d{2}:\d{2}$/)

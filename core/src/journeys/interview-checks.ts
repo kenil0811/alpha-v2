@@ -12,6 +12,7 @@ import { readKit } from '../modules/kits/index.ts'
 import { PLUGINS_DIR, type Plugins } from '../plugins/plugins.ts'
 import type { Card } from '../world/cards.ts'
 import type { Table } from '../world/shape/index.ts'
+import { workspaceFor } from '../world/workspace.ts'
 import type { User, World } from '../world/world.ts'
 import { AS_WINDOW as HEADERS } from './headers.ts'
 
@@ -99,7 +100,15 @@ const tableOfRow = (world: World, id: string): Table | undefined =>
 // Whether a citation names something that is there.
 function holds(world: World, c: { kind: string; id: string }): boolean {
   if (c.kind === 'row') return !!tableOfRow(world, c.id)
-  if (c.kind === 'answer') return !!world.cards.get(c.id)?.answer
+  // an answer on a card in a chat, or in Set up Alpha's What I learned (a row of Questions)
+  if (c.kind === 'answer') {
+    // who the work is for, in the owner's own words in Your workspace
+    if (c.id === 'workspace') return !!workspaceFor(world.db)
+    if (world.cards.get(c.id)?.answer) return true
+    const t = tableOfRow(world, c.id)
+    const f = t?.fields.find((x) => x.name === 'Answer')
+    return !!t && !!f && !!String(world.records.get(c.id)?.record.values[f.slug] ?? '').trim()
+  }
   if (c.kind === 'page') return /^https?:\/\//.test(c.id)
   if (c.kind === 'file') return !!world.files.file(c.id)
   return world.lines({}).some((l) => String(l.id) === c.id)
@@ -220,7 +229,27 @@ export async function interviewCheck(check: object, h: CheckHere): Promise<Saw |
   if ('asked_once' in check) {
     const c = check.asked_once as { matches: string; answered: string }
     const norm = (w: string) => w.toLowerCase().replace(/\s+/g, ' ').trim()
-    const cards = cardsOf(world).filter((k) => new RegExp(c.matches, 'i').test(k.words))
+    // the playbacks put on cards in a chat, and those in Set up Alpha's What I learned (Proposals,
+    // said as the story says them)
+    const proposals = world.shape.table('Proposals')
+    const slug = (n: string) => proposals?.fields.find((f) => f.name === n)?.slug ?? n
+    const played = proposals
+      ? world.records.list(proposals.id).flatMap((r) => {
+          const name = String(r.values[slug('Name')] ?? '')
+          return name
+            ? [
+                {
+                  words: `We'd build ${name}: ${String(r.values[slug('What it does')] ?? '')}`,
+                  answer: (r.values[slug('Answer')] as string | null) ?? null,
+                },
+              ]
+            : []
+        })
+      : []
+    const cards = [
+      ...cardsOf(world).map((k) => ({ words: k.words, answer: k.answer })),
+      ...played,
+    ].filter((k) => new RegExp(c.matches, 'i').test(k.words))
     const again: string[] = []
     cards.forEach((k, i) => {
       if (!k.answer || !new RegExp(c.answered, 'i').test(k.answer)) return

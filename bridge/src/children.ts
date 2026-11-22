@@ -8,11 +8,12 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 
-// How a child is started: the program and its words, or wrapped in the computer's sandbox.
+// How a child is started: the program and its words, or wrapped in the computer's sandbox; env
+// adds to the Bridge's own (a journey's made-up computer home).
 export type Start = (
   connector: string,
   reads: string[],
-) => Promise<{ command: string; args: string[]; shell: boolean }>
+) => Promise<{ command: string; args: string[]; shell: boolean; env?: Record<string, string> }>
 
 export interface Pipe {
   up(m: Record<string, unknown>): void // to Alpha
@@ -83,6 +84,7 @@ export class Children {
     const how = await this.start(connector, reads)
     const child = spawn(how.command, how.args, {
       shell: how.shell,
+      env: how.env ? { ...process.env, ...how.env } : process.env,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     })

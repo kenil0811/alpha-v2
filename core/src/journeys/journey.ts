@@ -86,6 +86,7 @@ export const Journey = z.object({
           pause: z.boolean().optional(), // paused by its person there, or resumed (false)
           calendar: z.boolean().optional(), // its Calendar lent, through a stand-in helper
           contacts: z.boolean().optional(), // its Contacts lent, through the same stand-in
+          ai: z.boolean().optional(), // its AI work lent, read from the history's titles
           // its browsing history lent, through the Bridge's browsing reader on recorded answers
           browsing: z.boolean().optional(),
         })

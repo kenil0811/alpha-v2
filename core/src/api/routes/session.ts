@@ -3,7 +3,10 @@
 // is shown to the owner once, to pass on. Only an Alpha told to (sign_in in alpha.yaml) asks.
 import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
+import { markChapter } from '../../world/story.ts'
+import { workspaceName, workspacePictureData } from '../../world/workspace.ts'
 import type { Ctx } from '../ctx.ts'
+import { PROMISES } from '../story-screens.ts'
 
 // The session cookie's name. Browsers keep cookies by host, not port, so a second Alpha on the
 // same machine's address (its own port) keeps its own, or signing in to one signs out of the other.
@@ -71,7 +74,21 @@ export function registerSession(ctx: Ctx): void {
 
   app.get('/api/session/link', async (req) => {
     const { token } = z.object({ token: z.string().max(200) }).parse(req.query)
-    return { link: world.accounts.linkFor(token) }
+    const link = world.accounts.linkFor(token)
+    // a member's link opens on Set up Alpha's Welcome to the workspace: its name and picture, who
+    // added them, the three promises; choosing a password is its Start (the redesign, member story)
+    const owner = world.users().find((u) => u.role === 'owner')
+    return {
+      link,
+      welcome: link?.member
+        ? {
+            workspace: workspaceName(world.db) ?? `${owner?.name ?? 'The owner'}’s workspace`,
+            picture: workspacePictureData(world.db),
+            addedBy: owner?.name ?? null,
+            promises: PROMISES,
+          }
+        : null,
+    }
   })
 
   app.post('/api/session/link', async (req, reply) => {
@@ -83,7 +100,11 @@ export function registerSession(ctx: Ctx): void {
         email: z.string().max(320).optional(),
       })
       .parse(req.body)
+    const member = !!world.accounts.linkFor(b.token)?.member
     const token = await world.accounts.setPassword(b.token, b.password, b.email ?? null, days)
+    // a member's Welcome is gone through as they choose their password
+    const who = world.accounts.userOf(token)
+    if (member && who) markChapter(world.db, who.id, 'welcome', 'done')
     reply.header('set-cookie', keep(req, token))
     return { ok: true }
   })

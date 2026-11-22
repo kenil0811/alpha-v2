@@ -194,12 +194,13 @@ async function refresh(
   return `Updated ${name} from ${source.label}.`
 }
 
-// The source's instructions, skills and schedules in place of what was there; under files/, what
-// it brought before and dropped goes, and what the agent kept itself stays.
+// The source's instructions, skills, schedules and the checks its schedules run in place of what
+// was there; under files/, what it brought before and dropped goes, and what the agent kept itself
+// stays.
 function copyIn(world: World, id: string, a: ShippedAgent): string {
   const dir = world.agents.dirOf(id)
   writeFileSync(join(dir, 'AGENT.md'), `${a.instructions}\n`)
-  for (const sub of ['skills', 'schedules']) {
+  for (const sub of ['skills', 'schedules', 'checks']) {
     rmSync(join(dir, sub), { recursive: true, force: true })
     if (existsSync(join(a.dir, sub))) cpSync(join(a.dir, sub), join(dir, sub), { recursive: true })
   }

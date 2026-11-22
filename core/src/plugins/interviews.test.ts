@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import type { Connector } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { landIn } from '../connectors/places.ts'
+import { ScheduleRunner } from '../modules/runs/runner.ts'
+import { schedules } from '../modules/schedules.ts'
 import { one } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { switchOn } from './plugins.ts'
@@ -56,6 +58,12 @@ it('loads where alpha.yaml names it, and its kit makes Your work with the Interv
   const interviewer = world.agents.list().find((a) => a.name === 'Interviewer')
   expect(interviewer?.title).toBe('Learns how you work and what would help')
   expect(interviewer?.source).toBe(m?.id)
+  // its regular check, on: it wakes the Interviewer only when something changed
+  expect(
+    schedules(world)
+      .filter((x) => x.agent === interviewer?.id)
+      .map((x) => [x.name, x.state]),
+  ).toEqual([['A short interview', 'on']])
 })
 
 const MAIL = {
@@ -258,4 +266,57 @@ it('lets the readers that come with it make their tables in Your work, which Alp
   const [sites] = landIn(world, reader('interviews'))
   const m = world.shape.ownModule('Your work')
   expect([sites?.name, sites?.module.id, sites?.mirror]).toEqual(['Sites', m?.id, 'Browsing'])
+})
+
+it('looks each month, waking the Interviewer only when something changed', async () => {
+  // the check as its schedule runs it, given a made-up month: a file outside this package, by path
+  const at = join(import.meta.dirname, '..', '..', '..', 'plugins', 'interviews', 'kit', 'agents')
+  const check = (await import(join(at, 'interviewer', 'checks', 'a-short-interview', 'check.js')))
+    .default as (alpha: unknown) => Promise<{ wake: boolean; found?: { again: unknown[] } }>
+  const month = (said: string[], wrote = 0) => ({
+    input: { lastRun: '2026-10-01T00:00:00Z' },
+    journal: {
+      list: async () => [
+        ...said.map((words, i) => ({ id: i, who: 'person u_1', kind: 'said', words })),
+        ...Array.from({ length: wrote }, (_, i) => ({
+          id: 100 + i,
+          who: 'person u_1',
+          kind: 'wrote',
+          words: 'Set Total',
+        })),
+        { id: 200, who: 'alpha ag_1', kind: 'said', words: 'not theirs' },
+      ],
+    },
+    rows: { list: async () => [] },
+  })
+  expect(await check(month(['What is on today?']))).toEqual({ wake: false })
+  const again = await check(month(Array(3).fill('Draft the weekly invoice for Lakeside')))
+  expect(again.wake).toBe(true)
+  expect(again.found?.again).toEqual([
+    { request: 'draft the weekly invoice for lakeside', times: 3 },
+  ])
+  expect((await check(month([], 3))).wake).toBe(true)
+})
+
+it('runs its regular check a month on and, with nothing new, wakes no one', async () => {
+  const user = world.owner('Kenil')
+  const { plugins } = await switchOn(['interviews'], {
+    world,
+    user,
+    home,
+    region: () => null,
+    ask: async () => ({ answer: null }),
+    connectors: null,
+  })
+  await plugins.keepKits({ actor: { kind: 'system' }, user: user.id })
+  const runner = new ScheduleRunner(
+    world,
+    () => {
+      throw new Error('No browser here.')
+    },
+    { owner: user.id },
+  )
+  await runner.runDue(Date.now() + 31 * 86_400_000)
+  expect(runner.runs(5).map((r) => r.words)).toEqual(['Nothing new.'])
+  expect(world.tasks.list().filter((t) => t.title === 'A short interview')).toEqual([])
 })

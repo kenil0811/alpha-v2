@@ -170,6 +170,30 @@ describe('Set up Alpha', () => {
     expect(hers.tiles.map((t) => t.key)).toEqual(['calendar', 'computer'])
   })
 
+  it('opens a member’s link on their Welcome, and their password is its Start', async () => {
+    const app = as()
+    await post(app, '/api/workspace', { name: 'Harbor Books' })
+    const made = world.accounts.add('Priya', 'priya@harborbooks.example', {
+      actor: { kind: 'person', id: owner.id },
+      user: owner.id,
+    })
+    const page = (
+      await app.inject({ url: `/api/session/link?token=${made.link}`, headers: AS })
+    ).json()
+    expect(page.welcome).toMatchObject({ workspace: 'Harbor Books', addedBy: 'Kenil Shah' })
+    expect(page.welcome.promises).toHaveLength(3)
+    const set = await app.inject({
+      method: 'POST',
+      url: '/api/session/link',
+      headers: { host: '127.0.0.1:4700' },
+      payload: { token: made.link, password: 'correct horse battery staple' },
+    })
+    expect(set.statusCode).toBe(200)
+    const s = await story(as(world.user(made.id) as User))
+    expect(s).toMatchObject({ at: 'here' })
+    expect(s.chapters[0]).toMatchObject({ key: 'welcome', state: 'done' })
+  })
+
   it('takes the row off Home on Decline, and opens from the start again on Reopen', async () => {
     const app = as()
     await post(app, '/api/story/welcome')

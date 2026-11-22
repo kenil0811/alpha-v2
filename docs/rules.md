@@ -93,7 +93,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| N1 | The never-use list applies as things are read: a row or a file holding one of its words never lands, from any connection. The list is the one Alpha ships (`core/config/never.yaml`), the same for every connection, changed there alone and never shown in Alpha. A connection on a person's computer leaves a match out in its own process there, before it leaves the computer, and the core leaves it out again as it lands. Each connection says how many its last read left out, never which | 18 Nov, 19 Nov | test |
+| N1 | The never-use list applies as things are read: a row or a file holding one of its words, or a key or token by its form, never lands, from any connection. The list is the one Alpha ships (`core/config/never.yaml`), the same for every connection, changed there alone and never shown in Alpha. A connection on a person's computer leaves a match out in its own process there, before it leaves the computer, and the core leaves it out again as it lands. Each connection says how many its last read left out, never which | 18 Nov, 19 Nov, 22 Nov | test |
 
 ## Interviews
 

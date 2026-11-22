@@ -1,4 +1,4 @@
-# Journey a-member-joins: 2026-11-22 15:31
+# Journey a-member-joins: 2026-11-22 19:39
 
 A member added to a workspace already set up goes through their own shorter story, never seeing Claude or Your people, and is told only what is true about what is shared
 

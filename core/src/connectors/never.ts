@@ -5,5 +5,9 @@ import { config } from '../config.ts'
 
 export function neverList(): NeverList {
   const kinds = config.never()
-  return { words: kinds.flatMap((k) => k.words), stems: kinds.flatMap((k) => k.stems) }
+  return {
+    words: kinds.flatMap((k) => k.words),
+    stems: kinds.flatMap((k) => k.stems),
+    shapes: kinds.flatMap((k) => k.shapes),
+  }
 }

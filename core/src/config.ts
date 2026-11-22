@@ -96,6 +96,18 @@ const Never = z.object({
         title: z.string().min(1),
         words: z.array(z.coerce.string().min(1)),
         stems: z.array(z.string().min(1)),
+        shapes: z
+          .array(
+            z.string().refine((s) => {
+              try {
+                new RegExp(s)
+                return true
+              } catch {
+                return false
+              }
+            }, 'a shape is a regular expression'),
+          )
+          .default([]),
       }),
     )
     .min(1),

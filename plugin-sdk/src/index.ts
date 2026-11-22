@@ -85,6 +85,9 @@ export interface PluginHost {
   // written to How to work as theirs: For you, or For everyone here only when they are the owner,
   // under the heading. Called only from that chapter's act, as the person who pressed Keep.
   keep(person: string, lines: { words: string; for: 'me' | 'everyone'; heading: string }[]): void
+  // A chapter of its own opened again for a person: their story waits on Home until they go
+  // through it again (a short interview after a regular check).
+  reopen(person: string, chapter: string): void
   // A block for the start of every conversation (what the person kept), or none.
   startBlock(words: () => string | null): void
   // A line in the journal: counts and what was done, never what was read.

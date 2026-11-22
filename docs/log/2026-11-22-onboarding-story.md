@@ -119,3 +119,39 @@ story only when the plugin says on); and each workflow is now a card that opens,
 opening Set up Alpha again from the workspace tile reset every tick on the path, which read as all
 gone though nothing was (his server kept its 8 About you lines, 3 workflows and 6 answers): it now
 keeps what was gone through, opens at Welcome, and each Continue goes to the next chapter.
+
+## Step 5: a member's story, the monthly check, and a playback for every module
+
+On "lets do it". A member's link page is now their Welcome to the workspace: its name and picture,
+who added them, the three promises, and Start, which sets their password and marks Welcome gone
+through, so they land on What's here (GET /api/session/link carries it; the picture as its data
+address, since they are not signed in yet). The Interviewer's regular check is a schedule its kit
+carries, "A short interview", on the first of each month: its check only looks (the person's
+requests said three times or more, values they typed over, tasks they made, apps and sites read
+again) and wakes the Interviewer only when it found something; then its new tool,
+`short_interview`, opens What I learned again for that person through a new host call, `reopen`,
+with what changed, and the few new questions are drafted from it, so Home shows one row and
+nothing waits in Needs you. Alpha's own kits now turn on the schedules of the agents they carry,
+as their modules' are (the check came paused before). The Module builder plays back before it
+builds anything, on a card with Yes, that's it; Yes, and also; Not this, except a report's Build
+it, which says it was played back already. Modules left unopened are not looked at: nothing in the
+journal says a module was opened. The journeys, run on the real model now that this Mac
+reaches Claude again, found four things, fixed: schedules gain "every month" (a first-of-the-month
+timer that never ran only fires in its own minute) and the check runs on it; a shipped agent's
+`checks/` now come with its schedules (they were left behind, so its check could not run); the
+owner's own words for who the work is for are citable as answer workspace, and an owner who works
+alone ("Just me") keeps those lines as their own; the journeys' made-up site serves its front page,
+and their checks read the answers and playbacks kept in the story. A member joins, a quiet month,
+the full interview and both who-the-work-is-for journeys pass.
+
+On his "ok", GitHub refused the push: the interview journey's report held a token. The journey's
+stand-in computer had read this Mac's own browsing history (since step 2) and, with AI work lent in
+step 5, its own Claude Code requests, and its report kept them; two such reports were already on
+main. On his yes, they were taken out of main's history (02fd47d to 36c2798 rewritten, force-pushed
+as 27e25bc). The stand-in computer now reads a home made up from the journey's recorded answers
+(`recordedHome`, where ALPHA_COMPUTER_HOME points; a Bridge child's start can carry an environment),
+so a journey never reads the Mac it runs on; the interview journey has recorded AI work and passes
+on it. And on his second yes, the never-use list leaves out a key or token by its form (shapes in
+its credentials kind: Hugging Face, OpenAI and Anthropic, GitHub, GitLab, AWS, Google, Slack,
+Stripe, private keys, signed web tokens), from every connection (N1). Alpha leaves them out as they
+land now; on a computer, before they leave it, from the Bridge's next version.

@@ -418,7 +418,7 @@ function FlowRow({
                       await startBuild(
                         askFor(
                           [
-                            `Build ${p.name} for ${w.name}, from my report in Your work.`,
+                            `Build ${p.name} for ${w.name}, from my report in Your work. I said yes to its playback in Set up Alpha: "We'd build ${p.name}".`,
                             p.does,
                             ...(p.target ? [`Target: ${p.target}`] : []),
                             `What the data shows: ${w.shows}`,
