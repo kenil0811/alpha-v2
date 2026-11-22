@@ -1,6 +1,7 @@
 import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
 import { config } from '../../config.ts'
+import { importRows, sheetHeaders } from '../../files/documents.ts'
 import { tx } from '../../world/db.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { managedBy } from '../../world/maintained.ts'
@@ -101,6 +102,42 @@ export function registerTables(ctx: Ctx): void {
       user: user.id,
     })
     return { id: t.id, hidden: t.hidden }
+  })
+
+  // A sheet or CSV already uploaded, read for the window's mapping: its headers, its sheets, and
+  // how many of this table's rows came from it already.
+  app.get('/api/tables/:id/import', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { file, sheet } = z
+      .object({ file: z.string(), sheet: z.string().optional() })
+      .parse(req.query ?? {})
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    const f = world.files.findFile(file)
+    if (!f) throw new Refused('That file is not there.')
+    return sheetHeaders(world, f.hash, sheet ?? null, t)
+  })
+
+  // Its rows into this table as the person, header by header (header -> property); the world's
+  // one import, Alpha's too, with the walls of adding rows. again: the person chose to import a
+  // file imported here before.
+  app.post('/api/tables/:id/import', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { file, sheet, columns, again } = z
+      .object({
+        file: z.string(),
+        sheet: z.string().optional(),
+        columns: z.record(z.string(), z.string()),
+        again: z.boolean().optional(),
+      })
+      .parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    const f = world.files.findFile(file)
+    if (!f) throw new Refused('That file is not there.')
+    const out = importRows(world, f.hash, t, columns, sheet ?? null, asPerson, again ?? false)
+    live()
+    return { added: out.added }
   })
 
   // What a relation's picker offers: every row of this table, by its name.

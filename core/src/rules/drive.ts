@@ -63,6 +63,18 @@ export const asPerson = (w: RuleWorld) => ({
   user: w.user.id,
 })
 const id = (w: RuleWorld, table: string) => w.table(table).id
+
+// A one-row sheet of the given values, dropped in as the person drops a file, for an import.
+export function sheetOf(w: RuleWorld, values: Record<string, unknown>) {
+  const cell = (v: unknown) => {
+    const s = v === null || v === undefined ? '' : String(v)
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const heads = Object.keys(values)
+  const csv = `${heads.map(cell).join(',')}\n${heads.map((h) => cell(values[h])).join(',')}\n`
+  const out = w.engine.drop(w.user, new TextEncoder().encode(csv), 'rows.csv', 'text/csv')
+  return { file: out.file.hash, columns: Object.fromEntries(heads.map((h) => [h, h])) }
+}
 const assumed = { kind: 'assumed' as const, basis: 'the rule test' }
 
 export const DRIVERS: Record<string, (w: RuleWorld) => Partial<Acts>> = {
@@ -82,6 +94,16 @@ export const DRIVERS: Record<string, (w: RuleWorld) => Partial<Acts>> = {
       }),
     add: (table, values) =>
       window(w, `/api/tables/${id(w, table)}/rows/many`, { add: [{ values }] }),
+  }),
+  'window: import': (w) => ({
+    add: (table, values) =>
+      window(w, `/api/tables/${id(w, table)}/import`, { ...sheetOf(w, values), again: true }),
+  }),
+  'alpha: file': (w) => ({
+    add: async (table, values) => {
+      const { file, columns } = sheetOf(w, values)
+      await alpha(w, 'file', { action: 'import', file, table, columns, again: true })
+    },
   }),
   'window: remove': (w) => ({
     remove: (t) => window(w, `/api/tables/${id(w, t.table)}/rows/remove`, { rows: [t.row] }),

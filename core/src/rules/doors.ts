@@ -51,6 +51,14 @@ export const DOORS: Door[] = [
     can: ['set', 'add'],
   },
   {
+    // a sheet's rows, the world's one import: tried wherever a row is added
+    name: 'window: import',
+    by: 'person',
+    changes: 'rows',
+    where: ['POST /api/tables/:id/import'],
+    can: ['add'],
+  },
+  {
     name: 'window: remove',
     by: 'person',
     changes: 'rows',
@@ -137,7 +145,8 @@ export const DOORS: Door[] = [
     where: ['tool change'],
     can: ['set', 'clear', 'remove'],
   },
-  { name: 'alpha: file', by: 'alpha', changes: 'rows', where: ['tool file'], can: [] },
+  // a file's import adds rows through the world's one import, as the window's does
+  { name: 'alpha: file', by: 'alpha', changes: 'rows', where: ['tool file'], can: ['add'] },
   { name: 'alpha: task', by: 'alpha', changes: 'rows', where: ['tool task'], can: [] },
   {
     name: 'schedule: a script',

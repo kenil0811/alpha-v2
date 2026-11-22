@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { lastHash, manifestOf, verify } from '../world/audit.ts'
 import { backupDaily } from '../world/backups.ts'
 import { run } from '../world/db.ts'
+import { sheetOf } from './drive.ts'
 import { rule } from './rule.ts'
 import type { RuleWorld } from './world.ts'
 
@@ -26,6 +27,9 @@ rule('A1', 'one journal line per change, written in the change’s own transacti
   acts: ['set', 'add'],
   given: async (w, d) => {
     if (d.by === 'plugin') await w.plugin()
+    // an import's sheet is a file the person dropped in before, a change of its own
+    if (d.where.some((x) => x.endsWith('/import') || x === 'tool file'))
+      sheetOf(w, NEW[w.target(d).table] ?? {})
     before = w.lastLine()
   },
   attempt: (a, act, d, w) => {

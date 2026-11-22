@@ -4,10 +4,11 @@
 import { extname } from 'node:path'
 import { readBytes, readPdf } from '@alpha/connector-files'
 import { config } from '../config.ts'
+import { one } from '../world/db.ts'
 import type { FileOut } from '../world/files.ts'
 import { checkValue, type ProvenanceInput, Refused } from '../world/kinds.ts'
 import type { RecordCtx } from '../world/records/index.ts'
-import type { Table, WriteCtx } from '../world/shape/index.ts'
+import { findField, type Table, type WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 
 // PDFs being read now, by file: a second drop of the same bytes waits for the first.
@@ -98,25 +99,19 @@ function toValue(words: string, kind: string): unknown {
   return words
 }
 
-// A sheet's rows into a table: the first row with values is the headers; every value keeps its
-// cell as its source.
-export function importRows(
-  world: World,
-  hash: string,
-  table: Table,
-  columns: Record<string, string>,
-  sheet: string | null,
-  ctx: RecordCtx,
-): string {
+type SheetCell = { words: string; cell: string }
+
+// A sheet file's cells by row then column letter, the chosen sheet (or the first), and every
+// sheet's name.
+function readSheet(world: World, hash: string, sheet: string | null) {
   const doc = world.files.document(hash)
   if (doc?.kind !== 'sheet') throw new Refused('Only a sheet can be imported into a table.')
-  const chunks = world.files
-    .chunks(doc.id)
-    .filter((c) => c.position.sheet && (!sheet || c.position.sheet === sheet))
+  const all = world.files.chunks(doc.id).filter((c) => c.position.sheet)
+  const chunks = all.filter((c) => !sheet || c.position.sheet === sheet)
   if (!chunks.length)
     throw new Refused(sheet ? `There is no sheet called ${sheet}.` : 'The sheet is empty.')
   const sheetName = sheet ?? (chunks[0]?.position.sheet as string)
-  const rows = new Map<number, Map<string, { words: string; cell: string }>>()
+  const rows = new Map<number, Map<string, SheetCell>>()
   for (const c of chunks) {
     if (c.position.sheet !== sheetName) continue
     const col = (c.position.cell as string).replace(/\d+$/, '')
@@ -125,7 +120,60 @@ export function importRows(
     rows.get(row)?.set(col, { words: c.words, cell: c.position.cell as string })
   }
   const order = [...rows.keys()].sort((a, b) => a - b)
-  const headerRow = rows.get(order[0] as number) as Map<string, { words: string }>
+  const headerRow = rows.get(order[0] as number) as Map<string, SheetCell>
+  const sheets = [...new Set(all.map((c) => c.position.sheet as string))]
+  return { doc, sheetName, rows, order, headerRow, sheets }
+}
+
+// How many of a table's rows came from a file already: each value imported keeps its cell as its
+// source, so a second import of the same file is seen before it doubles every row.
+function importedBefore(world: World, table: Table, hash: string): number {
+  return Number(
+    one<{ n: number }>(
+      world.db,
+      `SELECT count(DISTINCT p.record_id) AS n FROM provenance p JOIN records r ON r.id = p.record_id
+        WHERE r.table_id = ? AND json_extract(p.source, '$.file') = ?`,
+      table.id,
+      hash,
+    )?.n ?? 0,
+  )
+}
+
+// What a person maps before importing into a table: the chosen sheet's headers, the sheets there
+// are, and how many of the table's rows came from this file already.
+export function sheetHeaders(world: World, hash: string, sheet: string | null, table: Table) {
+  const { headerRow, sheets } = readSheet(world, hash, sheet)
+  return {
+    headers: [...headerRow.values()].map((h) => h.words),
+    sheets,
+    already: importedBefore(world, table, hash),
+  }
+}
+
+// A sheet's rows into a table, one import for the window and Alpha alike: the first row with
+// values is the headers; every value keeps its cell as its source. Its walls are adding rows':
+// a table a connection fills takes rows only from its source (rules D8), a managed module takes
+// them as by hand. A file imported here before goes in again only when asked (again).
+export function importRows(
+  world: World,
+  hash: string,
+  table: Table,
+  columns: Record<string, string>,
+  sheet: string | null,
+  ctx: RecordCtx,
+  again = false,
+): { added: number; words: string } {
+  if (table.mirror)
+    throw new Refused(
+      `${table.name} is a mirror of ${table.mirror}: its rows come from ${table.mirror}, so none is imported in Alpha.`,
+    )
+  for (const field of Object.values(columns)) findField(table, field)
+  const { doc, sheetName, rows, order, headerRow } = readSheet(world, hash, sheet)
+  const before = importedBefore(world, table, hash)
+  if (before && !again)
+    throw new Refused(
+      `${before} row${before === 1 ? '' : 's'} of ${table.name} came from ${doc.title} already: importing it again adds every row again. Say again to do it anyway.`,
+    )
   const colOf = new Map<string, string>()
   for (const [col, h] of headerRow) colOf.set(h.words.toLowerCase(), col)
   const missing = Object.keys(columns).filter((h) => !colOf.has(h.toLowerCase()))
@@ -140,7 +188,7 @@ export function importRows(
   }[] = []
   const skipped: string[] = []
   for (const r of order.slice(1)) {
-    const cells = rows.get(r) as Map<string, { words: string; cell: string }>
+    const cells = rows.get(r) as Map<string, SheetCell>
     const values: Record<string, unknown> = {}
     const perField: Record<string, ProvenanceInput> = {}
     let bad: string | null = null
@@ -171,7 +219,10 @@ export function importRows(
       })
   }
   const ids = out.length ? world.records.add(table.id, out, ctx) : []
-  return `Imported ${ids.length} row${ids.length === 1 ? '' : 's'} into ${table.name} from ${doc.title}${
-    skipped.length ? `; skipped ${skipped.length}: ${skipped.slice(0, 5).join('; ')}` : ''
-  }.`
+  return {
+    added: ids.length,
+    words: `Imported ${ids.length} row${ids.length === 1 ? '' : 's'} into ${table.name} from ${doc.title}${
+      skipped.length ? `; skipped ${skipped.length}: ${skipped.slice(0, 5).join('; ')}` : ''
+    }.`,
+  }
 }

@@ -1,5 +1,5 @@
 // A table's ⋮ menu: the view's sort and group, the properties it shows, its layout, Add a property, Rename, Show as a tab, Read
-// now on a table a connection fills, then downloads of exactly the rows and columns shown. Out of
+// now on a table a connection fills, then Import and Export of exactly the rows and columns shown. Out of
 // TableView.tsx so that screen only shrinks (the window file wall).
 import type { FieldView, ReadByView, ViewConfig } from '@alpha/core/api'
 import {
@@ -7,10 +7,11 @@ import {
   Ban,
   Columns3,
   Copy,
-  Download,
   EllipsisVertical,
+  FileDown,
   FileSpreadsheet,
   FileText,
+  FileUp,
   Group,
   ListChecks,
   PanelTop,
@@ -25,6 +26,7 @@ import { MenuItem, MenuLine, Popover, SubMenu } from '../ui/popover.tsx'
 import { setGroup } from './edits.ts'
 import { canGroup } from './engine.ts'
 import { AddFieldForm } from './Grid.tsx'
+import { ImportDialog } from './ImportDialog.tsx'
 import { KindIcon } from './KindIcon.tsx'
 import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
@@ -33,7 +35,7 @@ import { SortEditor } from './SortEditor.tsx'
 import { PropertyList } from './Toolbar.tsx'
 import { NameForm } from './ViewTabs.tsx'
 
-// The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
+// The ⋮ menu: the view's sort and group, then Import and Export of exactly the rows and columns shown.
 export function More({
   tableId,
   fields,
@@ -49,6 +51,7 @@ export function More({
   readBy = [],
   name = null,
   onRename,
+  mirror = null,
 }: {
   tableId: string
   fields: FieldView[]
@@ -64,11 +67,13 @@ export function More({
   readBy?: ReadByView[] // the connections that fill it
   name?: string | null // its name, where Rename on the menu may change it
   onRename?: (name: string) => void
+  mirror?: string | null // the system a table a connection fills mirrors: its rows come from there
 }) {
   const fixed = useShapeFixed()
   const [open, setOpen] = useState(false)
   const [add, setAdd] = useState(false)
   const [naming, setNaming] = useState(false)
+  const [importing, setImporting] = useState(false)
   const grid = config.kind === 'table' ? undefined : 'Columns are laid out in the table view.'
   const wrapped = shown.length > 0 && shown.every((f) => layout.wrap.includes(f.id))
   const anchor = useRef<HTMLButtonElement>(null)
@@ -83,7 +88,7 @@ export function More({
         ref={anchor}
         type="button"
         aria-label="More"
-        data-tip="Sort, group, layout, download and more"
+        data-tip="Sort, group, layout, import, export and more"
         onClick={() => setOpen((o) => !o)}
         className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >
@@ -194,6 +199,23 @@ export function More({
           <Plus className="size-3.5 text-ink-3" />
           Add a property
         </MenuItem>
+        <MenuItem
+          // rows go in as they do by hand: not into a mirror, and a managed module takes them
+          reason={
+            mirror
+              ? `Its rows come from ${mirror}.`
+              : adding
+                ? undefined
+                : 'This table has its own page; import there.'
+          }
+          onClick={() => {
+            setOpen(false)
+            setImporting(true)
+          }}
+        >
+          <FileUp className="size-3.5 text-ink-3" />
+          Import
+        </MenuItem>
         {name !== null && (
           <MenuItem
             reason={fixed}
@@ -228,8 +250,8 @@ export function More({
         <SubMenu
           label={
             <>
-              <Download className="size-3.5 text-ink-3" />
-              Download
+              <FileDown className="size-3.5 text-ink-3" />
+              Export
             </>
           }
         >
@@ -274,6 +296,9 @@ export function More({
           }}
         />
       </Popover>
+      {importing && (
+        <ImportDialog tableId={tableId} fields={fields} onClose={() => setImporting(false)} />
+      )}
       <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
         <AddFieldForm tableId={tableId} title="Add a property" onAdded={() => setAdd(false)} />
       </Popover>

@@ -99,7 +99,12 @@ export function registerFiles(ctx: Ctx): void {
     const mime = String(req.headers['content-type'] ?? 'application/octet-stream')
     const body = req.body as Buffer
     const out = engine.drop(user, new Uint8Array(body), name, mime)
-    return { name: out.file.name, readable: out.readable, pieces: out.document?.chunks ?? 0 }
+    return {
+      hash: out.file.hash,
+      name: out.file.name,
+      readable: out.readable,
+      pieces: out.document?.chunks ?? 0,
+    }
   })
 
   const rowOf = (params: unknown) => {

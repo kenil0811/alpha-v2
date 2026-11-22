@@ -77,8 +77,9 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | T23 | A board's card is dragged onto any column, its stage set at once; held near the board's left or right edge it scrolls the board, faster the nearer the edge, so a column out of sight takes it too; its picker moves it by keyboard | 15 Nov | — |
 | T24 | Map is a view of a table that holds places: a latitude and a longitude (number columns named so, values in range) or a column of points ("35.2, -80.8" in most filled rows), found by `@alpha/core/places` in the core and the window alike; never an address until something turns it into a point. A point per row, coloured by a choice (T17) with its key, gathered into counts where they crowd, the row's name on pointing and the row beside on a click; the rows with no place are counted under it. MapLibre loads only when a map opens, on OpenFreeMap's tiles, which learn the area in view and nothing of the rows; it opens fitted to its rows | 17 Nov | — |
 | T25 | A table's views are Table, Gallery, Calendar, Board, Map and Form, each offered when the table has what it needs; no Timeline, and a list saved as one draws as a table | 20 Nov | — |
-| T27 | Calendar is a view, not a list: a kit says a table opens as a calendar (its `view:`, a layout by the fields' names) and the table opens so until the person picks a view of their own; a calendar draws every event on one line, its words cut short and the whole in the tip, in the month, the week and the day | 20 Nov | — |
 | T26 | A table is one rounded frame holding its toolbar, the chips' line, the view and the foot, with no gaps between; the chips' line shows only while it holds a paste, ticked rows or the list's filters, sorts or group | 20 Nov | — |
+| T27 | Calendar is a view, not a list: a kit says a table opens as a calendar (its `view:`, a layout by the fields' names) and the table opens so until the person picks a view of their own; a calendar draws every event on one line, its words cut short and the whole in the tip, in the month, the week and the day | 20 Nov | — |
+| T28 | A table's ⋮ reads Sort, Group, Properties, Layout, Add a property, Import, Export. Import takes a CSV or spreadsheet in one drop zone, then one row per header with a dropdown of the table's typeable properties (the one named the same, ignoring case, else Skip) and an Import button, a refusal beside it; a file imported into the table before says how many of its rows are here already, and importing it again is the person's choice; greyed with its reason on a kept list or a table a connection fills; a managed module takes rows as it takes them by hand | 20 Nov, 22 Nov | — |
 
 ## Pages, records and deleting
 
@@ -128,7 +129,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | W1 | Module, never kit or project | 23 Oct | test |
-| W2 | Organization, never company; How to work, never remembered; Download, never export; Delete, never remove; Decline or Cancel, never "not now"; Decline, never Veto; a run that did not finish is Failed, in Activity's filter and every pill | 25 Oct, 1 Nov | test |
+| W2 | Organization, never company; How to work, never remembered; Export, never download (a table's ⋮ Export holds Excel, CSV and Copy as a table); Delete, never remove; Decline or Cancel, never "not now"; Decline, never Veto; a run that did not finish is Failed, in Activity's filter and every pill | 25 Oct, 1 Nov, 20 Nov | test |
 | W3 | No line for what Alpha can't do yet; a line that can't act now stays greyed with its reason; never "Coming soon" | 26 Oct | test (words) |
 | W4 | Sentence case for labels, buttons and placeholders | 25 Oct | test |
 | W5 | Dates read "25 Oct" (the year only when it isn't this one), typed as words; never a dd/mm/yyyy picker | 26 Oct | — |
