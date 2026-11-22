@@ -37,9 +37,7 @@ export function CellHistory({
     >
       {steps === null ? (
         <p className="text-ink-3">Loading…</p>
-      ) : steps.length === 0 ? (
-        <p className="text-ink-3">No changes kept.</p>
-      ) : (
+      ) : steps.length === 0 ? null : (
         <ol className="-mt-1 max-h-96 overflow-auto">
           {steps.map((h, i) => (
             <li

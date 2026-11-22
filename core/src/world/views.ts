@@ -16,7 +16,6 @@ export const VIEW_KINDS = [
   'list',
   'gallery',
   'calendar',
-  'timeline',
   'chart',
   'form',
   'map',
@@ -62,7 +61,8 @@ export const TOTAL_OPS = [
 const Value = z.union([z.string(), z.number()]).nullable()
 
 export const ViewConfig = z.object({
-  kind: z.enum(VIEW_KINDS).default('table'),
+  // a timeline, dropped 20 Nov (ui-rules T25), is read as a table: a list saved as one opens so
+  kind: z.preprocess((k) => (k === 'timeline' ? 'table' : k), z.enum(VIEW_KINDS).default('table')),
   search: z.string().default(''),
   filters: z
     .object({
@@ -82,7 +82,7 @@ export const ViewConfig = z.object({
     .default({ match: 'all', rules: [] }),
   sorts: z.array(z.object({ field: z.string(), dir: z.enum(['asc', 'desc']) })).default([]),
   group: z.string().nullable().default(null), // a table's groups, a board's columns
-  by: z.string().nullable().default(null), // the date a calendar, timeline or chart is laid on
+  by: z.string().nullable().default(null), // the date a calendar or chart is laid on
   until: z.string().nullable().default(null), // the date a calendar's item ends, for its week and day
   measure: z.string().nullable().default(null), // what a chart adds up (a number); none counts rows
   hidden: z.array(z.string()).default([]),
@@ -168,8 +168,8 @@ export function resolveConfig(table: Table, input: unknown): ViewConfig {
       resolved.group = choice.id
     }
   }
-  // a calendar or timeline needs a date
-  if (['calendar', 'timeline'].includes(resolved.kind)) {
+  // a calendar needs a date
+  if (resolved.kind === 'calendar') {
     const by = table.fields.find((f) => f.id === resolved.by)
     if (by?.kind !== 'date') {
       const date = table.fields.find((f) => f.kind === 'date')

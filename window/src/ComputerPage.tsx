@@ -153,9 +153,7 @@ export function ComputerPage({
               />
             ))}
           </List>
-        ) : (
-          <Empty>{c.here ? 'No folders added yet.' : 'Nothing lent yet.'}</Empty>
-        )}
+        ) : null}
         {places.map((p) => (
           <FolderForm key={p.name} connector={p} onChange={load} />
         ))}

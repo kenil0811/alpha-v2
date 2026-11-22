@@ -1,4 +1,4 @@
-// A table's ⋮ menu: the view's sort and group, its layout, Add column, Rename, Show as a tab, Read
+// A table's ⋮ menu: the view's sort and group, the properties it shows, its layout, Add a property, Rename, Show as a tab, Read
 // now on a table a connection fills, then downloads of exactly the rows and columns shown. Out of
 // TableView.tsx so that screen only shrinks (the window file wall).
 import type { FieldView, ReadByView, ViewConfig } from '@alpha/core/api'
@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   FileText,
   Group,
+  ListChecks,
   PanelTop,
   PencilLine,
   Pin,
@@ -29,6 +30,7 @@ import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
 import { ReadNowItems } from './ReadNow.tsx'
 import { SortEditor } from './SortEditor.tsx'
+import { PropertyList } from './Toolbar.tsx'
 import { NameForm } from './ViewTabs.tsx'
 
 // The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
@@ -134,6 +136,17 @@ export function More({
         <SubMenu
           label={
             <>
+              <ListChecks className="size-3.5 text-ink-3" />
+              Properties
+            </>
+          }
+          hint={config.hidden.length ? `${config.hidden.length} hidden` : 'All shown'}
+        >
+          <PropertyList fields={fields} config={config} onConfig={onConfig} />
+        </SubMenu>
+        <SubMenu
+          label={
+            <>
               <Columns3 className="size-3.5 text-ink-3" />
               Layout
             </>
@@ -170,14 +183,16 @@ export function More({
           </MenuItem>
         </SubMenu>
         <MenuItem
-          reason={fixed ?? (adding ? undefined : 'This table has its own page; add columns there.')}
+          reason={
+            fixed ?? (adding ? undefined : 'This table has its own page; add properties there.')
+          }
           onClick={() => {
             setOpen(false)
             setAdd(true)
           }}
         >
           <Plus className="size-3.5 text-ink-3" />
-          Add column
+          Add a property
         </MenuItem>
         {name !== null && (
           <MenuItem
@@ -260,7 +275,7 @@ export function More({
         />
       </Popover>
       <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
+        <AddFieldForm tableId={tableId} title="Add a property" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )

@@ -16,7 +16,6 @@ describe('a short list', () => {
       onAdd={() => {}}
       onEdit={async () => {}}
       remove={{ title: 'Forget this?', yes: 'Forget it', what: () => 'it', run: async () => {} }}
-      empty="Nothing yet."
     />,
   )
 

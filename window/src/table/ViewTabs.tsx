@@ -1,32 +1,21 @@
-// A table's toolbar, one row that never wraps, in this order: the saved lists as pills (the one the
-// table opens on first, then All and each list, shared by everyone; the picked one filled; as many
-// as fit, the rest behind ▾ with the picked list's own actions and Add list), Cancel and Save while
-// the list on screen differs from what was saved (Save ▾ Save as new list keeps a shared list as it
-// was), the view, search and filter (`tools`), and on the right the table's actions (`right`). A
-// list's own actions sit behind ▾ and on a right-click of its pill: rename, duplicate, open the
-// table on it, delete. Resting on a pill says what the list holds. A list Alpha keeps itself
-// (people, tasks) holds no saved lists, so it shows neither Save nor ▾, and Cancel alone.
+// A table's toolbar, one row that never wraps: the view as an icon, then every saved list as a pill
+// in one row that scrolls sideways (the one the table opens on first, then All and each list,
+// shared by everyone; the picked one filled), and on the right search and filter (`tools`) and the table's actions (`right`). A list behaves like a
+// tab: a right-click gives Rename, Duplicate, Move to the front and Delete, and a double-click
+// renames it in place. Resting on a pill says what the list holds. A list Alpha keeps itself
+// (people, tasks) holds no saved lists, so it shows neither Save nor its menu, and Cancel alone.
 import type { FieldView, SavedView } from '@alpha/core/api'
-import { ChevronDown, CopyPlus, List, PencilLine, Plus, Star, Trash2 } from 'lucide-react'
-import {
-  type FormEvent,
-  type ReactNode,
-  type RefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
+import { ArrowLeftToLine, CopyPlus, PencilLine, Trash2 } from 'lucide-react'
+import { type FormEvent, type ReactNode, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field } from '../ui/field.tsx'
-import { MenuHeading, MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
 import { listWords } from './list-words.ts'
 
-const PILL_GAP = 4 // the pills' gap-1
-const LINE_GAP = 8 // the line's gap-2
-
 export function ViewTabs({
+  picker,
   tools,
   right,
   views,
@@ -36,14 +25,14 @@ export function ViewTabs({
   dirty,
   problem,
   onPick,
-  onSave,
   onSaveAs,
   onRename,
   onDefault,
   onRemove,
-  onReset,
+  links,
 }: {
-  tools: ReactNode // the view, search and filter, after the saved lists
+  picker: ReactNode // how the rows are drawn, an icon before the lists
+  tools: ReactNode // search and filter, at the right before the table's actions
   right: ReactNode // the table's own actions, ⋮ and the chevron, at the right end
   views: SavedView[]
   fields: FieldView[] // to say what each list holds
@@ -52,70 +41,26 @@ export function ViewTabs({
   dirty: boolean
   problem: string | null
   onPick: (id: string | null) => void
-  onSave: () => void
   onSaveAs: (name: string) => void
   onRename: (name: string) => void
   onDefault: (id: string, on: boolean) => void // the core keeps the list the table opens on
   onRemove: () => void
-  onReset: () => void
+  // a list Alpha keeps itself may hold its own lists (Tasks: Today, This week…): pills that go to
+  // them, in place of All, in the same one row
+  links?:
+    | { key: string; label: string; count?: number | undefined; href: string; sel: boolean }[]
+    | undefined
 }) {
-  const [more, setMore] = useState(false) // ▾: the lists that don't fit, the list's actions
-  const [saving, setSaving] = useState(false) // Save ▾
   const [removing, setRemoving] = useState(false) // Delete the list asks first, in the pop-up
-  const [naming, setNaming] = useState<{
-    kind: 'new' | 'rename'
-    at: RefObject<HTMLElement | null>
-  } | null>(null)
-  const line = useRef<HTMLDivElement>(null)
-  const pills = useRef<HTMLFieldSetElement>(null)
-  const measure = useRef<HTMLDivElement>(null)
-  const picked = useRef<HTMLButtonElement>(null)
-  const moreAt = useRef<HTMLButtonElement>(null)
-  const saveAt = useRef<HTMLSpanElement>(null)
+  const [renaming, setRenaming] = useState(false) // the picked pill is a box to type its name in
   const onList = useContextMenu()
   const view = views.find((v) => v.id === current)
-  const close = () => {
-    setMore(false)
-    onList.close()
-  }
+  const close = () => onList.close()
   const allReason = view ? undefined : 'All keeps its name and stays.'
   const mark = views.find((v) => v.isDefault) // the list the table opens on; none, All
   const starred = (v: SavedView | null) => (v ? v.isDefault : !mark)
+  // every list in one row that scrolls sideways, the one the table opens on first
   const ordered = [null, ...views].sort((a, b) => Number(starred(b)) - Number(starred(a)))
-
-  // as many pills as fit in what the line leaves them; the picked one always among them
-  const [fit, setFit] = useState(ordered.length)
-  const [, setWidth] = useState(0) // a new width measures again
-  useLayoutEffect(() => {
-    const el = line.current
-    if (!el) return
-    const watch = new ResizeObserver(() => setWidth(el.clientWidth))
-    watch.observe(el)
-    return () => watch.disconnect()
-  }, [])
-  useLayoutEffect(() => {
-    const el = line.current
-    const box = pills.current
-    if (!el || !box || !measure.current) return
-    const pad = Number.parseFloat(getComputedStyle(el).paddingLeft) * 2
-    const others = [...el.children].filter((c) => c !== box && c !== measure.current)
-    const taken = others.reduce((sum, c) => sum + (c as HTMLElement).offsetWidth + LINE_GAP, 0)
-    const room = el.clientWidth - pad - taken - 4
-    let used = 0
-    let n = 0
-    for (const c of measure.current.children) {
-      const add = (n ? PILL_GAP : 0) + (c as HTMLElement).offsetWidth
-      if (used + add > room) break
-      used += add
-      n++
-    }
-    const next = Math.max(1, n)
-    if (next !== fit) setFit(next)
-  })
-  let shown = ordered.slice(0, fit)
-  const here = ordered.find((v) => (v?.id ?? null) === current)
-  if (here !== undefined && !shown.includes(here)) shown = [...shown.slice(0, fit - 1), here]
-  const rest = ordered.filter((v) => !shown.includes(v))
 
   // what a list holds, one line each; on the picked one, that it changed and how to rename it
   const tipOf = (v: SavedView | null) => {
@@ -127,7 +72,7 @@ export function ViewTabs({
     ]
     return lines.length ? lines.join('\n') : undefined
   }
-  const rename = () => setNaming({ kind: 'rename', at: picked })
+  const rename = () => setRenaming(true)
 
   // the picked list's own actions: behind ▾ and on a right-click of its pill
   const actions = (
@@ -152,21 +97,20 @@ export function ViewTabs({
         Duplicate list
       </MenuItem>
       <MenuItem
-        checked={view ? view.isDefault : !views.some((v) => v.isDefault)}
         reason={
-          view
-            ? undefined
-            : views.some((v) => v.isDefault)
-              ? 'Open another list on its own default to change it.'
-              : 'The table already opens on All.'
+          (view ? view.isDefault : !mark)
+            ? 'It is already first; the table opens on it.'
+            : undefined
         }
         onClick={() => {
           close()
-          if (view) onDefault(view.id, !view.isDefault)
+          // the first list is the one the table opens on, kept by the core
+          if (view) onDefault(view.id, true)
+          else if (mark) onDefault(mark.id, false)
         }}
       >
-        <Star className="size-3.5 text-ink-3" />
-        Open the table on this list
+        <ArrowLeftToLine className="size-3.5 text-ink-3" />
+        Move to the front
       </MenuItem>
       <MenuLine />
       <MenuItem
@@ -182,18 +126,27 @@ export function ViewTabs({
       </MenuItem>
     </>
   )
-  const pill = (v: SavedView | null, ghost = false) => {
+  const pill = (v: SavedView | null) => {
     const mine = (v?.id ?? null) === current
+    if (mine && v && renaming)
+      return (
+        <RenameBox
+          key={v.id}
+          start={v.name}
+          onDone={(name) => {
+            setRenaming(false)
+            if (name && name !== v.name) onRename(name)
+          }}
+        />
+      )
     return (
       <button
         key={v?.id ?? 'all'}
-        ref={mine && !ghost ? picked : undefined}
         type="button"
-        tabIndex={ghost ? -1 : undefined}
         aria-pressed={mine}
-        data-tip={ghost ? undefined : tipOf(v)}
+        data-tip={tipOf(v)}
         onClick={() => onPick(v?.id ?? null)}
-        onDoubleClick={() => mine && v && rename()}
+        onDoubleClick={() => mine && v && keeps && rename()}
         onContextMenu={
           keeps
             ? (e) => {
@@ -204,7 +157,7 @@ export function ViewTabs({
         }
         onKeyDown={mine && keeps ? onList.on.onKeyDown : undefined}
         className={cn(
-          'flex h-7 max-w-44 shrink-0 items-center gap-1.5 rounded-full px-3 text-md',
+          'flex h-7 max-w-44 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-md',
           mine ? 'bg-accent-soft font-medium text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink',
         )}
       >
@@ -216,146 +169,38 @@ export function ViewTabs({
     )
   }
   return (
-    <div ref={line} className="relative flex min-h-11 items-center gap-2 border-hair border-b px-7">
-      {/* every pill at its own width, out of sight, to know how many fit */}
-      <div
-        ref={measure}
-        aria-hidden="true"
-        className="pointer-events-none invisible absolute top-0 left-0 flex gap-1"
-      >
-        {ordered.map((v) => pill(v, true))}
-      </div>
-      <fieldset ref={pills} className="m-0 flex min-w-0 gap-1 border-0 p-0">
+    <div className="relative flex min-h-11 items-center gap-1 border-hair border-b pr-3 pl-1">
+      {picker}
+      <fieldset className="scroll-quiet m-0 flex min-w-0 gap-1 overflow-x-auto border-0 p-0">
         <legend className="sr-only">Saved lists</legend>
-        {shown.map((v) => pill(v))}
+        {links
+          ? links.map((l) => (
+              <a
+                key={l.key}
+                href={l.href}
+                aria-current={l.sel ? 'page' : undefined}
+                className={cn(
+                  'flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-md',
+                  l.sel
+                    ? 'bg-accent-soft font-medium text-ink'
+                    : 'text-ink-2 hover:bg-hover hover:text-ink',
+                )}
+              >
+                {l.label}
+                {l.count !== undefined && (
+                  <span className="text-ink-3 text-sm tabular-nums">{l.count}</span>
+                )}
+              </a>
+            ))
+          : ordered.map((v) => pill(v))}
       </fieldset>
-      {keeps && (
-        <button
-          ref={moreAt}
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={more}
-          aria-label={rest.length ? `${rest.length} more saved lists` : 'Saved lists'}
-          data-tip={rest.length ? `${rest.length} more` : 'Saved lists'}
-          onClick={() => setMore((o) => !o)}
-          className="-ml-1 flex h-7 shrink-0 items-center gap-0.5 rounded-full px-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
-        >
-          {rest.length > 0 && <span className="tabular-nums">{rest.length}</span>}
-          <ChevronDown className="size-3.5" />
-        </button>
-      )}
-      {dirty && (
-        <>
-          <Button size="sm" variant="ghost" onClick={onReset} data-tip="Go back to what was saved">
-            Cancel
-          </Button>
-          {!keeps ? null : view ? (
-            <span ref={saveAt} className="flex shrink-0">
-              <Button
-                size="sm"
-                variant="primary"
-                className="rounded-r-none"
-                onClick={onSave}
-                data-tip="Everyone sees the change"
-              >
-                Save
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                className="rounded-l-none border-l-accent-ink/30 px-1.25"
-                aria-haspopup="menu"
-                aria-expanded={saving}
-                aria-label="More ways to save"
-                data-tip="More ways to save"
-                onClick={() => setSaving((o) => !o)}
-              >
-                <ChevronDown className="size-3.5" />
-              </Button>
-            </span>
-          ) : (
-            <span ref={saveAt} className="flex shrink-0">
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => setNaming({ kind: 'new', at: saveAt })}
-              >
-                Save as list
-              </Button>
-            </span>
-          )}
-        </>
-      )}
-      {tools}
       {problem && <span className="min-w-0 truncate text-bad text-sm">{problem}</span>}
-      <span className="ml-auto flex shrink-0 items-center gap-1">{right}</span>
-      <Popover anchor={moreAt} open={more} onClose={() => setMore(false)}>
-        {rest.length > 0 && (
-          <>
-            <MenuHeading>More lists</MenuHeading>
-            {rest.map((v) => (
-              <MenuItem
-                key={v?.id ?? 'all'}
-                tip={tipOf(v)}
-                star={{
-                  on: starred(v),
-                  // All's ★ comes back when no list has one; a list's own ★ off opens the table on All
-                  onClick: v
-                    ? () => onDefault(v.id, !v.isDefault)
-                    : mark
-                      ? () => onDefault(mark.id, false)
-                      : undefined,
-                }}
-                onClick={() => {
-                  setMore(false)
-                  onPick(v?.id ?? null)
-                }}
-              >
-                <List className="size-3.5 text-ink-3" />
-                {v?.name ?? 'All'}
-              </MenuItem>
-            ))}
-            <MenuLine />
-          </>
-        )}
-        <MenuHeading>{view?.name ?? 'All'}</MenuHeading>
-        {actions}
-        <MenuLine />
-        <MenuItem
-          onClick={() => {
-            setMore(false)
-            setNaming({ kind: 'new', at: moreAt })
-          }}
-        >
-          <Plus className="size-3.5 text-ink-3" />
-          Add list
-        </MenuItem>
-      </Popover>
-      <Popover anchor={saveAt} open={saving} onClose={() => setSaving(false)} align="end">
-        <MenuItem
-          onClick={() => {
-            setSaving(false)
-            setNaming({ kind: 'new', at: saveAt })
-          }}
-        >
-          <CopyPlus className="size-3.5 text-ink-3" />
-          Save as new list
-        </MenuItem>
-      </Popover>
+      <span className="ml-auto flex shrink-0 items-center gap-1">
+        {tools}
+        {right}
+      </span>
       <Popover point={onList.point} open={onList.open} onClose={onList.close}>
         {actions}
-      </Popover>
-      <Popover anchor={naming?.at ?? moreAt} open={naming !== null} onClose={() => setNaming(null)}>
-        <NameForm
-          start={naming?.kind === 'rename' ? (view?.name ?? '') : ''}
-          label={naming?.kind === 'rename' ? 'Rename' : 'Save'}
-          onSave={(name) => {
-            const kind = naming?.kind
-            setNaming(null)
-            if (kind === 'rename') onRename(name)
-            else onSaveAs(name)
-          }}
-        />
       </Popover>
       <Confirm
         open={removing && !!view}
@@ -371,6 +216,31 @@ export function ViewTabs({
         stay.
       </Confirm>
     </div>
+  )
+}
+
+// A list's name typed in its own pill: Enter or leaving keeps it, Escape puts it back.
+function RenameBox({ start, onDone }: { start: string; onDone: (name: string | null) => void }) {
+  const [name, setName] = useState(start)
+  return (
+    <input
+      // biome-ignore lint/a11y/noAutofocus: opened by a double-click on the pill, to type in
+      autoFocus
+      value={name}
+      aria-label="The list’s name, shared with everyone"
+      onChange={(e) => setName(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={() => onDone(name.trim() || null)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          onDone(null)
+        }
+      }}
+      style={{ width: `${Math.max(6, name.length + 2)}ch` }}
+      className="h-7 max-w-56 shrink-0 rounded-full border border-accent-line bg-surface px-2.5 font-medium text-ink text-md outline-none"
+    />
   )
 }
 

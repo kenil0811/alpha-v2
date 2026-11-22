@@ -119,9 +119,7 @@ export function SourcePanel({
               </div>
             )}
           </>
-        ) : (
-          <p className="text-ink-3 text-md">Nothing is kept here yet.</p>
-        )}
+        ) : null}
         <div className="flex flex-wrap gap-1.5">
           {open && 'url' in open && (
             <Button size="sm" onClick={() => window.open(open.url, '_blank', 'noreferrer')}>

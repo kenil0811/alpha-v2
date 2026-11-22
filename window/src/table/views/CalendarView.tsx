@@ -93,7 +93,7 @@ export function CalendarView({
           })
   const words = { month: 'month', week: 'week', day: 'day' }[span]
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-7 pb-6">
+    <div className="flex min-h-0 flex-1 flex-col p-4">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
         <IconButton label={`The ${words} before`} onClick={() => move(-1)}>

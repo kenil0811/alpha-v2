@@ -340,7 +340,6 @@ export type ViewKind =
   | 'list'
   | 'gallery'
   | 'calendar'
-  | 'timeline'
   | 'chart'
   | 'form'
   | 'map'

@@ -37,48 +37,44 @@ export function UsageSection() {
       title="Usage"
       about="What each use of the model cost: Alpha's turns under the module they were asked in, schedules' runs under their schedule. Counted from 28 Oct 2026."
     >
-      {u && !u.months.length ? (
-        <Empty>Nothing used yet.</Empty>
-      ) : (
-        u && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {u.months.length > 1 ? (
-                <Segmented
-                  label="Month"
-                  value={u.month}
-                  options={u.months.slice(0, 12).map((m) => ({ value: m, label: monthName(m) }))}
-                  onChange={setMonth}
-                />
-              ) : (
-                <span className="text-ink text-md">{monthName(u.month)}</span>
-              )}
-              <span className="font-medium text-ink text-lg tabular-nums">
-                {usdWords(u.total.usd)}
-              </span>
-              {u.atApiPrices && (
-                <Info help="Your Claude subscription doesn't charge per reply: this is what the same use would cost paid by use." />
-              )}
-              <span className="text-ink-3 text-md">
-                {[
-                  u.atApiPrices ? 'at API prices' : '',
-                  plural(u.total.turns, 'reply', 'replies'),
-                  plural(u.total.runs, 'run'),
-                  plural(u.total.tokens, 'token'),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </div>
-            <UsageTable title="By module" rows={u.byModule} />
-            {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
-            {u.bySchedule.length > 0 && <UsageTable title="By schedule" rows={u.bySchedule} />}
-            <UsageTable
-              title="By model"
-              rows={u.byModel.map((r) => ({ ...r, name: MODEL_NAMES[r.name] ?? r.name }))}
-            />
+      {u && u.months.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {u.months.length > 1 ? (
+              <Segmented
+                label="Month"
+                value={u.month}
+                options={u.months.slice(0, 12).map((m) => ({ value: m, label: monthName(m) }))}
+                onChange={setMonth}
+              />
+            ) : (
+              <span className="text-ink text-md">{monthName(u.month)}</span>
+            )}
+            <span className="font-medium text-ink text-lg tabular-nums">
+              {usdWords(u.total.usd)}
+            </span>
+            {u.atApiPrices && (
+              <Info help="Your Claude subscription doesn't charge per reply: this is what the same use would cost paid by use." />
+            )}
+            <span className="text-ink-3 text-md">
+              {[
+                u.atApiPrices ? 'at API prices' : '',
+                plural(u.total.turns, 'reply', 'replies'),
+                plural(u.total.runs, 'run'),
+                plural(u.total.tokens, 'token'),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           </div>
-        )
+          <UsageTable title="By module" rows={u.byModule} />
+          {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
+          {u.bySchedule.length > 0 && <UsageTable title="By schedule" rows={u.bySchedule} />}
+          <UsageTable
+            title="By model"
+            rows={u.byModel.map((r) => ({ ...r, name: MODEL_NAMES[r.name] ?? r.name }))}
+          />
+        </div>
       )}
     </Section>
   )

@@ -9,7 +9,6 @@ import { sortWords } from './SortEditor.tsx'
 const LAYOUTS: Partial<Record<ViewConfig['kind'], string>> = {
   board: 'Board',
   calendar: 'Calendar',
-  timeline: 'Timeline',
   gallery: 'Gallery',
   list: 'List',
   chart: 'Chart',

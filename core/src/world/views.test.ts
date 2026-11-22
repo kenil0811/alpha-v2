@@ -65,6 +65,13 @@ describe('a saved view', () => {
     expect(yaml).toContain('field: Asking price')
   })
 
+  it('reads a list saved as a timeline, a view no longer offered, as a table', () => {
+    const t = deals()
+    const v = world.views.save({ table: t.id, name: 'Dates', config: { kind: 'timeline' } }, person)
+    expect(v.config.kind).toBe('table')
+    expect(world.views.get(v.id)?.config.kind).toBe('table')
+  })
+
   it('refuses a field that is not there, a name taken, and the table’s own name', () => {
     const t = deals()
     expect(() =>

@@ -21,18 +21,18 @@ import { Board } from './table/Board.tsx'
 import { TableName } from './table/context.ts'
 import { setRule } from './table/edits.ts'
 import { applyFilters, applySearch, columns, complete, differs, sortRows } from './table/engine.ts'
+import { FootBar, Pages } from './table/FootBar.tsx'
 import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { MirrorGone, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
-import { NewButton } from './table/NewButton.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { Showing } from './table/Showing.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
+import { AddFilter, Chips } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
 import { canType, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -40,7 +40,6 @@ import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { MapView } from './table/views/MapView.tsx'
-import { TimelineView } from './table/views/TimelineView.tsx'
 import { blankFor, useWorkingList } from './table/working.ts'
 import { Select } from './ui/field.tsx'
 
@@ -54,6 +53,7 @@ export function TableView({
   quiet = false,
   loading = false,
   kept = null,
+  lists,
 }: {
   data: TableData
   row?: string | null
@@ -70,6 +70,7 @@ export function TableView({
     onNew?: () => void
     rowAction?: (row: RowView) => ReactNode // its own button on each row (Run now)
   } | null
+  lists?: Parameters<typeof ViewTabs>[0]['links'] // a kept list's own lists, in the one row of pills
 }) {
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
@@ -204,6 +205,24 @@ export function TableView({
     write(() => api.post(`${rowsAt}/${row.id}`, { field: field.name, value }))
   const tickedRows = data.rows.filter((r) => ticked.has(r.id))
   const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
+  const saveAs = (name: string) =>
+    act(async () => {
+      const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, { name, config })
+      setViews((vs) => [...vs, v])
+      setViewId(v.id)
+      setConfig(complete(v.config))
+    })
+  // the table, list and gallery draw a page of rows at a time; the others draw them all
+  const grid = !['board', 'form', 'calendar', 'map', 'chart'].includes(config.kind)
+  // the chips' line shows only while it holds something
+  const band =
+    !!pasting ||
+    ticked.size > 0 ||
+    !!data.mirror ||
+    !!config.search ||
+    config.filters.rules.length > 0 ||
+    config.sorts.length > 0 ||
+    !!config.group
   const openRowPanel = (id: string) => {
     if (kept) return kept.open(id)
     setOpened(id)
@@ -234,18 +253,15 @@ export function TableView({
     <TableName.Provider value={data.name}>
       <ShapeFixed.Provider value={managedWhy(data.managed)}>
         <div className="flex h-full min-h-0">
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
             <ViewTabs
+              picker={
+                <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
+              }
               tools={
                 <>
-                  <KindPicker
-                    fields={fields}
-                    rows={data.rows}
-                    config={config}
-                    onConfig={setConfig}
-                  />
                   {searching || config.search ? (
-                    <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                    <label className="flex h-7.5 w-56 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
                       <Search className="size-3.25 shrink-0" />
                       <input
                         // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
@@ -268,11 +284,12 @@ export function TableView({
                   ) : (
                     <button
                       type="button"
+                      aria-label="Search"
+                      data-tip="Search"
                       onClick={() => setSearching(true)}
-                      className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
+                      className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
                     >
-                      <Search className="size-3.25 shrink-0" />
-                      Search
+                      <Search className="size-4" />
                     </button>
                   )}
                   <AddFilter
@@ -286,10 +303,6 @@ export function TableView({
               }
               right={
                 <>
-                  {config.kind !== 'board' && (
-                    <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
-                  )}
-                  {config.kind !== 'form' && <NewButton onNew={onNew} />}
                   <More
                     tableId={data.id}
                     fields={fields}
@@ -333,6 +346,7 @@ export function TableView({
                   />
                 </>
               }
+              links={lists}
               views={views}
               fields={fields}
               saving={!kept}
@@ -340,23 +354,7 @@ export function TableView({
               dirty={dirty}
               problem={problem}
               onPick={pick}
-              onReset={() => setConfig(saved)}
-              onSave={() =>
-                act(async () => {
-                  if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
-                })
-              }
-              onSaveAs={(name) =>
-                act(async () => {
-                  const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
-                    name,
-                    config,
-                  })
-                  setViews((vs) => [...vs, v])
-                  setViewId(v.id)
-                  setConfig(complete(v.config))
-                })
-              }
+              onSaveAs={saveAs}
               onRename={(name) =>
                 act(async () => {
                   if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
@@ -383,71 +381,66 @@ export function TableView({
               came={only ? 'page' : of ? 'row' : null}
               allHref={`#/table/${data.id}`}
             />
-            {/* one line at one height whatever shows in it (a paste waiting, ticked rows, filters),
-                so the rows never move when something is picked */}
-            <div className="flex min-h-11.5 flex-wrap items-center gap-2 px-7 py-2">
-              {pasting ? (
-                <PasteBar
-                  plan={pasting}
-                  onNo={() => setPasting(null)}
-                  onYes={async () => {
-                    const plan = pasting
-                    setPasting(null)
-                    await write(() =>
-                      api.post(`/api/tables/${data.id}/rows/many`, {
-                        set: plan.set,
-                        add: plan.add,
-                      }),
-                    )
-                  }}
-                />
-              ) : tickedRows.length > 0 ? (
-                <TickedBar
-                  tableId={data.id}
-                  rows={tickedRows}
-                  fields={fields}
-                  onClear={() => setTicked(new Set())}
-                  fixed={mirrorKeeps(data)}
-                  onSet={(field, value) =>
-                    write(() =>
-                      api.post(`/api/tables/${data.id}/rows/many`, {
-                        set: tickedRows.map((r) => ({
-                          row: r.id,
-                          values: { [field.name]: value },
-                        })),
-                      }),
-                    )
-                  }
-                  onRemove={async () => {
-                    const ok = await write(() =>
-                      api.post(`/api/tables/${data.id}/rows/remove`, {
-                        rows: tickedRows.map((r) => r.id),
-                      }),
-                    )
-                    if (ok) setTicked(new Set())
-                    return ok
-                  }}
-                />
-              ) : (
-                <Chips
-                  fields={fields}
-                  config={config}
-                  rows={data.rows}
-                  names={data.names}
-                  onConfig={setConfig}
-                />
-              )}
-              <span className="text-ink-3 text-sm">
-                {loading
-                  ? ''
-                  : rows.length === data.rows.length
-                    ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-                    : `${rows.length} of ${data.rows.length}`}
-              </span>
-              {!loading && (
-                <MirrorGone data={data} showingGone={showingGone} onGone={setShowingGone} />
-              )}
-            </div>
+            {/* the line under the lists holds a paste waiting, ticked rows or the list's chips, at one
+                height while it shows; with none of them there is no line */}
+            {band && (
+              <div className="flex min-h-11.5 flex-wrap items-center gap-2 border-hair border-b px-4 py-2">
+                {pasting ? (
+                  <PasteBar
+                    plan={pasting}
+                    onNo={() => setPasting(null)}
+                    onYes={async () => {
+                      const plan = pasting
+                      setPasting(null)
+                      await write(() =>
+                        api.post(`/api/tables/${data.id}/rows/many`, {
+                          set: plan.set,
+                          add: plan.add,
+                        }),
+                      )
+                    }}
+                  />
+                ) : tickedRows.length > 0 ? (
+                  <TickedBar
+                    tableId={data.id}
+                    rows={tickedRows}
+                    fields={fields}
+                    onClear={() => setTicked(new Set())}
+                    fixed={mirrorKeeps(data)}
+                    onSet={(field, value) =>
+                      write(() =>
+                        api.post(`/api/tables/${data.id}/rows/many`, {
+                          set: tickedRows.map((r) => ({
+                            row: r.id,
+                            values: { [field.name]: value },
+                          })),
+                        }),
+                      )
+                    }
+                    onRemove={async () => {
+                      const ok = await write(() =>
+                        api.post(`/api/tables/${data.id}/rows/remove`, {
+                          rows: tickedRows.map((r) => r.id),
+                        }),
+                      )
+                      if (ok) setTicked(new Set())
+                      return ok
+                    }}
+                  />
+                ) : (
+                  <Chips
+                    fields={fields}
+                    config={config}
+                    rows={data.rows}
+                    names={data.names}
+                    onConfig={setConfig}
+                  />
+                )}
+                {!loading && (
+                  <MirrorGone data={data} showingGone={showingGone} onGone={setShowingGone} />
+                )}
+              </div>
+            )}
             {config.kind === 'board' && boardBy ? (
               <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />
             ) : config.kind === 'form' ? (
@@ -467,7 +460,7 @@ export function TableView({
               />
             ) : config.kind === 'list' ? (
               <ListView
-                rows={rows}
+                rows={paged}
                 lines={own?.lines}
                 fields={shown}
                 group={fields.find((f) => f.id === config.group)}
@@ -475,11 +468,9 @@ export function TableView({
                 onOpen={openRowPanel}
               />
             ) : config.kind === 'gallery' ? (
-              <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
+              <GalleryView rows={paged} fields={shown} names={data.names} onOpen={openRowPanel} />
             ) : config.kind === 'calendar' && dateBy ? (
               <CalendarView rows={rows} data={data} view={config} onOpen={openRowPanel} />
-            ) : config.kind === 'timeline' && dateBy ? (
-              <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
             ) : config.kind === 'map' ? (
               <MapView rows={rows} fields={fields} view={config} onOpen={openRowPanel} />
             ) : config.kind === 'chart' ? (
@@ -551,50 +542,47 @@ export function TableView({
                   layout={layout}
                   onPaste={setPasting}
                 />
-                <div className="-mt-4 flex items-center justify-end gap-1 px-7 pb-3 text-ink-3 text-sm">
-                  {readByWords(data.readBy) && (
-                    <span className="mr-3">{readByWords(data.readBy)}</span>
-                  )}
-                  {rows.length > Math.min(size, ...SIZES) && (
-                    <>
-                      <span className="mr-2 tabular-nums">
-                        Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
-                      </span>
-                      <Select
-                        aria-label="Rows to a page"
-                        value={String(size)}
-                        onChange={(e) => resize(Number(e.target.value))}
-                        className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
-                      >
-                        {SIZES.map((n) => (
-                          <option key={n} value={n}>
-                            {n} a page
-                          </option>
-                        ))}
-                      </Select>
-                      {(
-                        [
-                          ['First', 0, at === 0],
-                          ['Previous', at - 1, at === 0],
-                          ['Next', at + 1, at >= pages - 1],
-                          ['Last', pages - 1, at >= pages - 1],
-                        ] as const
-                      ).map(([label, to, off]) => (
-                        <button
-                          key={label}
-                          type="button"
-                          disabled={off}
-                          onClick={() => setPage(to)}
-                          className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </div>
               </>
             )}
+            <FootBar
+              onNew={config.kind === 'form' ? null : onNew}
+              dirty={dirty}
+              keeps={!kept}
+              view={views.find((v) => v.id === viewId)}
+              onReset={() => setConfig(saved)}
+              onSave={() =>
+                act(async () => {
+                  if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
+                })
+              }
+              onSaveAs={saveAs}
+            >
+              {readByWords(data.readBy) && <span className="mr-3">{readByWords(data.readBy)}</span>}
+              {!grid && !loading && (
+                <span className="tabular-nums">
+                  {rows.length === data.rows.length
+                    ? `${data.rows.length.toLocaleString()} row${data.rows.length === 1 ? '' : 's'}`
+                    : `${rows.length.toLocaleString()} of ${data.rows.length.toLocaleString()}`}
+                </span>
+              )}
+              {rows.length > Math.min(size, ...SIZES) && grid && (
+                <>
+                  <Select
+                    aria-label="Rows to a page"
+                    value={String(size)}
+                    onChange={(e) => resize(Number(e.target.value))}
+                    className="h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+                  >
+                    {SIZES.map((n) => (
+                      <option key={n} value={n}>
+                        {n} a page
+                      </option>
+                    ))}
+                  </Select>
+                  <Pages at={at} pages={pages} onPage={setPage} />
+                </>
+              )}
+            </FootBar>
           </div>
           {adding && (
             <AddRow

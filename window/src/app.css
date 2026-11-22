@@ -16,7 +16,7 @@
 
 /*
   One layering scale for what floats over the page, written z-(--z-pop) and so on. Inside a box (a
-  table's sticky header and first column, a timeline's labels) a screen keeps its own order with
+  table's sticky header and first column) a screen keeps its own order with
   z-0 to z-3; anything that floats over the page takes a name: raised (a panel's drag edge), panel
   (a panel beside the page), overlay (what dims the page), pop (menus, pickers, the pointing
   marks), tip (the one tooltip, over all of them). look.test fails a numbered layer past 3.
