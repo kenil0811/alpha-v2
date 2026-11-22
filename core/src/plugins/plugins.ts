@@ -10,6 +10,7 @@ import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { readAgents } from '@alpha/kit-sdk'
 import {
+  type Chapter,
   checkPlugin,
   type Input,
   type Made,
@@ -34,6 +35,7 @@ import { type ProvenanceInput, Refused } from '../world/kinds.ts'
 import { actorName, type Table, type WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
+import { CORE_CHAPTERS } from '../world/story.ts'
 import type { User, World } from '../world/world.ts'
 
 export const PLUGINS_DIR = join(import.meta.dirname, '..', '..', '..', 'plugins')
@@ -118,6 +120,9 @@ export interface PluginDeps {
   connectors: ConnectorService | null
 }
 
+// A chapter a plugin added to Set up Alpha, with the plugin that added it.
+export type PluginChapter = Chapter & { plugin: string }
+
 export interface PluginRoute {
   method: 'GET' | 'POST'
   path: string // /api/plugins/<name>/<its path>
@@ -149,6 +154,7 @@ export class Plugins {
   readonly deps: PluginDeps
   readonly loaded: Loaded[] = []
   readonly routes: PluginRoute[] = []
+  readonly chapters: PluginChapter[] = []
   private starts: (() => string | null)[] = []
   private given: Given[] = []
   // the engine, once it is made (after the plugins, which add to its conversations)
@@ -409,6 +415,24 @@ export class Plugins {
             }
           },
         })
+      },
+      chapter: (c) => {
+        if (!/^[a-z][a-z-]*$/.test(c.key) || CORE_CHAPTERS.includes(c.key))
+          throw new Error(`A chapter's key is letters and dashes, not one of the core's: ${c.key}.`)
+        if (this.chapters.some((x) => x.key === c.key))
+          throw new Error(`A chapter called ${c.key} is in Set up Alpha already.`)
+        // a plugin's refusal is said as the core's are, as on its routes
+        const said =
+          <T>(f: (input: Input) => Promise<T>) =>
+          async (input: Input): Promise<T> => {
+            try {
+              return await f(input)
+            } catch (err) {
+              if (err instanceof Refusal) throw new Refused(err.message)
+              throw err
+            }
+          }
+        this.chapters.push({ ...c, plugin: name, screen: said(c.screen), act: said(c.act) })
       },
       startBlock: (words) => {
         this.starts.push(words)

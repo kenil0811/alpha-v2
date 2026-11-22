@@ -18,7 +18,6 @@ import { homedir, tmpdir } from 'node:os'
 import { extname, join, resolve } from 'node:path'
 import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
-import { buildServer } from '../api/server.ts'
 import type { WaitingRuleView } from '../api/types.ts'
 import { config } from '../config.ts'
 import { linkShared, loadConnector, loadSet, STANDARD_DIR } from '../connectors/discover.ts'
@@ -42,6 +41,7 @@ import { World } from '../world/world.ts'
 import { bridgeStep } from './bridge-step.ts'
 import { judge } from './checks.ts'
 import { fillSite, fixturesFor } from './fixtures.ts'
+import { AS_WINDOW, pagesFor } from './headers.ts'
 import { idleOf } from './idle.ts'
 import { interviewCheck } from './interview-checks.ts'
 import { Journey } from './journey.ts'
@@ -49,7 +49,7 @@ import { kitStep } from './kit-step.ts'
 import { interview, press, turnEnds } from './plugin-steps.ts'
 import { type Site, serve } from './site.ts'
 import { spentIn } from './spent.ts'
-import { personNamed, storyCheck, storyStep } from './story-steps.ts'
+import { storyCheck, storyStep } from './story-steps.ts'
 import { webCheck } from './web-checks.ts'
 import { inWindow } from './window.ts'
 
@@ -152,6 +152,11 @@ export async function runOne(
     ...routed,
   })
   on.plugins.engine = engine
+  // a fresh Alpha is given Claude in its story as a server is, by a token: the run's own
+  if (journey.claude === 'unset' && !process.env.CLAUDE_CODE_OAUTH_TOKEN)
+    on.problems.push(
+      'This journey gives its fresh Alpha a Claude token in Set up Alpha, and none was handed to the run: set CLAUDE_CODE_OAUTH_TOKEN, as the journeys on a server have it.',
+    )
   if (!on.problems.length) await on.plugins.keepKits({ actor: { kind: 'system' }, user: user.id })
   let site: Site | null = null
   const computer: Parameters<typeof bridgeStep>[1] = { standIn: null }
@@ -169,23 +174,7 @@ export async function runOne(
     ...on.problems.map((p) => `**${p}**\n`),
   ]
   // the window's own routes, in this process, for a step the person takes on a page
-  const served = new Map<string, ReturnType<typeof buildServer>>()
-  // as the owner, or as a member by name (story-steps.ts)
-  const page = (as?: string) => {
-    const who = personNamed(world, user, as)
-    const made =
-      served.get(who.id) ??
-      buildServer({
-        engine,
-        user: who,
-        token: 'journey',
-        ports: [4700],
-        plugins: on.plugins.routes,
-        pluginsOn: on.plugins.on(),
-      })
-    served.set(who.id, made)
-    return made
-  }
+  const { page, close: closePages } = pagesFor(engine, world, user, on.plugins)
   // the story's steps and checks: {site} as the made-up site, {claude} as the runner's own token
   const storyHere = {
     world,
@@ -197,7 +186,7 @@ export async function runOne(
         .replaceAll('{site}', site?.url ?? '{site}')
         .replaceAll('{claude}', process.env.CLAUDE_CODE_OAUTH_TOKEN ?? ''),
   }
-  const asWindow = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
+  const asWindow = AS_WINDOW
   // a plugin named that did not load fails the journey before its first step
   let passed = !on.problems.length
   const started = Date.now()
@@ -575,7 +564,7 @@ export async function runOne(
   const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${prompt}.md`)
   mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
   writeFileSync(out, `${report.join('\n').trim()}\n`)
-  for (const a of served.values()) await a.close()
+  await closePages()
   await computer.standIn?.close()
   engine.close()
   await browser.close()

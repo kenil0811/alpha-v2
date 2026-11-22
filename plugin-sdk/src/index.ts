@@ -75,6 +75,9 @@ export interface PluginHost {
   }
   // A route of its own under /api/plugins/<name>/, answering the window as the person.
   route(method: 'GET' | 'POST', path: string, answer: (input: Input) => Promise<unknown>): void
+  // A chapter of its own in Set up Alpha, placed after Connect or after Your people, for the
+  // owner or for everyone: its screen read and its act done as the person, at /api/story/<key>.
+  chapter(chapter: Chapter): void
   // A block for the start of every conversation (what the person kept), or none.
   startBlock(words: () => string | null): void
   // A line in the journal: counts and what was done, never what was read.
@@ -151,6 +154,18 @@ export interface Lines {
   drop: string // its choice that drops it
   for: 'me' | 'everyone'
   heading: string // where the kept lines go in How to work ("About you")
+}
+
+// A plugin's chapter in Set up Alpha (the first run told as a story): where it sits, who has it,
+// its screen (an object, what Alpha's face says at the top in its says) and its act, what the
+// person did on that screen; the story moves on when the act says so.
+export interface Chapter {
+  key: string // letters and dashes, its own among the story's chapters
+  title: string
+  after: 'connect' | 'people'
+  who: 'owner' | 'everyone'
+  screen(input: Input): Promise<{ says?: string } & Record<string, unknown>>
+  act(input: Input): Promise<{ on: boolean } & Record<string, unknown>>
 }
 
 export interface Input {

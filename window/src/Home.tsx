@@ -8,6 +8,7 @@ import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
 import { shownScreens } from './plugin/screens.ts'
 import { signInWith } from './SignInApps.tsx'
+import { StoryRow } from './story/StoryRow.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
 import { Group, Line } from './ui/groups.tsx'
@@ -109,6 +110,9 @@ export function Home({
             Setting up {stream.settingUp}
           </p>
         )}
+
+        {/* Set up Alpha, until the person finishes it or declines */}
+        <StoryRow version={last} />
 
         {/* a plugin's row, while something of its waits for the person */}
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}

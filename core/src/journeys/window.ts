@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import type { buildServer } from '../api/server.ts'
 import type { World } from '../world/world.ts'
+import { AS_WINDOW as HEADERS } from './headers.ts'
 
 const Row = { table: z.string(), row: z.string() }
 export const Edit = z.object({ ...Row, field: z.string(), to: z.unknown() })
@@ -17,8 +18,6 @@ export interface WindowStep {
   reset?: z.infer<typeof Reset> | undefined
   ask_before_sites?: boolean | undefined
 }
-
-const HEADERS = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
 
 // What the step did, in words. A row that is not there fails the journey; a refusal is said in the
 // window's own words and judged by the step's checks, as some refusals are the point (D8).

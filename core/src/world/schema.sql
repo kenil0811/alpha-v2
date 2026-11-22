@@ -47,6 +47,15 @@ CREATE TABLE users (
   created_at TEXT NOT NULL
 );
 
+-- How far each person has gone through Set up Alpha: each chapter done or skipped, when they
+-- finished it or declined it (world/story.ts). No row: the story not started.
+CREATE TABLE story (
+  user_id TEXT PRIMARY KEY REFERENCES users (id),
+  chapters TEXT NOT NULL DEFAULT '{}',
+  done_at TEXT,
+  declined_at TEXT
+) STRICT;
+
 -- How a person signs in, on an Alpha that asks: their email and password, or a link to set one.
 CREATE TABLE accounts (
   user_id TEXT PRIMARY KEY REFERENCES users (id),

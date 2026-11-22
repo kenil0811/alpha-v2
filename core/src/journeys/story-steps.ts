@@ -20,6 +20,7 @@ import { z } from 'zod'
 import type { buildServer } from '../api/server.ts'
 import { cardAgent } from '../modules/agent-marks.ts'
 import type { User, World } from '../world/world.ts'
+import { AS_WINDOW as HEADERS } from './headers.ts'
 
 export const StoryPress = z.object({
   as: z.string().optional(), // a member by their name; none is the owner
@@ -73,8 +74,6 @@ export interface StoryHere {
   limit: number // how long the model's draft may take, as a step may
   fill: (s: string) => string // {site}, {claude} and the like, as the journey says them
 }
-
-const HEADERS = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
 
 interface StoryView {
   chapters: { key: string; title: string; state: string }[]

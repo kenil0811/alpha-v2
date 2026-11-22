@@ -644,3 +644,4 @@ export interface TaskView extends TaskLineView {
 }
 
 export type * from './agent-types.ts'
+export type * from './story-types.ts'

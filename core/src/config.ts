@@ -131,4 +131,6 @@ export const config = {
   reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
   // how the model sorts a person's items into the groups they named
   judging: (dir?: string) => load('judging.md', (t) => t.trim(), dir),
+  // what Claude is told when Set up Alpha checks that a token given reaches it
+  checking: (dir?: string) => load('checking.md', (t) => t.trim(), dir),
 }

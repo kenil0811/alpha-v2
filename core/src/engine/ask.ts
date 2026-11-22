@@ -58,6 +58,28 @@ function optionsOf(
   }
 }
 
+// Whether Claude answers with a subscription's token, before Set up Alpha keeps it: none when it
+// did, else the words why not.
+export async function answersWith(cwd: string, token: string): Promise<string | null> {
+  const schema = {
+    type: 'object',
+    properties: { reached: { type: 'boolean' } },
+    required: ['reached'],
+  }
+  try {
+    await askOnce(
+      cwd,
+      { CLAUDE_CODE_OAUTH_TOKEN: token },
+      config.checking(),
+      'Can you hear me?',
+      schema,
+    )
+    return null
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err)
+  }
+}
+
 async function answerOf(
   prompt: string,
   options: Options,

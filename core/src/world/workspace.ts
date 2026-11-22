@@ -1,5 +1,7 @@
 // The workspace: one name and one picture for the whole Alpha, the firm's, set by the owner (rules
 // A6) and kept in the world's meta. With none, the window names it after the person, as before.
+// Also who the work is for, in the owner's own words, and their website, from Set up Alpha's Your
+// workspace.
 // The picture is a small image the window sends as a data address; it is served at its own
 // address (GET /api/workspace/picture), never carried on every answer.
 import { createHash } from 'node:crypto'
@@ -9,6 +11,8 @@ import { Refused } from './kinds.ts'
 
 const NAME = 'workspace_name'
 const PICTURE = 'workspace_picture'
+const FOR = 'workspace_for'
+const SITE = 'workspace_site'
 const DATA = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+=*)$/
 export const PICTURE_MAX = 100_000 // a data address's length: the window sends a 96px square
 
@@ -34,6 +38,30 @@ export function workspaceName(db: Db): string | null {
   return read(db, NAME)
 }
 
+// Who the work is for, in the owner's own words: a firm, a practice, a shop, a team, just them.
+export function workspaceFor(db: Db): string | null {
+  return read(db, FOR)
+}
+
+// The workspace's own website, as the owner confirmed or gave it.
+export function workspaceSite(db: Db): string | null {
+  return read(db, SITE)
+}
+
+// A site as given (an address or a bare domain), as an https address; none when it is not one.
+export function siteOf(given: string): string | null {
+  const t = given.trim()
+  if (!t || t.length > 300) return null
+  try {
+    const u = new URL(/^https?:\/\//i.test(t) ? t : `https://${t}`)
+    return u.hostname.includes('.') || u.hostname === 'localhost' || /^[\d.]+$/.test(u.hostname)
+      ? u.toString()
+      : null
+  } catch {
+    return null
+  }
+}
+
 export function workspacePicture(db: Db): WorkspacePicture | null {
   const m = DATA.exec(read(db, PICTURE) ?? '')
   if (!m?.[1] || !m[2]) return null
@@ -45,20 +73,19 @@ export function workspacePicture(db: Db): WorkspacePicture | null {
   }
 }
 
+interface Change {
+  name?: string | null | undefined
+  picture?: string | null | undefined
+  for?: string | null | undefined
+  site?: string | null | undefined
+}
+
 // A new name or picture; none puts the person's name or initial back. One journal line.
-export function setWorkspace(
-  db: Db,
-  change: { name?: string | null | undefined; picture?: string | null | undefined },
-  actor: Actor,
-): void {
+export function setWorkspace(db: Db, change: Change, actor: Actor): void {
   tx(db, () => changeWorkspace(db, change, actor))
 }
 
-function changeWorkspace(
-  db: Db,
-  change: { name?: string | null | undefined; picture?: string | null | undefined },
-  actor: Actor,
-): void {
+function changeWorkspace(db: Db, change: Change, actor: Actor): void {
   const said: string[] = []
   if (change.name !== undefined) {
     const name = change.name?.trim() || null
@@ -72,6 +99,20 @@ function changeWorkspace(
       throw new Refused('A workspace’s picture is a small PNG, JPEG or WebP image.')
     write(db, PICTURE, p)
     said.push(p ? 'Changed this workspace’s picture.' : 'Took this workspace’s picture off.')
+  }
+  if (change.for !== undefined) {
+    const f = change.for?.trim().replace(/\s+/g, ' ') || null
+    if (f && f.length > 300) throw new Refused('Who the work is for is 300 letters at most.')
+    write(db, FOR, f)
+    said.push(f ? `Said who the work here is for: ${f}` : 'Took who the work is for off.')
+  }
+  if (change.site !== undefined) {
+    const site = change.site === null || !change.site.trim() ? null : siteOf(change.site)
+    if (change.site?.trim() && !site) throw new Refused('That is not a website’s address.')
+    write(db, SITE, site)
+    said.push(
+      site ? `Gave this workspace’s website: ${site}` : 'Took this workspace’s website off.',
+    )
   }
   if (said.length) append(db, { actor, kind: 'shaped', words: said.join(' ') })
 }

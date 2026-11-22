@@ -104,4 +104,17 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
       AND NOT EXISTS (SELECT 1 FROM modules AS o WHERE o.id != modules.id
         AND (lower(o.name) = 'network' OR o.slug = 'network'))`)
   },
+  // 11, 22 Nov 2026: Set up Alpha, each person's way through it (world/story.ts). Everyone already
+  // in an Alpha that was live before it came is marked done, so no one is pushed into it.
+  (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS story (
+  user_id TEXT PRIMARY KEY REFERENCES users (id),
+  chapters TEXT NOT NULL DEFAULT '{}',
+  done_at TEXT,
+  declined_at TEXT
+) STRICT`)
+    db.prepare('INSERT OR IGNORE INTO story (user_id, done_at) SELECT id, ? FROM users').run(
+      new Date().toISOString(),
+    )
+  },
 ]
