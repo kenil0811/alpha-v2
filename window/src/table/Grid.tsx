@@ -674,7 +674,8 @@ function Header({
   const added = async (name: string) => {
     const at = inserting
     setInserting(null)
-    const t = await api.get<{ fields: FieldView[] }>(`/api/tables/${tableId}`)
+    // its shape alone: the new field is all it needs, never every row
+    const t = await api.get<{ fields: FieldView[] }>(`/api/tables/${tableId}?rows=none`)
     const made = t.fields.find((x) => x.name === name && !shown.some((s) => s.id === x.id))
     if (made && at) place(made.id, at)
   }

@@ -7,7 +7,7 @@ import { MAINTAINED_SHAPE } from '../engine/tools/index.ts'
 import { install } from '../modules/kits/index.ts'
 import { World } from '../world/world.ts'
 import { buildServer, VERSION } from './server.ts'
-import type { Stream, TableView } from './types.ts'
+import type { RowPageView, Stream, TableView } from './types.ts'
 
 describe('the api', () => {
   it('answers its health check', async () => {
@@ -518,7 +518,12 @@ describe('the api over a world', () => {
     const a = app()
     const table = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
     expect(table.rows[0]?.values).toEqual({ food: 'eggs' })
-    expect(table.rows[0]?.sources.food?.words).toBe('You said “log two eggs”')
+    // a table's read carries only what a cell draws; the row's own read every source
+    expect(table.rows[0]?.sources.food).toBeUndefined()
+    const row = (
+      await a.inject({ url: `/api/rows/${table.rows[0]?.id}`, headers: ok })
+    ).json() as RowPageView
+    expect(row.row.sources.food?.words).toBe('You said “log two eggs”')
     const stream = (await a.inject({ url: '/api/stream', headers: ok })).json() as Stream
     expect(stream.lines.map((l) => [l.kind, l.words])).toEqual([
       ['said', 'log two eggs'],
@@ -732,9 +737,10 @@ describe('the api over a world', () => {
       payload: { field: 'Days cash' },
     })
     expect(reset.statusCode).toBe(200)
-    const back = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
-    expect(back.rows[0]?.values.days_cash).toBe(54)
-    expect(back.rows[0]?.sources.days_cash?.kind).toBe('computed')
+    // a figure the core computed draws no mark: its source is the row's own read
+    const back = (await a.inject({ url: `/api/rows/${id}`, headers: ok })).json() as RowPageView
+    expect(back.row.values.days_cash).toBe(54)
+    expect(back.row.sources.days_cash?.kind).toBe('computed')
     await a.close()
   })
 

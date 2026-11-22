@@ -1,5 +1,5 @@
 // How a table's values read: a value in words for its kind, and the marks and colours around it.
-import type { FieldView, SourceView } from '@alpha/core/api'
+import { CELL_MARKS, type FieldView, type SourceView } from '@alpha/core/api'
 import type { Tone } from '../ui/pill.tsx'
 
 export const KIND_TONE: Record<SourceView['kind'], Tone> = {
@@ -42,7 +42,7 @@ export const INK: Record<string, string> = {
 
 // The marks on a value Alpha is not sure of: ≈ estimated, ? assumed. Grey, never amber: unsure
 // is not wrong; a table gives the word on hover, a panel writes it out.
-export const MARK: Partial<Record<SourceView['kind'], string>> = { estimated: '≈', assumed: '?' }
+export const MARK: Partial<Record<SourceView['kind'], string>> = CELL_MARKS
 
 // An empty value: a grey dash in a table, Unknown in a panel, for every kind of field.
 export const EMPTY_CELL = '–'

@@ -9,6 +9,7 @@ import { cn } from '../ui/cn.ts'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
+import { useSources } from './sources.ts'
 import { TagPicker } from './Tags.tsx'
 import {
   canType,
@@ -43,7 +44,7 @@ export function SourcePanel({
   onClose: () => void
 }) {
   const value = row.values[field.slug]
-  const source = row.sources[field.slug]
+  const source = useSources(row).sources[field.slug] // a table's read carries only a cell's
   const text = show(field, value, names)
   const [history, setHistory] = useState<HistoryView[]>([])
   const [correcting, setCorrecting] = useState(false)

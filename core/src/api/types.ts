@@ -260,6 +260,11 @@ export interface PageSummary {
 }
 
 // Where a value came from, in words the person reads, with what to open.
+// The sources a table's cell draws a mark for, one list for the core and the window: a table's
+// read carries only these of each row's sources, with a value kept beside it (routes/tables.ts),
+// and the grid marks each (≈ an estimate, ? an assumption).
+export const CELL_MARKS = { estimated: '≈', assumed: '?' } as const
+
 export interface SourceView {
   kind: 'stated' | 'looked_up' | 'estimated' | 'assumed' | 'computed'
   words: string

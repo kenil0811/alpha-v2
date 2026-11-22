@@ -1,5 +1,6 @@
 // What a removal takes with it, in the core's words, asked when the pop-up opens: the rows that
-// are part of these and how long Bring back can return them.
+// are part of these, whether they hold values the person typed, and how long Bring back can return
+// them.
 import { useEffect, useState } from 'react'
 import { api } from '../api.ts'
 
