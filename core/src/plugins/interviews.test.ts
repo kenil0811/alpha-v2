@@ -47,6 +47,7 @@ it('loads where alpha.yaml names it, and its kit makes Your work with the Interv
     'Steps',
     'Proposals',
     'About you',
+    'Questions',
     'Interview sources',
   ])
   expect(one(world.db, 'SELECT plugin FROM kits WHERE module_id = ?', m?.id ?? '')).toEqual({
@@ -57,44 +58,182 @@ it('loads where alpha.yaml names it, and its kit makes Your work with the Interv
   expect(interviewer?.source).toBe(m?.id)
 })
 
-it('asks on Home to get to know them, starts and carries on in the Interviewer’s chat, and leaves Home on Decline', async () => {
+const MAIL = {
+  manifest: { name: 'gmail', title: 'Gmail' },
+  module: 'Mail',
+  tables: [
+    {
+      name: 'Mail',
+      fields: [
+        { name: 'From', kind: 'text' },
+        { name: 'Subject', kind: 'text' },
+        { name: 'Date', kind: 'date' },
+      ],
+    },
+  ],
+} as unknown as Connector
+
+it('adds Get to know you and What I learned to Set up Alpha: reads what is left on, drafts once, asks the blanks as a set', async () => {
   const user = world.owner('Kenil')
+  const prompts: string[] = []
+  // the model, stood in for: each draft as the person's answers so far make it
+  const ask = async (_system: string, prompt: string) => {
+    prompts.push(prompt)
+    const rows = [...prompt.matchAll(/^(row \S+):/gm)].map((m) => m[1] as string)
+    const answer = /^answer (\S+): asked .* they said/m.exec(prompt)?.[1]
+    const quoting = {
+      name: 'Writing quotes',
+      shows: 'Three clients asked for a kitchen quote.',
+      means: 'Each quote is written by hand.',
+      times_rows: rows,
+      rests_on: rows,
+      steps: [{ what: 'Write the quote from the site notes', rests_on: rows }],
+    }
+    if (!answer)
+      return {
+        answer: {
+          about: [
+            { line: 'Writes kitchen quotes for clients.', for: 'me', rests_on: rows },
+            { line: 'Works alone.', for: 'me', rests_on: [] }, // cites nothing: left out (I1)
+          ],
+          workflows: [{ ...quoting, proposal: null }],
+          questions: [
+            {
+              words: 'Three clients asked for a quote: how long does each take you?',
+              options: ['Under an hour', 'An hour or more'],
+              workflow: 'Writing quotes',
+              rests_on: rows,
+            },
+          ],
+        },
+      }
+    return {
+      answer: {
+        about: [],
+        workflows: [
+          {
+            ...quoting,
+            minutes_answer: `answer ${answer}`,
+            proposal: {
+              kind: 'module',
+              name: 'a quote tracker',
+              does: 'Keeps each quote request and drafts the quote from the site notes.',
+              rests_on: [...rows, `answer ${answer}`],
+            },
+          },
+        ],
+        questions: [],
+      },
+    }
+  }
   const { plugins } = await switchOn(['interviews'], {
     world,
     user,
     home,
     region: () => null,
-    ask: async () => ({ answer: null }),
+    ask,
     connectors: null,
   })
   await plugins.keepKits({ actor: { kind: 'system' }, user: user.id })
-  const told: { words: string; brief: string }[] = []
-  plugins.engine = {
-    desk: () => ({ takeWork: (words: string, brief: string) => told.push({ words, brief }) }),
-  } as never
-  const route = (method: string, path: string) => {
-    const r = plugins.routes.find(
-      (x) => x.method === method && x.path === `/api/plugins/interviews${path}`,
-    )
-    if (!r) throw new Error(`No ${method} ${path}.`)
-    const person = { id: user.id, name: user.name, owner: true }
-    return r.answer({ params: {}, query: {}, body: {}, person }) as Promise<{
-      title: string
-      state: string
-    }>
+  landIn(world, MAIL)
+  const mail = world.shape.ownModule('Mail')
+  const t = mail && world.shape.ownTable(mail.id, 'Mail')
+  if (!t) throw new Error('No Mail table.')
+  world.records.land(
+    t.id,
+    [1, 2, 3].map((n) => ({
+      key: `q${n}`,
+      values: {
+        From: `client${n}@example.com`,
+        Subject: 'Quote for a kitchen',
+        Date: new Date(Date.now() - n * 7 * 86_400_000).toISOString(),
+      },
+    })),
+    { connector: 'gmail', account: 'sam@oak.example' },
+    { actor: { kind: 'connector', id: 'gmail' } },
+  )
+
+  expect(plugins.chapters.map((c) => [c.key, c.after, c.who])).toEqual([
+    ['know', 'connect', 'everyone'],
+    ['learned', 'people', 'everyone'],
+  ])
+  const [know, learned] = plugins.chapters as [
+    (typeof plugins.chapters)[number],
+    (typeof plugins.chapters)[number],
+  ]
+  const person = { id: user.id, name: user.name, owner: true }
+  const input = (body: unknown = {}) => ({ params: {}, query: {}, body, person })
+  type Learned = {
+    drafting: boolean
+    question: { id: string; words: string } | null
+    about: { id: string; line: string; decided: boolean }[]
+    playbacks: { id: string; words: string; decided: boolean }[]
+    workflows: { name: string; hours: number | null }[]
   }
-  const first = await route('GET', '/home')
-  expect(first.title).toMatch(/get to know you/)
-  expect(first.state).toBe('start')
-  expect((await route('POST', '/start')).state).toBe('part way')
-  expect((await route('POST', '/start')).state).toBe('part way')
-  expect(told.map((t) => t.words)).toEqual(['Started from Home', 'Carried on from Home'])
-  expect(told[1]?.brief).toMatch(/where it stopped/)
-  expect((await route('POST', '/decline')).state).toBe('declined')
-  // Start again after Decline carries on, and Finish now ends it
-  expect((await route('POST', '/start')).state).toBe('part way')
-  expect((await route('POST', '/finish')).state).toBe('done')
-  expect(told.at(-1)?.words).toBe('Finished from Home')
+  const settled = async (): Promise<Learned> => {
+    for (let i = 0; i < 100; i++) {
+      const v = (await learned.screen(input())) as unknown as Learned
+      if (!v.drafting) return v
+      await new Promise((ok) => setTimeout(ok, 20))
+    }
+    throw new Error('The draft never came.')
+  }
+
+  // one screen of every source, with how much there is; switched off, a source is never read
+  const screen = (await know.screen(input())) as unknown as {
+    sources: { key: string; has: string; available: boolean }[]
+  }
+  expect(screen.sources.find((s) => s.key === 'mail')).toMatchObject({ available: true })
+  expect(screen.sources.find((s) => s.key === 'mail')?.has).toMatch(/3 mails/)
+  expect(await know.act(input({ off: ['alpha'] }))).toEqual({ on: true })
+  const sources = world.shape.ownTable(
+    world.shape.ownModule('Your work')?.id ?? '',
+    'Interview sources',
+  )
+  const states = world.records.list(sources?.id ?? '').map((r) =>
+    Object.values(r.values)
+      .filter((v) => typeof v === 'string')
+      .slice(0, 2),
+  )
+  expect(states).toContainEqual(['Mail', 'Kenil'])
+  // what each source found, as the person sees it: a line or two, with no ids
+  const shown = (await know.screen(input())) as unknown as {
+    found: { key: string; shown?: string[] }[]
+  }
+  const mailShown = shown.found.find((f) => f.key === 'mail')?.shown ?? []
+  expect(mailShown[0]).toMatch(/^Most from: client\d@example\.com \(1\)/)
+  expect(mailShown.join(' ')).not.toMatch(/row r_/)
+
+  // one draft: the line that cites nothing left out, one blank asked, numbers from code
+  let v = await settled()
+  expect(prompts).toHaveLength(1)
+  expect(prompts[0]).not.toMatch(/## What you have in Alpha/)
+  expect(v.about.map((a) => a.line)).toEqual(['Writes kitchen quotes for clients.'])
+  expect(v.question?.words).toMatch(/how long/)
+  expect(v.playbacks).toEqual([])
+
+  // the set answered: the answers go back together, and the playback comes
+  expect(
+    await learned.act(input({ answer: { id: v.question?.id, choice: 'About 45 minutes each' } })),
+  ).toEqual({ on: false })
+  v = await settled()
+  expect(prompts).toHaveLength(2)
+  expect(v.question).toBeNull()
+  expect(v.workflows[0]?.hours).toBe(0.8) // 3 in 90 days, 1 a month, by 45 minutes
+  expect(v.playbacks[0]?.words).toMatch(/We'd build a quote tracker/)
+
+  // About you kept here goes to How to work as theirs; nothing else does
+  await learned.act(input({ about: { keep: 'rest', drop: [] } }))
+  expect(world.lines({ kinds: ['remembered'] }).map((l) => l.words)).toEqual([
+    'Will remember: Writes kitchen quotes for clients.',
+  ])
+
+  // Not this: written again, and the declined one never comes back (I4)
+  await learned.act(input({ playback: { id: v.playbacks[0]?.id, choice: 'Not this' } }))
+  v = await settled()
+  expect(prompts).toHaveLength(3)
+  expect(v.playbacks.filter((p) => !p.decided)).toEqual([])
+  expect(await learned.act(input())).toEqual({ on: true })
 })
 
 it('lets the readers that come with it make their tables in Your work, which Alpha manages', async () => {

@@ -6,11 +6,15 @@ import { type ComponentType, useCallback } from 'react'
 import { api } from '../api.ts'
 import { useLayout } from '../layout.ts'
 import { openLink } from '../opened.ts'
+import type { Next } from '../story/next.ts'
 
-export { Check, LoaderCircle, Sparkles } from 'lucide-react'
+export { Check, ChevronRight, LoaderCircle, Sparkles, X } from 'lucide-react'
 export { wordsOf } from '../api.ts'
 
 export { startAsk } from '../ask.ts'
+// a module built from what the person asked, by the Module builder, as New module does
+export { askFor, giveBuilder as startBuild } from '../NewModule.tsx'
+export type { Next } from '../story/next.ts'
 export { Refusal, useAct } from '../ui/act.tsx'
 export { Button, IconButton } from '../ui/button.tsx'
 export { Actions, Card } from '../ui/card.tsx'
@@ -24,14 +28,26 @@ export { Empty, Section } from '../ui/section.tsx'
 export { Switch } from '../ui/switch.tsx'
 export { Words } from '../ui/words.tsx'
 
-// A plugin's page and, when something waits for the person, its row on Home; and on the page of
-// an agent its kit carries, a part of its own beside the agent's buttons.
+// A chapter of the plugin's in Set up Alpha, drawn in the story's own frame: its screen as its
+// chapter's screen() said it, a way to read it again, the act at the story's foot it sets, and
+// its act with a body (what the person did on the screen), the story moving on when it says.
+export interface ChapterProps {
+  screen: Record<string, unknown>
+  reload: () => void
+  next: (n: Next) => void
+  act: (body: unknown) => Promise<void>
+}
+
+// A plugin's page and, when something waits for the person, its row on Home; on the page of an
+// agent its kit carries, a part of its own beside the agent's buttons; and its chapters in Set up
+// Alpha, by their keys.
 export interface Screen {
   name: string // the plugin's: its page is #/p/<name>
   title: string // the page's name in the bar
   Page: ComponentType
   Waiting?: ComponentType // a row on Home; none when nothing waits
   agent?: { name: string; Part: ComponentType } // on that agent's page, by its name
+  chapters?: Record<string, ComponentType<ChapterProps>>
 }
 
 // The plugin's own routes, answered by the core as the person (/api/plugins/<name>/…).

@@ -85,3 +85,37 @@ sign-in now opens in Chrome as a small window of its own, `--app` at 520 by 760,
 no toolbar: on Alpha's own Mac (`connector-sdk/src/browser.ts`) and through Alpha Bridge
 (`bridge/src/chrome.ts`), released as Alpha Bridge 0.5.1 for the Mac and put on his server and his
 Mac. The Windows build waits on GitHub's machine, which needs the branch pushed.
+
+## Step 4: Get to know you and What I learned
+
+On "lets do step 4". The interview leaves the Interviewer's chat for two chapters the interviews
+plugin adds to Set up Alpha (`plugins/interviews/src/know.ts`, `draft.ts`, `learned.ts`; the window
+part's `chapters`). Get to know you: one screen of every source the person has (and the
+workspace's site for the owner), what each reads and holds, a switch each; Read these reads every
+one left on together, the computer's readers read there and then, the site's front page and the
+pages it links to read in the background (`site.ts`), and what was found shows as it comes. A
+source switched off is marked Skipped and never read or given to the draft (I3). Then one model
+question, `host.ask`, its words in the plugin's `config.yaml`, drafts About you, the workflows
+with their steps, and the blanks as a set; the walls hold every line (I1), counts and hours are
+worked out in code (I2), and a dropped line or a declined proposal, by its name or what it does,
+never comes back (I4). The answers go back together once the set is answered; each workflow with
+no blanks gets its playback; Not this writes it again; twelve rounds at most stop a loop that never
+settles. About you kept in the story goes to How to work through a new host call, `keep`, as the
+person's own; the workspace comes to the plugin through another, `workspace`. Build it on an agreed
+module gives the Module builder the playback as its brief, as New module does. The report module
+(0.4.0) gains a Questions table (a line cites an answer as answer <its id>) and a Name on each
+proposal. The old Home row and its Start, Decline and Finish now routes are gone; the plugin's
+page points to Set up Alpha and Your work. Rules I1, I3 and I4 are now tried through the chapters
+too; ui-rule U6. Found: this Mac's Claude Code is not signed in, so the journeys that call the
+model fail here at the draft (the runner now says why); they wait on that sign-in. On his server, two cards from the old chat interview (started from the old Home row at
+17:07, before step 4 reached it) waited in Needs you; the Interviewer's source tool now reads only
+what was switched on in Get to know you and never asks for a source on a card (rule I3 reworded). On his look, what each source found was shown as the
+reader's raw words (row ids, file hashes, MIME kinds); the person now sees a line or two, the first
+three of each list and no ids (`shownOf`), and What I learned's wait shows one line per source. AI
+work leaves out text a tool put in a session in the person's name (a harness's tags). Two more on his look: a Keep on What I learned, opened
+again with Back after the story had gone on, jumped forward (a chapter's own act now moves the
+story only when the plugin says on); and each workflow is now a card that opens, its state as a pill
+(Waits for you, Agreed, Questions first), the one waiting on him open by itself. And
+opening Set up Alpha again from the workspace tile reset every tick on the path, which read as all
+gone though nothing was (his server kept its 8 About you lines, 3 workflows and 6 answers): it now
+keeps what was gone through, opens at Welcome, and each Continue goes to the next chapter.

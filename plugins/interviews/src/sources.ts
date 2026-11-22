@@ -1,6 +1,7 @@
-// What the Interviewer may read, one source to a card (the onboarding plan, calls 8 and 11 to 18):
-// each with the words its card opens with, what it reads (the card's ⓘ), and its reader,
-// which says what it found (the counts and the top few) and every row, file or line it may cite.
+// What the Interviewer may read (the onboarding plan, calls 8 and 11 to 18; in Set up Alpha's Get
+// to know you, the redesign's calls 15 and 16): each with what it reads, its reader, which says
+// what it found (the counts and the top few) and every row, file or line it may cite, and its
+// lines for the draft.
 import type { PluginHost, Row } from '@alpha/plugin-sdk'
 
 export interface Found {
@@ -20,7 +21,12 @@ export interface Source {
   // read there and then on the person's Allow, never on a clock (call 20): the computer's readers
   atInterview?: boolean
   read(host: PluginHost, person: string, days: number): Found
+  // what it holds, one line each with what cites it, for the draft (Set up Alpha's What I learned)
+  lines(host: PluginHost, person: string, days: number): string[]
 }
+
+// Each source gives the draft this many of its lines at most, the newest first.
+const LINES = 150
 
 // Whether something that fills it is connected here, by the catalogue alone: nothing is read.
 export const connected = (host: PluginHost, s: Source): boolean =>
@@ -73,7 +79,7 @@ function rowsSource(
   name: string,
   asks: string,
   reads: string,
-  where: { module: string; table: string; at?: string },
+  where: { module: string; table: string; at?: string; keep?: (r: Row) => boolean },
   say: (rows: Row[], days: number) => string,
   none: string,
   connectors: string[],
@@ -87,13 +93,36 @@ function rowsSource(
     connectors,
     ...(atInterview ? { atInterview } : {}),
     read: (host, _person, days) => {
-      const all = host.rows(where.module, where.table)
-      const rows = where.at ? all.filter((r) => within(r.values[where.at as string], days)) : all
+      const rows = rowsOf(host, where, days)
       if (!rows.length) return { words: none, cites: [], text: '' }
       return { words: say(rows, days), cites: rows.map((r) => `row ${r.id}`), text: textOf(rows) }
     },
+    lines: (host, _person, days) =>
+      rowsOf(host, where, days)
+        .slice(-LINES)
+        .reverse()
+        .map(
+          (r) =>
+            `row ${r.id}: ${Object.entries(r.values)
+              .filter(([, v]) => v !== null && v !== '' && v !== undefined)
+              .map(([k, v]) => `${k}: ${String(v).replace(/\s+/g, ' ').slice(0, 120)}`)
+              .join(' · ')}`,
+        ),
   }
 }
+
+function rowsOf(
+  host: PluginHost,
+  where: { module: string; table: string; at?: string; keep?: (r: Row) => boolean },
+  days: number,
+): Row[] {
+  const all = host.rows(where.module, where.table).filter((r) => !where.keep || where.keep(r))
+  return where.at ? all.filter((r) => within(r.values[where.at as string], days)) : all
+}
+
+// A request a person wrote themselves, not what a tool put in their session in their name (a
+// harness's wake, a scheduled task's text): those open with a tag.
+const theirOwn = (r: Row) => !/^\s*</.test(String(r.values.Request ?? ''))
 
 export const SOURCES: Source[] = [
   rowsSource(
@@ -169,6 +198,12 @@ export const SOURCES: Source[] = [
         text: files.map((f) => f.name).join('\n'),
       }
     },
+    lines: (host, _person, days) =>
+      host
+        .files('folder')
+        .filter((f) => within(f.at, days))
+        .slice(0, LINES)
+        .map((f) => `file ${f.hash}: ${f.name} (${f.kind}, ${f.at.slice(0, 10)})`),
   },
   rowsSource(
     'browsing',
@@ -198,7 +233,7 @@ export const SOURCES: Source[] = [
     'AI work',
     'may I read what you have asked AI tools?',
     'Your own requests to Claude Code and Codex on your computer, and the titles of your ChatGPT and claude.ai conversations; never the AI’s replies.',
-    { module: 'Your work', table: 'AI requests' },
+    { module: 'Your work', table: 'AI requests', keep: theirOwn },
     (rows) => `${rows.length} requests. ${top(rows, (r) => gist(r.values.Request)).join('; ')}.`,
     'No AI work has come from your computer yet.',
     ['ai-work'],
@@ -232,6 +267,17 @@ export const SOURCES: Source[] = [
         cites: lines.map((l) => `line ${l.id}`),
         text: [words, ...lines.map((l) => l.words)].join('\n'),
       }
+    },
+    lines: (host, person, days) => {
+      const c = host.catalogue()
+      return [
+        `Modules here: ${c.modules.map((m) => m.name).join(', ') || 'none'}.`,
+        ...host
+          .activity(person, days)
+          .slice(-LINES)
+          .reverse()
+          .map((l) => `line ${l.id}: ${l.at.slice(0, 10)} ${l.words.slice(0, 160)}`),
+      ]
     },
   },
 ]

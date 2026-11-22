@@ -52,9 +52,20 @@ export function StoryGate({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+// Where the story opens: where the person left off, or from the start when everything before Done
+// was gone through already (opened again from the workspace tile's menu).
+const openAt = (s: StoryView) => {
+  const start = s.chapters[0]?.key ?? 'done'
+  if (!s.at) return start
+  const left = s.chapters.filter(
+    (c) => c.key !== 'done' && c.state !== 'done' && c.state !== 'skipped',
+  )
+  return s.at === 'done' && !left.length ? start : s.at
+}
+
 function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
   const [story, setStory] = useState(first)
-  const [at, setAt] = useState(first.at ?? first.chapters[0]?.key ?? 'done')
+  const [at, setAt] = useState(() => openAt(first))
   const [screen, setScreen] = useState<ChapterScreen | null>(null)
   const [next, setNext] = useState<Next>({ label: 'Continue', ready: true })
   const { busy, problem, act } = useAct()
@@ -70,11 +81,14 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
   const list = story.chapters
   const here = list.findIndex((c) => c.key === at)
   const nowAt = list.findIndex((c) => c.key === story.at)
-  // after an act, on to the first chapter not gone through; Done goes to Home
+  // after an act, on to the next chapter (the story is walked through again in order when it was
+  // opened again); Done goes to Home
   const moved = (s: StoryView) => {
     setStory(s)
-    if (s.done) onClose()
-    else setAt(s.at ?? 'done')
+    if (s.done) return onClose()
+    const here = s.chapters.findIndex((c) => c.key === at)
+    const ahead = s.chapters.findIndex((c) => c.key === s.at)
+    setAt(s.chapters[Math.min(here + 1, ahead < 0 ? here + 1 : ahead)]?.key ?? s.at ?? 'done')
   }
   const go = (skip: boolean) =>
     void act(async () => {
@@ -84,8 +98,23 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
       )
       moved(out.story)
     })
-  // Claude can't be skipped while no model is set, and Done is the way out
-  const skippable = at !== 'done' && !(at === 'claude' && screen?.key === 'claude' && !screen.set)
+  // a chapter's own act from its screen (an answer, a Keep): on when it says, else read again
+  // the chapter stays on screen unless its act says to go on: a Keep or an answer on a chapter
+  // gone through already (opened again with Back) keeps the person where they are
+  const actHere = async (body: unknown) => {
+    const out = await api.post<{ story: StoryView; on?: boolean }>(`/api/story/${at}`, body)
+    if (out.on) moved(out.story)
+    else {
+      setStory(out.story)
+      load()
+    }
+  }
+  // Welcome has nothing to skip, Claude can't be skipped while no model is set, and Done is the
+  // way out
+  const skippable =
+    at !== 'welcome' &&
+    at !== 'done' &&
+    !(at === 'claude' && screen?.key === 'claude' && !screen.set)
 
   return (
     <div className="fixed inset-0 z-(--z-overlay) flex flex-col bg-canvas text-base text-ink md:flex-row">
@@ -102,7 +131,15 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
             </h1>
           </header>
           <section key={at} className="story-rise min-h-90 flex-1">
-            {screen && <ChapterBody screen={screen} reload={load} next={setNext} leave={onClose} />}
+            {screen && (
+              <ChapterBody
+                screen={screen}
+                reload={load}
+                next={setNext}
+                leave={onClose}
+                act={actHere}
+              />
+            )}
           </section>
           <footer className="flex flex-wrap items-center gap-2 border-line border-t pt-5">
             <Button

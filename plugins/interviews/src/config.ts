@@ -1,12 +1,13 @@
 // The Interviewer's defaults, in config.yaml beside the plugin: what it reads, never walls, and
-// what it is told when the person starts, carries on or finishes.
+// what it is told when it drafts in Set up Alpha.
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { z } from 'zod'
 
 const Config = z.object({
   lookback_days: z.number().int().positive(),
-  briefs: z.object({ start: z.string(), carry_on: z.string(), finish: z.string() }),
+  max_rounds: z.number().int().positive(),
+  draft: z.string().min(1),
 })
 
 export const config = Config.parse(

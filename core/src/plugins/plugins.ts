@@ -31,11 +31,13 @@ import { readKit } from '../modules/kits/index.ts'
 import { Reviews } from '../modules/reviews.ts'
 import { shownSchedules } from '../modules/schedules.ts'
 import { run } from '../world/db.ts'
+import { keepLine } from '../world/how-to-work.ts'
 import { type ProvenanceInput, Refused } from '../world/kinds.ts'
 import { actorName, type Table, type WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
 import { CORE_CHAPTERS } from '../world/story.ts'
+import { workspaceFor, workspaceName, workspaceSite } from '../world/workspace.ts'
 import type { User, World } from '../world/world.ts'
 
 export const PLUGINS_DIR = join(import.meta.dirname, '..', '..', '..', 'plugins')
@@ -433,6 +435,29 @@ export class Plugins {
             }
           }
         this.chapters.push({ ...c, plugin: name, screen: said(c.screen), act: said(c.act) })
+      },
+      workspace: () => ({
+        name: workspaceName(world.db),
+        for: workspaceFor(world.db),
+        site: workspaceSite(world.db),
+      }),
+      keep: (person, lines) => {
+        const who = world.user(person)
+        if (!who) throw new Refused('There is no such person here.')
+        if (lines.some((l) => l.for === 'everyone') && who.role !== 'owner')
+          throw new Refused('Only the owner keeps a line for everyone here.')
+        for (const l of lines) {
+          const words = l.words.trim()
+          if (!words) continue
+          keepLine(world, l.for === 'me' ? who.id : null, words, l.heading)
+          world.line({
+            actor: { kind: 'person', id: who.id },
+            kind: 'remembered',
+            words: `Will remember: ${words}`,
+            data: { for: l.for, plugin: name },
+            user: who.id,
+          })
+        }
       },
       startBlock: (words) => {
         this.starts.push(words)

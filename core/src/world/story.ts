@@ -66,7 +66,7 @@ export function declineStory(db: Db, user: string): void {
 
 // Opened again from the workspace tile's menu: from the start, what was done shown as done.
 export function reopenStory(db: Db, user: string): void {
-  save(db, user, { chapters: {}, doneAt: null, declinedAt: null })
+  save(db, user, { ...progressOf(db, user), doneAt: null, declinedAt: null })
 }
 
 // The apps a person left out of Connect's Apps you use, by name: never listed for them again.

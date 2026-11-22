@@ -152,6 +152,7 @@ export function registerStory(ctx: Ctx): void {
   app.post('/api/story/:chapter/skip', async (req) => {
     const { chapter: key } = z.object({ chapter: z.string().max(60) }).parse(req.params)
     await reachable(key)
+    if (key === 'welcome') throw new Refused('Welcome has nothing to skip: press Start.')
     // nothing else works without a model (call 5)
     if (key === 'claude' && !(await modelSet()))
       throw new Refused('Claude can’t be skipped: nothing else works until Alpha can reach it.')

@@ -64,6 +64,7 @@ describe('Set up Alpha', () => {
         return t === TOKEN ? null : 'Invalid bearer token.'
       },
     })
+    expect((await post(app, '/api/story/welcome/skip')).json().problem).toMatch(/nothing to skip/)
     await post(app, '/api/story/welcome')
     const skip = await post(app, '/api/story/claude/skip')
     expect(skip.statusCode).toBe(409)
@@ -177,11 +178,10 @@ describe('Set up Alpha', () => {
       row: null,
       fresh: false,
     })
-    expect((await post(app, '/api/story/reopen')).json()).toMatchObject({
-      declined: false,
-      fresh: true,
-      at: 'welcome',
-    })
+    // opened again, what was gone through stays so
+    const again = (await post(app, '/api/story/reopen')).json() as StoryView
+    expect(again).toMatchObject({ declined: false, done: false, fresh: false, at: 'claude' })
+    expect(again.chapters[0]).toMatchObject({ key: 'welcome', state: 'done' })
   })
 })
 

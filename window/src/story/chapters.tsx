@@ -28,6 +28,7 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
 import { underWay } from '../NewModule.tsx'
+import { SCREENS } from '../plugin/screens.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
@@ -36,21 +37,16 @@ import { Field } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { squared } from '../Workspace.tsx'
 import { Connect } from './connect.tsx'
+import type { Next } from './next.ts'
 
-// The act at the story's foot: its words, whether it can be pressed, its words while it works,
-// and what it sends.
-export interface Next {
-  label: string
-  ready: boolean
-  busy?: string
-  body?: () => unknown
-}
+export type { Next } from './next.ts'
 
 interface Props {
   screen: ChapterScreen
   reload: () => void // read the screen again
   next: (n: Next) => void
   leave: () => void // out of the story, which waits on Home
+  act: (body: unknown) => Promise<void> // the chapter's act, the story moving on when it says
 }
 
 export function ChapterBody(p: Props) {
@@ -70,9 +66,15 @@ export function ChapterBody(p: Props) {
       return <Here {...p} screen={s as HereScreen} />
     case 'done':
       return <Done {...p} screen={s as DoneScreen} />
-    default:
-      // a plugin's chapter, until its own window part draws it
-      return null
+    default: {
+      // a plugin's chapter, drawn by its own window part (plugins/<name>/window); the core sends
+      // one only while its plugin is on here (rules P1), before the window has asked /api/me
+      const plugin = 'plugin' in s ? String(s.plugin) : ''
+      const Body = SCREENS.find((x) => x.name === plugin)?.chapters?.[s.key]
+      return Body ? (
+        <Body screen={s as Record<string, unknown>} reload={p.reload} next={p.next} act={p.act} />
+      ) : null
+    }
   }
 }
 

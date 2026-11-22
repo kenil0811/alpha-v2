@@ -78,6 +78,13 @@ export interface PluginHost {
   // A chapter of its own in Set up Alpha, placed after Connect or after Your people, for the
   // owner or for everyone: its screen read and its act done as the person, at /api/story/<key>.
   chapter(chapter: Chapter): void
+  // The workspace: its name, who the work is for in the owner's own words, and its website, as
+  // the owner gave them in Set up Alpha's Your workspace.
+  workspace(): { name: string | null; for: string | null; site: string | null }
+  // Lines a person kept on a screen of its own chapter in Set up Alpha (their Keep pressed there),
+  // written to How to work as theirs: For you, or For everyone here only when they are the owner,
+  // under the heading. Called only from that chapter's act, as the person who pressed Keep.
+  keep(person: string, lines: { words: string; for: 'me' | 'everyone'; heading: string }[]): void
   // A block for the start of every conversation (what the person kept), or none.
   startBlock(words: () => string | null): void
   // A line in the journal: counts and what was done, never what was read.

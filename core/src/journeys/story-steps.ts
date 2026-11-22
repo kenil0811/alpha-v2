@@ -162,6 +162,7 @@ export async function storyStep(
 
 interface Learned {
   drafting: boolean
+  problem?: string | null // why the last draft did not come
   question: { id: string; words: string; options: string[] } | null
   about: { id: string; line: string; decided: boolean }[]
   playbacks: { id: string; words: string; choices: string[]; decided: boolean }[]
@@ -219,10 +220,11 @@ async function learned(
       continue
     }
     const on = await post(app, '/api/story/learned', {})
+    const failed = v.body.problem ? ` (**the draft: ${v.body.problem}**)` : ''
     return on.ok
       ? {
-          ok: true,
-          what: `${who} went through What I learned: ${said.join('; ') || 'nothing to answer'}`,
+          ok: !failed,
+          what: `${who} went through What I learned: ${said.join('; ') || 'nothing to answer'}${failed}`,
         }
       : { ok: false, what: `${said.join('; ')}; **could not go on: ${problem(on.raw)}**` }
   }

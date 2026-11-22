@@ -40,6 +40,11 @@ async function interviewing(w: RuleWorld) {
     connectors: null,
   })
   await plugins.keepKits({ actor: { kind: 'system' }, user: w.user.id })
+  return { ...(await interviewingWith(w)), ...toolsOf(w, plugins) }
+}
+
+// Three quote requests in the mail, and what the cases read.
+async function interviewingWith(w: RuleWorld) {
   landIn(w.world, MAIL)
   const t = tableOf(w.world, MAIL, 'Mail')
   if (!t) throw new Error('No Mail table.')
@@ -53,6 +58,20 @@ async function interviewing(w: RuleWorld) {
     { actor: { kind: 'connector', id: 'gmail' } },
   )
   const mail = w.world.records.list(t.id).map((r) => `row ${r.id}`)
+  const rows = (table: string) => {
+    const tt = w.world.shape.tables().find((x) => x.name === table)
+    return tt ? w.world.records.list(tt.id) : []
+  }
+  const field = (table: string, name: string) =>
+    w.world.shape
+      .tables()
+      .find((x) => x.name === table)
+      ?.fields.find((f) => f.name === name)?.slug ?? ''
+  return { mail, rows, field }
+}
+
+// The Interviewer's tools, as its desk is given them, and the person's answers on its cards.
+function toolsOf(w: RuleWorld, plugins: Awaited<ReturnType<typeof switchOn>>['plugins']) {
   const interviewer = w.world.agents.list().find((a) => a.name === 'Interviewer')
   if (!interviewer) throw new Error('No Interviewer.')
   const here: Here = {
@@ -88,21 +107,69 @@ async function interviewing(w: RuleWorld) {
     w.world.cards.answer(card.id, said, person)
     return card.id
   }
+  // Set up Alpha's Get to know you, as the person leaves sources on or off
+  const know = (off: string[]) => {
+    const c = plugins.chapters.find((x) => x.key === 'know')
+    if (!c) throw new Error('No Get to know you.')
+    const who = { id: w.user.id, name: w.user.name, owner: true }
+    return c.act({ params: {}, query: {}, body: { off }, person: who })
+  }
+  const OTHERS = ['calendar', 'contacts', 'folder', 'browsing', 'apps', 'ai', 'alpha']
   const allowMail = async () => {
-    await call('source', { source: 'mail' })
-    answer('Allow')
+    await know(OTHERS)
     return call('source', { source: 'mail' })
   }
-  const rows = (table: string) => {
-    const tt = w.world.shape.tables().find((x) => x.name === table)
-    return tt ? w.world.records.list(tt.id) : []
+  const skipMail = () => know(['mail', ...OTHERS])
+  return { call, answer, asked, allowMail, skipMail, person, interviewer }
+}
+
+// Set up Alpha's Get to know you and What I learned, the same rule world: the draft the model
+// would give stood in for by draft(rows), the mail rows given to it.
+async function storied(
+  w: RuleWorld,
+  draft: (rows: string[], prompt: string) => Record<string, unknown>,
+) {
+  const { plugins } = await switchOn(['interviews'], {
+    world: w.world,
+    user: w.user,
+    home: w.home,
+    region: () => null,
+    ask: async (_s, prompt) => ({
+      answer: draft(
+        [...prompt.matchAll(/^(row \S+):/gm)].map((m) => m[1] as string),
+        prompt,
+      ),
+    }),
+    connectors: null,
+  })
+  await plugins.keepKits({ actor: { kind: 'system' }, user: w.user.id })
+  const i = await interviewingWith(w)
+  const chapter = (key: string) => {
+    const c = plugins.chapters.find((x) => x.key === key)
+    if (!c) throw new Error(`No chapter ${key}.`)
+    return c
   }
-  const field = (table: string, name: string) =>
-    w.world.shape
-      .tables()
-      .find((x) => x.name === table)
-      ?.fields.find((f) => f.name === name)?.slug ?? ''
-  return { call, answer, asked, allowMail, mail, rows, field, person, interviewer }
+  const input = (body: unknown = {}) => ({
+    params: {},
+    query: {},
+    body,
+    person: { id: w.user.id, name: w.user.name, owner: true },
+  })
+  // the learned screen once the draft written in the background is in
+  const learned = async () => {
+    for (let n = 0; n < 100; n++) {
+      const v = (await chapter('learned').screen(input())) as unknown as {
+        drafting: boolean
+        about: { id: string; line: string }[]
+        workflows: { name: string }[]
+      }
+      if (!v.drafting) return v
+      await new Promise((ok) => setTimeout(ok, 20))
+    }
+    throw new Error('The draft never came.')
+  }
+  const read = (off: string[]) => chapter('know').act(input({ off }))
+  return { ...i, chapter, input, learned, read }
 }
 
 const quoting = (rests: string[], more: Record<string, unknown> = {}) => ({
@@ -148,6 +215,20 @@ rule('I1', 'every line and proposal the Interviewer proposes cites what it rests
       )
       return out.refused && /you said/.test(out.text)
     },
+    'drafted in Set up Alpha, a line that cites nothing is left out, and one that does is kept':
+      async (w) => {
+        const i = await storied(w, (rows) => ({
+          about: [
+            { line: 'Writes every quote by hand.', for: 'me', rests_on: rows },
+            { line: 'Hates paperwork.', for: 'me', rests_on: [] },
+          ],
+          workflows: [],
+          questions: [],
+        }))
+        await i.read([])
+        const v = await i.learned()
+        return v.about.map((a) => a.line).join('|') === 'Writes every quote by hand.'
+      },
     'one that cites what was read is kept with what it rests on': async (w) => {
       const i = await interviewing(w)
       await i.allowMail()
@@ -207,25 +288,49 @@ rule('I2', 'the report’s numbers come from code, or are marked estimated with 
 
 rule('I3', 'a source the person skipped is never read or cited', {
   cases: {
-    'skipped, it is not read': async (w) => {
+    'switched off, it is not read in a chat either': async (w) => {
       const i = await interviewing(w)
-      await i.call('source', { source: 'mail' })
-      i.answer('Skip')
+      await i.skipMail()
       const out = await i.call('source', { source: 'mail' })
-      return /skipped Mail: it is never read/.test(out.text) && !/mails in the last/.test(out.text)
+      return (
+        /switched off Mail: it is never read/.test(out.text) && !/mails in the last/.test(out.text)
+      )
     },
-    'skipped, nothing may cite it': async (w) => {
+    'switched off, nothing may cite it': async (w) => {
       const i = await interviewing(w)
-      await i.call('source', { source: 'mail' })
-      i.answer('Skip')
+      await i.skipMail()
       const out = await i.call('propose', quoting(i.mail))
       return out.refused && /skipped/.test(out.text)
     },
-    'one source is put to the person at a time': async (w) => {
+    'switched off in Get to know you, it is not read, and a draft citing it is left out': async (
+      w,
+    ) => {
+      let given = ''
+      const i = await storied(w, (_rows, prompt) => {
+        given = prompt
+        return {
+          about: [{ line: 'Writes every quote by hand.', for: 'me', rests_on: i.mail }],
+          workflows: [],
+          questions: [],
+        }
+      })
+      await i.read(['mail'])
+      const v = await i.learned()
+      const mail = i.rows('Interview sources').find((r) => Object.values(r.values).includes('Mail'))
+      return (
+        !/## Mail/.test(given) &&
+        v.about.length === 0 &&
+        Object.values(mail?.values ?? {}).includes('Skipped')
+      )
+    },
+    'a source not allowed in Set up Alpha is never asked for on a card in a chat': async (w) => {
       const i = await interviewing(w)
-      await i.call('source', { source: 'mail' })
-      const out = await i.call('source', { source: 'calendar' })
-      return out.refused && /one source at a time/.test(out.text)
+      const out = await i.call('source', { source: 'mail' })
+      return (
+        out.refused &&
+        /Get to know you/.test(out.text) &&
+        w.world.cards.waiting(w.user.id).length === 0
+      )
     },
   },
 })
@@ -246,6 +351,20 @@ rule('I4', 'a line or proposal the person dropped or declined never comes back',
       })
       const out = await i.call('propose', { about: { lines: [line], for: 'me' } })
       return out.refused && /dropped or declined/.test(out.text)
+    },
+    'dropped in What I learned, a line is not drafted again': async (w) => {
+      const i = await storied(w, (rows) => ({
+        about: [{ line: 'Writes every quote by hand.', for: 'me', rests_on: rows }],
+        workflows: [],
+        questions: [],
+      }))
+      await i.read([])
+      const first = await i.learned()
+      await i.chapter('learned').act(i.input({ about: { drop: [first.about[0]?.id] } }))
+      // read again: the same line drafted again stays out
+      await i.read([])
+      const v = await i.learned()
+      return v.about.length === 1 && w.world.lines({ kinds: ['remembered'] }).length === 0
     },
     'a declined proposal is not played back again': async (w) => {
       const i = await interviewing(w)
