@@ -34,6 +34,7 @@ export interface Kept {
   files: Raw[]
   kit: Raw | null
   pointers: Pointer[]
+  turnedDown?: Raw[] // the guesses the person turned down on it (✕): back with it, never written again
 }
 
 // A row's whole state, read before anything of it is cleared.
@@ -53,6 +54,7 @@ export function keep(records: Records, table: Table, row: Row): Omit<Kept, 'poin
     versions: all(records.db, 'SELECT * FROM versions WHERE record_id = ?', id),
     files: all(records.db, 'SELECT * FROM row_files WHERE record_id = ?', id),
     kit: one(records.db, 'SELECT * FROM kit_rows WHERE record_id = ?', id) ?? null,
+    turnedDown: all(records.db, 'SELECT * FROM turned_down WHERE record_id = ?', id),
   }
 }
 
@@ -130,7 +132,7 @@ export function takeOut(
           id,
         )
     records.unindex(id)
-    for (const side of ['versions', 'provenance', 'row_files', 'kit_rows'])
+    for (const side of ['versions', 'provenance', 'row_files', 'kit_rows', 'turned_down'])
       run(records.db, `DELETE FROM ${side} WHERE record_id = ?`, id)
     run(records.db, `DELETE FROM ${quote(table.slug)} WHERE id = ?`, id)
     run(records.db, 'DELETE FROM records WHERE id = ?', id)
@@ -293,6 +295,17 @@ export function bringBack(
           (p.basis as string | null) ?? null,
           String(p.at),
           (p.beside as string | null) ?? null,
+        )
+    // what the person turned down on it stays turned down, on the fields still there
+    for (const d of kept.turnedDown ?? [])
+      if (fields.has(String(d.field_id)))
+        run(
+          records.db,
+          'INSERT OR IGNORE INTO turned_down (record_id, field_id, value, at) VALUES (?, ?, ?, ?)',
+          id,
+          String(d.field_id),
+          String(d.value),
+          String(d.at),
         )
     for (const v of kept.versions)
       run(

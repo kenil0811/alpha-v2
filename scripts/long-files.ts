@@ -13,7 +13,7 @@ const LIMIT = 600
 const LEFT: Record<string, number> = {
   'core/src/api/types.ts': 651, // the window's contract, one file by design
   // the window's big screens it began with: they may only shrink
-  'window/src/table/Grid.tsx': 1058,
+  'window/src/table/Grid.tsx': 1043,
   'window/src/TableView.tsx': 658,
   'window/src/Tasks.tsx': 676,
 }

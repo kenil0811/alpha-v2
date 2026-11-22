@@ -34,7 +34,7 @@ import {
   tableOf,
   valuesOf,
 } from './reading.ts'
-import { checkStated } from './stated.ts'
+import { checkStated, checkTurnedDown } from './stated.ts'
 import {
   describe,
   describeStored,
@@ -174,6 +174,7 @@ export class Records {
         partOfGiven(table, vals, false)
         checkPer(this, table, vals, row.id)
         const was = this.snapshot(table, row)
+        checkTurnedDown(this.db, table, row.id, vals, prov)
         checkStated(this.db, table, vals, prov, ctx)
         mustBeTheirs(table, this.describeStored(table, was.vals), was.prov, vals, prov, ctx)
         typedOver(was, prov, ctx)

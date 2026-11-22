@@ -35,13 +35,14 @@ import { Dot } from '../ui/dot.tsx'
 import { Choice } from '../ui/pill.tsx'
 import { Popover, useContextMenu } from '../ui/popover.tsx'
 import { tipNow } from '../ui/tooltip.tsx'
-import { AddFieldForm } from './AddFieldForm.tsx'
+import { AddField, AddFieldForm } from './AddFieldForm.tsx'
 import { useRoomBelow } from './below.tsx'
 import { CellHistory } from './CellHistory.tsx'
 import { ColumnMenu, TotalItems } from './ColumnMenu.tsx'
 import { EditCell } from './EditCell.tsx'
 import { cycleSort, setWidth } from './edits.ts'
 import { type Group, groupRows, TOTAL_WORDS, tintOf, toneOf, total, widthOf } from './engine.ts'
+import { type Grey, GreyChoice, isGrey } from './GreyChoice.tsx'
 import { useGoes } from './goes.ts'
 import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
@@ -119,7 +120,7 @@ export function Grid({
   onSource: (p: { row: string; field: string }) => void // where a value came from
   onConfig: (c: ViewConfig) => void
   onTick: (ids: Set<string>) => void
-  onEdit: (row: RowView, field: FieldView, value: unknown) => Promise<boolean>
+  onEdit: (row: RowView, field: FieldView, value: unknown, grey?: Grey) => Promise<boolean>
   onOpen: (row: string) => void
   onPaste: (plan: PastePlan) => void
   counted?: RowView[] // what the footer totals: every row the view holds, not only this page
@@ -175,6 +176,10 @@ export function Grid({
   useEffect(() => {
     if (!panelRow) setCell(null)
   }, [panelRow])
+  // a grey value double-clicked offers ✓ and ✕ before any typing (GreyChoice)
+  const [greyed, setGreyed] = useState<{ row: string; field: string } | null>(null)
+  const startOrGrey = (r: RowView, p: { row: string; field: string }) =>
+    isGrey(r.sources[p.field]?.kind) ? setGreyed(p) : startEditing(p)
   const startEditing = (p: { row: string; field: string }) => {
     window.clearTimeout(soon.current)
     setEditing(p)
@@ -439,7 +444,15 @@ export function Grid({
                         i === layout.frozen - 1 && 'shadow-[inset_-1px_0_0_var(--hair)]',
                       )}
                     >
-                      {isEditing ? (
+                      {greyed?.row === r.id && greyed.field === f.slug ? (
+                        <GreyChoice
+                          text={show(f, r.values[f.slug], names)}
+                          onCancel={() => setGreyed(null)}
+                          onChoose={async (g) => {
+                            if (await onEdit(r, f, undefined, g)) setGreyed(null)
+                          }}
+                        />
+                      ) : isEditing ? (
                         <EditCell
                           field={f}
                           value={r.values[f.slug]}
@@ -464,7 +477,7 @@ export function Grid({
                           selected={cell?.row === r.id && cell.field === f.slug}
                           inRange={inRange(r.id, f.slug)}
                           onPick={() => pick(here, i === 0)}
-                          onEdit={!readOnly && canEdit(f) ? () => startEditing(here) : undefined}
+                          onEdit={!readOnly && canEdit(f) ? () => startOrGrey(r, here) : undefined}
                           fixed={!readOnly && canEdit(f) ? undefined : whyFixed(f, readOnly)}
                         />
                       )}
@@ -1025,30 +1038,5 @@ function Foot({
         />
       </Popover>
     </td>
-  )
-}
-
-// + at the end of the header: a field the person adds, with its kind.
-function AddField({ tableId }: { tableId: string }) {
-  const [open, setOpen] = useState(false)
-  const anchor = useRef<HTMLButtonElement>(null)
-  const fixed = useShapeFixed()
-  return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        aria-label="Add a property"
-        data-tip={fixed ?? 'Add a property'}
-        disabled={!!fixed}
-        onClick={() => setOpen((o) => !o)}
-        className="ml-auto grid h-9 w-11 place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
-      >
-        <Plus className="size-3.75" />
-      </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a property" onAdded={() => setOpen(false)} />
-      </Popover>
-    </>
   )
 }

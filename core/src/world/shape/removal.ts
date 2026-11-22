@@ -38,7 +38,7 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
       ),
     )
     clearPointers(shape, table.id, `(SELECT id FROM records WHERE table_id = ${lit(table.id)})`)
-    for (const side of ['versions', 'provenance', 'row_files', 'kit_rows'])
+    for (const side of ['versions', 'provenance', 'row_files', 'kit_rows', 'turned_down'])
       run(
         shape.db,
         `DELETE FROM ${side} WHERE record_id IN (SELECT id FROM records WHERE table_id = ?)`,
@@ -105,6 +105,7 @@ export function removeField(shape: Shape, tableId: string, field: string, ctx: W
 export function dropField(shape: Shape, table: Table, f: Field, ctx: WriteCtx): void {
   for (const sql of dropFieldSql(table.slug, table.id, spec(f))) shape.db.exec(sql)
   run(shape.db, 'DELETE FROM provenance WHERE field_id = ?', f.id)
+  run(shape.db, 'DELETE FROM turned_down WHERE field_id = ?', f.id)
   run(shape.db, 'DELETE FROM fields WHERE id = ?', f.id)
   dropFieldFromViews(shape, table.id, f.id)
   forgetField(shape.db, table.id, f.id)

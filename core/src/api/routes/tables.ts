@@ -2,7 +2,7 @@ import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { importRows, sheetHeaders } from '../../files/documents.ts'
-import { tx } from '../../world/db.ts'
+import { now, run, tx } from '../../world/db.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { managedBy } from '../../world/maintained.ts'
 import { resetWords } from '../../world/records/index.ts'
@@ -173,13 +173,29 @@ export function registerTables(ctx: Ctx): void {
   // with Alpha.
   app.post('/api/tables/:id/rows/:row', async (req) => {
     const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
-    const { field, value } = z.object({ field: z.string(), value: z.unknown() }).parse(req.body)
+    const body = z
+      .object({
+        field: z.string(),
+        value: z.unknown().optional(),
+        grey: z.enum(['accept', 'reject']).optional(),
+      })
+      .parse(req.body)
+    const { field, grey } = body
+    let value = body.value
     const t = world.shape.table(id)
     const f = t?.fields.find((x) => x.name === field)
     if (!t || !f) throw new Refused('That field is not there.')
     if (f.kind === 'file') throw new Refused(`${f.name} is set by asking Alpha, not from here.`)
     const r = world.records.list(t.id).find((x) => x.id === row)
     if (!r) throw new Refused(`${t.name} has no such row.`)
+    // ✓ or ✕ on a grey value: accept keeps it as the person's own, reject empties it and keeps
+    // what was turned down so a later guess can't write it back
+    if (grey) {
+      const kind = r.provenance[f.slug]?.kind
+      if (kind !== 'estimated' && kind !== 'assumed')
+        throw new Refused(`${f.name} is not an estimate or an assumption.`)
+      value = grey === 'accept' ? r.values[f.slug] : null
+    }
     // a picked row or person by its name in the journal, never its id
     const ids = (Array.isArray(value) ? value : [value]).filter((x) => x != null).map(String)
     const said =
@@ -195,12 +211,25 @@ export function registerTables(ctx: Ctx): void {
             : String(value)
     // one line, the change's own, in the person's words and the source of their value (rules A1)
     const words =
-      f.kind === 'notes'
-        ? `Wrote the notes on ${world.rowName(t, r.values)}`
-        : (f.kind === 'relation' || f.kind === 'person') && !ids.length
-          ? `Cleared ${field} on ${world.rowName(t, r.values)}`
-          : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`
+      grey === 'accept'
+        ? `Accepted ${field} on ${world.rowName(t, r.values)} as theirs`
+        : grey === 'reject'
+          ? `Turned down ${field} on ${world.rowName(t, r.values)}`
+          : f.kind === 'notes'
+            ? `Wrote the notes on ${world.rowName(t, r.values)}`
+            : (f.kind === 'relation' || f.kind === 'person') && !ids.length
+              ? `Cleared ${field} on ${world.rowName(t, r.values)}`
+              : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`
     tx(world.db, () => {
+      if (grey === 'reject')
+        run(
+          world.db,
+          'INSERT OR IGNORE INTO turned_down (record_id, field_id, value, at) VALUES (?, ?, ?, ?)',
+          row,
+          f.id,
+          JSON.stringify(r.values[f.slug]),
+          now(),
+        )
       // typing over a value a page, a connection or a script gave keeps it beside theirs, with
       // Reset (the store, rules D3)
       world.records.change(

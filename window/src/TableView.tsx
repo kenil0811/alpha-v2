@@ -214,8 +214,8 @@ export function TableView({
       return false
     }
   }
-  const edit = (row: RowView, field: FieldView, value: unknown) =>
-    write(() => api.post(`${rowsAt}/${row.id}`, { field: field.name, value }))
+  const edit = (row: RowView, field: FieldView, value: unknown, grey?: 'accept' | 'reject') =>
+    write(() => api.post(`${rowsAt}/${row.id}`, { field: field.name, value, grey }))
   const tickedRows = data.rows.filter((r) => ticked.has(r.id))
   const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
   const saveAs = (name: string) =>
@@ -613,7 +613,7 @@ export function TableView({
               row={openedRow}
               fields={data.fields}
               names={data.names}
-              onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
+              onEdit={kept ? undefined : (f, v, g) => edit(openedRow, f, v, g)}
               title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
               onField={(slug) => {
                 setPicked({ row: openedRow.id, field: slug })

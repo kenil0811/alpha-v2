@@ -40,8 +40,8 @@ export function RowPage({
   // its name is its first text field that holds one (as the core names a row), else the first
   const texts = view.fields.filter((f) => f.kind === 'text' && !f.summary)
   const named = texts.find((f) => view.row.values[f.slug]) ?? texts[0]
-  const edit = (f: FieldView, value: unknown) =>
-    api.post(`/api/tables/${view.table.id}/rows/${id}`, { field: f.name, value }).then(
+  const edit = (f: FieldView, value: unknown, grey?: 'accept' | 'reject') =>
+    api.post(`/api/tables/${view.table.id}/rows/${id}`, { field: f.name, value, grey }).then(
       async () => {
         setProblem(null)
         setView(await api.get<RowPageView>(`/api/rows/${id}`))

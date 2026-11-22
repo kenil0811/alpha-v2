@@ -2,7 +2,7 @@
 // door that can break it.
 import { revert } from '../world/records/index.ts'
 import { alpha, asPerson } from './drive.ts'
-import { drive, refusal, rule } from './rule.ts'
+import { drive, refusal, refusedWith, rule } from './rule.ts'
 import type { RuleWorld, Target } from './world.ts'
 
 // what the person typed, by table; what a machine read
@@ -184,5 +184,36 @@ rule('D5', 'a number, an amount or a date called stated is in the person’s wor
       const said = await kinds('Order sugar for $1,200, due 20 Nov.')
       return never.every((k) => k === 'assumed') && said.every((k) => k === 'stated')
     },
+  },
+})
+
+rule('D13', 'a guess the person turned down is never written back', {
+  acts: ['set'],
+  // the doors that guess: Alpha on its own
+  doors: (d) => d.by === 'alpha',
+  given: async (w, d) => {
+    const t = w.target(d)
+    const table = w.table(t.table).id
+    w.world.records.change(
+      table,
+      [
+        {
+          id: t.row,
+          values: { [t.field]: read(t) },
+          provenance: { kind: 'assumed', basis: 'a guess' },
+        },
+      ],
+      { actor: { kind: 'alpha' } },
+    )
+    const r = await w.post(`/api/tables/${table}/rows/${t.row}`, { field: t.field, grey: 'reject' })
+    if (r.status !== 200) throw new Error(`✕ answered ${r.status}: ${JSON.stringify(r.body)}`)
+  },
+  attempt: (a, _act, d, w) => a.set(w.target(d), read(w.target(d))),
+  holds: (w, refused, _act, d) => {
+    const t = w.target(d)
+    // the guess stays turned down: the value still empty
+    return (
+      refusedWith(refused, /turned down/) && (w.value(t.table, t.row, t.field) ?? null) === null
+    )
   },
 })

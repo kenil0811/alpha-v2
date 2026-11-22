@@ -1,10 +1,14 @@
 // The form that adds a property: its name and kind, choices for a choice, the table a relation
 // points at. On a table it posts to the table; on People and Organizations to their own route, and
-// the list reads itself again. Out of Grid.tsx (the window file wall).
-import { createContext, type FormEvent, useContext, useEffect, useState } from 'react'
+// the list reads itself again; and the + at the end of a table's header that opens it. Out of
+// Grid.tsx (the window file wall).
+import { Plus } from 'lucide-react'
+import { createContext, type FormEvent, useContext, useEffect, useRef, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
 import { Field, Select } from '../ui/field.tsx'
+import { Popover } from '../ui/popover.tsx'
+import { useShapeFixed } from './Mirror.tsx'
 
 // Where a property is added from this table's header when it is not the module table's own route:
 // People's and Organizations' lists have theirs (rules T16).
@@ -136,5 +140,30 @@ export function AddFieldForm({
         </Button>
       </div>
     </form>
+  )
+}
+
+// + at the end of the header: a field the person adds, with its kind.
+export function AddField({ tableId }: { tableId: string }) {
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  const fixed = useShapeFixed()
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-label="Add a property"
+        data-tip={fixed ?? 'Add a property'}
+        disabled={!!fixed}
+        onClick={() => setOpen((o) => !o)}
+        className="ml-auto grid h-9 w-11 place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
+      >
+        <Plus className="size-3.75" />
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <AddFieldForm tableId={tableId} title="Add a property" onAdded={() => setOpen(false)} />
+      </Popover>
+    </>
   )
 }

@@ -22,6 +22,7 @@ import { SidePanel } from '../ui/side-panel.tsx'
 import { AddRow } from './AddRow.tsx'
 import { CellHistory } from './CellHistory.tsx'
 import { EditCell } from './EditCell.tsx'
+import { type Grey, GreyChoice, isGrey } from './GreyChoice.tsx'
 import { ReadLine } from './Mirror.tsx'
 import { Notes } from './Notes.tsx'
 import { RowMenu } from './RowMenu.tsx'
@@ -59,7 +60,7 @@ export function RowBody({
   fields: FieldView[]
   names: Record<string, string>
   onField: (slug: string) => void
-  onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined // none: kept elsewhere
+  onEdit?: ((field: FieldView, value: unknown, grey?: Grey) => Promise<boolean>) | undefined // none: kept elsewhere
   page?: boolean // the row's own page: what links to it and where it was read from too
 }) {
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
@@ -395,9 +396,10 @@ export function FieldList({
   row: RowView
   names: Record<string, string>
   onField: (slug: string) => void
-  onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined
+  onEdit?: ((field: FieldView, value: unknown, grey?: Grey) => Promise<boolean>) | undefined
 }) {
   const [editing, setEditing] = useState<string | null>(null)
+  const [greyed, setGreyed] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ field: FieldView; x: number; y: number } | null>(null)
   const [past, setPast] = useState<FieldView | null>(null)
   const first = fields[0]
@@ -428,6 +430,22 @@ export function FieldList({
                   />
                 </div>
               )
+            if (greyed === f.slug && onEdit)
+              return (
+                <div
+                  key={f.id}
+                  className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5"
+                >
+                  <dt className="text-ink-3 text-sm">{f.name}</dt>
+                  <GreyChoice
+                    text={text}
+                    onCancel={() => setGreyed(null)}
+                    onChoose={async (g) => {
+                      if (await onEdit(f, undefined, g)) setGreyed(null)
+                    }}
+                  />
+                </div>
+              )
             // a related row's name is a link that opens it beside the page (T4)
             const related =
               f.kind === 'relation'
@@ -439,7 +457,8 @@ export function FieldList({
                     .map(String)
                 : []
             const props = {
-              onDoubleClick: () => editable && setEditing(f.slug),
+              onDoubleClick: () =>
+                editable && (isGrey(source?.kind) ? setGreyed(f.slug) : setEditing(f.slug)),
               onContextMenu: (e: MouseEvent<HTMLElement>) => {
                 e.preventDefault()
                 setMenu({ field: f, x: e.clientX, y: e.clientY })
@@ -452,7 +471,8 @@ export function FieldList({
                   setMenu({ field: f, x: r.left + 8, y: r.bottom })
                 } else if (editable && (e.key === 'Enter' || e.key === 'F2')) {
                   e.preventDefault()
-                  setEditing(f.slug)
+                  if (isGrey(source?.kind)) setGreyed(f.slug)
+                  else setEditing(f.slug)
                 }
               },
               className:

@@ -65,6 +65,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | D10 | A change to a declared field is a request, not a write. It goes through the declared action as a step that leaves the world (`outward`, never `write`), on a card unless an approved rule allows it. It carries the value it was based on, and is refused when the record changed since | 4 Nov | skip (Dell's contract) |
 | D11 | The row shows the request as waiting until a read shows the system took it; only then is it the row's value. Not confirmed in time, it becomes a card. Each step is a journal line | 4 Nov | with Dell's contract |
 | D12 | A mirror's row says when it was last read; an action that leaves the world on a mirror's value reads that row fresh first | 4 Nov | skip (Dell's contract) |
+| D13 | A guess the person turned down (✕ on a grey value, which empties it) is never written back: an estimate or an assumption of the same value in the same field of the same row is refused, by every door that guesses; a different value, or the person's own, is not. What was turned down goes with its row to the trash and comes back with it | 22 Nov | test |
 
 ## Who may change an agent
 
