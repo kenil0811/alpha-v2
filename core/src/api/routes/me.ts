@@ -3,10 +3,12 @@ import { Refused } from '../../world/kinds.ts'
 import { atNumber } from '../../world/shape/numbers.ts'
 import {
   drawnTables,
+  keptRecords,
   keptTabs,
   listOrders,
   setDrawn,
   setListOrder,
+  setRecord,
   setTabs,
 } from '../../world/table-prefs.ts'
 import { VIEW_KINDS } from '../../world/views.ts'
@@ -45,6 +47,7 @@ export function registerMe(ctx: Ctx): void {
       listOrder: listOrders(world.db, user.id),
       viewOf: drawnTables(world.db, user.id) as Record<string, ViewOf>,
       tabs: keptTabs(world.db, user.id),
+      records: keptRecords(world.db, user.id),
     }
   }
 
@@ -123,6 +126,13 @@ export function registerMe(ctx: Ctx): void {
               .nullable(),
           )
           .optional(),
+        // each table (or person, company) named is kept on its own, as a module's tabs are
+        records: z
+          .record(
+            z.string(),
+            z.object({ hidden: z.array(z.string()), tabs: z.array(z.string()) }).nullable(),
+          )
+          .optional(),
         // each module named is kept on its own (none forgets it); modules not named stay as they are
         tabs: z
           .record(
@@ -171,6 +181,8 @@ export function registerMe(ctx: Ctx): void {
       setDrawn(world.db, user.id, table, drawn)
     for (const [module, tabs] of Object.entries(given.tabs ?? {}))
       setTabs(world.db, user.id, module, tabs)
+    for (const [scope, r] of Object.entries(given.records ?? {}))
+      setRecord(world.db, user.id, scope, r)
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
     return layoutOf()

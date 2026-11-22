@@ -8,7 +8,7 @@ import { cardAgent } from '../modules/agent-marks.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { readSchedule, type Schedule } from '../modules/schedules.ts'
 import { fromView } from '../modules/shipped.ts'
-import { pagesOf } from '../pages/pages.ts'
+import { pagesFor } from '../pages/pages.ts'
 import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
 import { all as allRows } from '../world/db.ts'
@@ -254,7 +254,7 @@ export function makeViews(ctx: BaseCtx) {
       parent: m.parent,
       number: moduleNumber(world.db, m.id),
       people: livesPeople(m),
-      pages: pagesOf(m),
+      pages: pagesFor(world, m),
       tables: world.shape
         .tables(m.id)
         .filter(listed)

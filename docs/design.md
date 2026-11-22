@@ -316,7 +316,8 @@ longer names goes only while nobody has changed it, taking no rows, and leaves e
 try a kit before it installs, and tests record the model's answers rather than call it.
 
 Pages are HTML files drawn in a sandboxed frame with no network. They read the module's rows
-through the window, use the kit's blocks for their look, and print to PDF.
+through the window, use the kit's blocks for their look, and print to PDF. A module's page can belong to
+one table's records: it is drawn on each record's page, for that record (Kenil, 22 Nov).
 
 A **plugin** (`plugins/<name>`, first-party code in this repository) loads only where the Alpha's
 `alpha.yaml` names it, `plugins: [interviews]`, set per Alpha shipped and never in the window

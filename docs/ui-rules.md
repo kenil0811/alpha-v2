@@ -87,7 +87,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | R1 | A section is its serif title and ⓘ over what it holds, never a card; nothing sits in a card inside a card | 26 Oct | — |
-| R2 | One record layout: a centred column, a line naming the record, its serif title, its sections; a row's page too | 25 Oct, 27 Oct | — |
+| R2 | One record page for a row, a person and an organization, made of blocks: its name is the bar's title (a double-click renames a row), with Module / Table in small type under the way back; under its head a row of tabs, Summary first, then the blocks the person pinned (a tab's or a block heading's right-click: Pin to the tabs, Unpin; tabs drag to a new place), and Ask about this at the row's right. Summary has the properties across the width in columns (a right-click hides one, for every record of its table; + in the next cell adds one), then each block's start; a block that holds nothing shows nowhere. What is hidden, pinned and in what order is each person's own, kept by the core for every record of the table (or of People's, Organizations'). A module's page that belongs to a table's records is a tab of its own on each record's page, drawn for that record, and shows at the foot of the row panel | 25 Oct, 27 Oct, 22 Nov | — |
 | R3 | Delete is never one click: behind ⋮, or a short list's ✕ (R8), always confirmed in our own pop-up, saying what goes, the parts that go with it, and how long Bring back returns them, in the core's words | 26 Oct, 27 Oct, 1 Nov | — |
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |

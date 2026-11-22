@@ -79,6 +79,7 @@ export function App() {
       listOrder: { ...l.listOrder, ...change.listOrder },
       viewOf: { ...l.viewOf, ...change.viewOf },
       tabs: { ...l.tabs, ...change.tabs },
+      records: { ...l.records, ...change.records },
     }))
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
@@ -425,6 +426,7 @@ export function App() {
               plain={place.at === 'work'}
               ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
               back={parentOf()}
+              path={place.at === 'row' ? rowPlace?.path : undefined}
               next={place.at === 'home' && <NextChip version={version} />}
             />
             {problem && (

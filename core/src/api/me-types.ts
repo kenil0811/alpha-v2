@@ -46,6 +46,7 @@ export interface Layout {
   listOrder: Record<string, string[]> // a table's lists in the person's order: table id → list ids ('all' is All); the first is where the table opens
   viewOf: Record<string, ViewOf> // a table's view for this person: table id → how it is drawn; none opens on the first list's own layout
   tabs: Record<string, TabsKept> // a module's table tabs for this person: module id → their order, the hidden and the pinned
+  records: Record<string, RecordKept> // a record page for this person: table id, or person or company → its hidden properties and tabs
 }
 
 // A module's table tabs as one person keeps them (ui-rules M1, T19): their order (table ids, the
@@ -55,4 +56,12 @@ export interface TabsKept {
   order: string[]
   hidden: string[]
   pinned: string[]
+}
+
+// A record page as one person keeps it, for every record of a table, or of People's and
+// Organizations': the properties hidden from it (field ids) and the blocks pinned as its tabs, in
+// their order.
+export interface RecordKept {
+  hidden: string[]
+  tabs: string[]
 }

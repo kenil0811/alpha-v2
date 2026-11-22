@@ -5,7 +5,7 @@ import { installedKits, unseenChanges } from '../../modules/kits/index.ts'
 import { deleteModule } from '../../modules/remove.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
 import { agentName, shownSchedules, whenWords } from '../../modules/schedules.ts'
-import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
+import { pageAnswer, pageDocument, pageRecord, pagesFor, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
 import type { Ctx } from '../ctx.ts'
@@ -133,7 +133,7 @@ export function registerModules(ctx: Ctx): void {
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
       businessCase: businessCase(m),
       parent: m.parent,
-      pages: pagesOf(m),
+      pages: pagesFor(world, m),
       tables: world.shape
         .tables(m.id)
         .filter(listed)
@@ -174,9 +174,12 @@ export function registerModules(ctx: Ctx): void {
   app.get('/api/modules/:id/pages/:name', async (req) => {
     const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
     const m = pageModule(id)
-    const page = pagesOf(m).find((p) => p.name === name)
+    const page = pagesFor(world, m).find((p) => p.name === name)
     if (!page) throw new Refused(`${m.name} has no page called ${name}.`)
-    return { ...page, html: pageDocument(m, name) }
+    // drawn for one record of its table, on that record's page
+    const { record } = z.object({ record: z.string().optional() }).parse(req.query)
+    const row = record ? pageRecord(world, m, name, record) : undefined
+    return { ...page, html: pageDocument(m, name, undefined, row) }
   })
   app.post('/api/modules/:id/pages/:name/ask', async (req) => {
     const { id } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
@@ -187,13 +190,17 @@ export function registerModules(ctx: Ctx): void {
   })
   app.post('/api/modules/:id/pages/:name/pdf', async (req, reply) => {
     const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
-    const { inputs } = z
-      .object({ inputs: z.record(z.string(), z.string()).default({}) })
+    const { inputs, record } = z
+      .object({
+        inputs: z.record(z.string(), z.string()).default({}),
+        record: z.string().optional(),
+      })
       .parse(req.body ?? {})
     if (!options.browsers) throw new Refused('Alpha has no browser here to print with.')
     const pdf = await printPage(world, pageModule(id), name, {
       browsers: options.browsers,
       inputs,
+      ...(record ? { record: pageRecord(world, pageModule(id), name, record) } : {}),
       as: 'pdf',
     })
     return reply.type('application/pdf').send(pdf)

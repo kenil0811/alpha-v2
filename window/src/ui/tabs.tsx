@@ -1,9 +1,9 @@
 // A screen's own pages: a pill switch in the bar, or, where the screen has no bar of its own (a
-// page opened beside), one row of tabs under it as before: every label in full, a table's row
-// count beside its name, the chosen tab underlined in the accent; a row too long scrolls sideways,
-// never folds a label to an icon or cuts it short.
+// page opened beside) or the tabs belong under a record's head, one row of tabs: every label in
+// full, a table's row count beside its name, the chosen tab underlined in the accent; a row too
+// long scrolls sideways, never folds a label to an icon or cuts it short.
 import type { TableSummary } from '@alpha/core/api'
-import type { MouseEvent, ReactNode } from 'react'
+import { type DragEvent, type MouseEvent, type ReactNode, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { TableTab } from '../TableTab.tsx'
 import { useBarSlot } from './bar-slot.tsx'
@@ -20,19 +20,28 @@ export type Tab = {
   count?: number | undefined
   table?: TableSummary | undefined // a table's tab: right-click and double-click rename and arrange it
   module?: string | undefined // the module whose header a table's tab is in
+  onPick?: (() => void) | undefined // a tab kept on the page, not in the address
+  onMenu?: ((at: { x: number; y: number }) => void) | undefined // its right-click: Pin, Unpin
+  drag?: boolean // dragged to a new place among the others that drag (onMove)
 }
 
 export function Tabs({
   label,
   tabs,
   keeping,
+  under = false,
+  onMove,
 }: {
   label: string
   tabs: Tab[]
   keeping?: TabKeeping | undefined // a module's own: tabs dragged, hidden, shown again
+  under?: boolean // the row under a record's head, even where the screen has a bar
+  onMove?: (from: string, to: string) => void // a tab dropped on another's place
 }) {
   const bar = useBarSlot()
-  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} keeping={keeping} />, bar)
+  const dragged = useRef<string | null>(null)
+  if (bar && !under)
+    return createPortal(<PillSwitch label={label} tabs={tabs} keeping={keeping} />, bar)
   return (
     <div
       role="tablist"
@@ -47,6 +56,39 @@ export function Tabs({
               role="tab"
               aria-selected={t.sel}
               href={t.href}
+              {...(onMove && t.drag
+                ? {
+                    draggable: true,
+                    onDragStart: () => {
+                      dragged.current = t.key
+                    },
+                    onDragOver: (e: DragEvent) => {
+                      if (dragged.current) e.preventDefault()
+                    },
+                    onDrop: (e: DragEvent) => {
+                      e.preventDefault()
+                      const from = dragged.current
+                      dragged.current = null
+                      if (from && from !== t.key) onMove(from, t.key)
+                    },
+                  }
+                : {})}
+              onClick={
+                t.onPick
+                  ? (e) => {
+                      e.preventDefault()
+                      t.onPick?.()
+                    }
+                  : undefined
+              }
+              {...(t.onMenu
+                ? {
+                    onContextMenu: (e: MouseEvent) => {
+                      e.preventDefault()
+                      t.onMenu?.({ x: e.clientX, y: e.clientY })
+                    },
+                  }
+                : {})}
               className={cn(
                 'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-ink-2 text-md hover:text-ink',
                 t.sel ? 'border-accent font-medium text-ink' : 'border-transparent',

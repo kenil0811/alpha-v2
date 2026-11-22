@@ -10,13 +10,18 @@ export const KIND_TONE: Record<SourceView['kind'], Tone> = {
   assumed: 'warn',
 }
 
+// in plain words ("Looked up" said nothing)
 export const KIND_WORDS: Record<SourceView['kind'], string> = {
-  stated: 'You said',
-  looked_up: 'Looked up',
-  estimated: 'Estimated',
-  assumed: 'Assumed',
-  computed: 'Computed',
+  stated: 'You said it',
+  looked_up: 'Alpha found it',
+  estimated: 'Alpha estimated it',
+  assumed: 'Alpha guessed it',
+  computed: 'Worked out from other values',
 }
+
+// where a value came from, for its hover: its own words, else its kind, and the day
+export const sourceTip = (s: SourceView) =>
+  `${s.words || KIND_WORDS[s.kind]}, ${new Date(s.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`
 
 // A choice that is a state shows as a dot in its colour, with its words.
 export const DOT: Record<string, string> = {

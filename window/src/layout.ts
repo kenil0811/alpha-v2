@@ -16,6 +16,7 @@ export const NO_LAYOUT: Layout = {
   listOrder: {},
   viewOf: {},
   tabs: {},
+  records: {},
 }
 
 export const LayoutContext = createContext<{
@@ -24,3 +25,6 @@ export const LayoutContext = createContext<{
 }>({ layout: NO_LAYOUT, change: () => undefined })
 
 export const useLayout = () => useContext(LayoutContext)
+
+// A record page kept as nothing yet: no property hidden, no block pinned as a tab.
+export const NO_RECORD = { hidden: [] as string[], tabs: [] as string[] }

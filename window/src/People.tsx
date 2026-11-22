@@ -4,16 +4,17 @@
 // Alpha knows them from, the ones merged into them (each can be unmerged), and the mail and
 // meetings with them, newest first, each opening its row.
 import type { KeptTable, ModuleSummary, PersonView, RowAround } from '@alpha/core/api'
-import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { ChevronRight, Pencil } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { isPast } from './day.ts'
 import { useLayout } from './layout.ts'
 import { moduleTabs, peopleTabs } from './Module.tsx'
-import { Record } from './Record.tsx'
+import { Detail, date, History } from './PersonLines.tsx'
+import { type Block, RecordPage } from './RecordPage.tsx'
 import { TableView } from './TableView.tsx'
 import { FieldsAdded, FieldsAt } from './table/AddFieldForm.tsx'
-import { FieldList } from './table/RowPanel.tsx'
+import { FieldList } from './table/FieldList.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
@@ -21,13 +22,6 @@ import { Info } from './ui/info.tsx'
 import { Section } from './ui/section.tsx'
 import { arrangeTabs } from './ui/tab-order.ts'
 import { Tabs } from './ui/tabs.tsx'
-
-const date = (at: string) =>
-  new Date(at).toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    ...(new Date(at).getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}),
-  })
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
@@ -194,377 +188,393 @@ function PersonPage({
   const upcoming = p.history.filter((h) => !isPast(h.at))
   const past = p.history.filter((h) => isPast(h.at))
 
-  return (
-    <Record kind={company ? 'Organization' : 'Person'}>
-      <div className="flex flex-col gap-7">
-        <div className="flex items-center gap-4">
-          <Avatar name={p.name} organization={company} big />
-          <div className="min-w-0 flex-1">
-            {naming ? (
-              <form
-                className="flex items-center gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  if (name.trim() && name.trim() !== p.name)
-                    void act(`${p.id}/name`, { name: name.trim() })
-                  setNaming(false)
-                }}
+  // the record page a
+  // row has, with a person's blocks
+  const activity = (all: boolean) => (
+    <div className="flex flex-col gap-5">
+      {upcoming.length > 0 && (
+        <Section small title="Coming up">
+          <History
+            lines={all ? upcoming.slice().reverse() : upcoming.slice().reverse().slice(0, 3)}
+          />
+        </Section>
+      )}
+      {!company && (
+        <Section small title="Mail and meetings" about="Newest first; each opens its row">
+          {past.length ? (
+            <History lines={all ? past : past.slice(0, 5)} />
+          ) : (
+            <p className="text-ink-3 text-md">None in what Alpha has read.</p>
+          )}
+        </Section>
+      )}
+    </div>
+  )
+  const related = (
+    <div className="flex flex-col gap-5">
+      {!company && p.companies.length > 0 && (
+        <Section
+          small
+          title="Works at"
+          about="As your rows say; an earlier one is kept with its dates"
+        >
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            {p.companies.map((c) => (
+              <a
+                key={`${c.id}${c.title ?? ''}`}
+                href={`#/people/${c.id}`}
+                className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
               >
-                <Field
-                  aria-label="Their name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-80"
-                  autoFocus
-                />
-                <Button type="submit" size="sm" variant="primary">
-                  Keep
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setNaming(false)}>
-                  Cancel
-                </Button>
-              </form>
-            ) : (
-              <div className="flex items-center gap-2">
-                <h1 className="truncate font-serif text-2xl text-ink">{p.name}</h1>
-                <button
-                  type="button"
-                  data-tip="Change the name"
-                  aria-label="Change the name"
-                  className="grid size-6 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink"
-                  onClick={() => {
-                    setName(p.name)
-                    setNaming(true)
-                  }}
-                >
-                  <Pencil className="size-3.5" />
-                </button>
-              </div>
-            )}
-            <div className="text-ink-2 text-md">
-              {company
-                ? [p.domains.join(', '), plural(p.people.length, 'person', 'people')]
-                    .filter(Boolean)
-                    .join(' · ')
-                : now.map((c) => (c.title ? `${c.title}, ${c.name}` : c.name)).join(' · ') ||
-                  'No organization known'}
-            </div>
-          </div>
-        </div>
-        {problem && <p className="text-bad text-sm">{problem}</p>}
-        {!company && p.emails.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
-            {mine ? (
-              <>
-                <span>
-                  {p.emails.join(', ')} will be known as your own, and {p.name} leaves People.
+                <Avatar name={c.name} organization />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-base text-ink">{c.name}</span>
+                  {c.title && <span className="block text-ink-3 text-sm">{c.title}</span>}
                 </span>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={async () => {
-                    try {
-                      await api.post(`/api/people/${p.id}/you`)
-                      window.location.hash = '#/people'
-                    } catch (err) {
-                      setProblem(err instanceof Problem ? err.message : 'That did not go through.')
-                    }
-                  }}
-                >
-                  Yes, that's me
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setMine(false)}>
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="underline underline-offset-3 hover:text-ink"
-                onClick={() => setMine(true)}
+                <span className="text-ink-3 text-sm">
+                  {c.ended ? `Before ${date(c.ended)}` : 'Now'}
+                </span>
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {company && p.people.length > 0 && (
+        <Section small title="People there">
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            {p.people.map((m) => (
+              <a
+                key={m.id}
+                href={`#/people/${m.id}`}
+                className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
               >
-                This is you
-              </button>
-            )}
+                <Avatar name={m.name} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-base text-ink">{m.name}</span>
+                  {m.title && <span className="block text-ink-3 text-sm">{m.title}</span>}
+                </span>
+                <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+              </a>
+            ))}
           </div>
-        )}
-        {!company && (
-          <div className="rounded-lg border border-line bg-surface px-4 py-3 text-ink-2 text-md">
-            {contact.join(' · ')}
-          </div>
-        )}
+        </Section>
+      )}
 
-        {(p.emails.length > 0 || p.phones.length > 0 || p.profile) && (
-          <Section title="How to reach them">
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              {p.emails.map((e) => (
-                <Detail key={e} label="Email">
-                  <a className="text-ink hover:underline" href={`mailto:${e}`}>
-                    {e}
-                  </a>
-                </Detail>
-              ))}
-              {p.phones.map((n) => (
-                <Detail key={n} label="Phone">
-                  {n}
-                </Detail>
-              ))}
-              {p.profile && (
-                <Detail label="Profile">
-                  <a
-                    className="text-ink hover:underline"
-                    href={`https://${p.profile}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {p.profile}
-                  </a>
-                </Detail>
-              )}
-            </div>
-          </Section>
-        )}
-
-        {!company && p.companies.length > 0 && (
-          <Section title="Works at" about="As your rows say; an earlier one is kept with its dates">
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              {p.companies.map((c) => (
-                <a
-                  key={`${c.id}${c.title ?? ''}`}
-                  href={`#/people/${c.id}`}
-                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-                >
-                  <Avatar name={c.name} organization />
+      {p.rows.length > 0 && (
+        <Section
+          small
+          title="In your modules"
+          about="Rows that name them, by a person or an address"
+        >
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            {p.rows.map((r) => (
+              <div
+                key={r.href}
+                className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+              >
+                <a href={r.href} className="flex min-w-0 flex-1 items-center gap-3">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-base text-ink">{c.name}</span>
-                    {c.title && <span className="block text-ink-3 text-sm">{c.title}</span>}
-                  </span>
-                  <span className="text-ink-3 text-sm">
-                    {c.ended ? `Before ${date(c.ended)}` : 'Now'}
+                    <span className="block truncate font-medium text-base text-ink">{r.name}</span>
+                    <span className="block truncate text-ink-3 text-sm">
+                      {r.module} · {r.table} · {r.field}
+                    </span>
                   </span>
                 </a>
-              ))}
-            </div>
-          </Section>
-        )}
+                {r.field !== 'their own word' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-tip="This row is someone else: it leaves with its own addresses"
+                    onClick={() => act(`${p.id}/not`, { record: r.record })}
+                  >
+                    Not this person
+                  </Button>
+                )}
+                <a href={r.href} aria-label={`Open ${r.name}`}>
+                  <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+                </a>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
-        {/* their row in each one-row-per-person table of this module; a value
-            typed for someone with no row yet makes it */}
-        {p.per.map((t) => (
-          <Section
-            key={t.table.id}
-            title={t.table.name}
-            about="One row each; double-click to change"
-          >
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              <FieldList
-                tableId={t.table.id}
-                fields={t.fields}
-                row={t.row ?? { id: '', values: {}, sources: {} }}
-                names={{}}
-                onField={(slug) => {
-                  if (t.row)
-                    window.location.hash = `#/table/${t.table.id}/${t.row.id}?field=${slug}`
-                }}
-                onEdit={async (f, value) => {
-                  try {
-                    await api.post(`/api/people/${p.id}/per/${t.table.id}`, {
-                      field: f.name,
-                      value,
-                    })
-                    setProblem(null)
-                    load()
-                    return true
-                  } catch (err) {
-                    setProblem(err instanceof Problem ? err.message : 'That was not saved.')
-                    return false
-                  }
-                }}
-              />
-            </div>
-          </Section>
-        ))}
-
-        {company && p.people.length > 0 && (
-          <Section title="People there">
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              {p.people.map((m) => (
+      {mentions.length > 0 && (
+        <Section
+          small
+          title="Mentioned in"
+          about="Notes on rows that mention them; each opens its row"
+        >
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            {mentions.flatMap((m) =>
+              m.rows.map((r) => (
                 <a
-                  key={m.id}
-                  href={`#/people/${m.id}`}
+                  key={r.id}
+                  href={`#/row/${r.id}`}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
                 >
-                  <Avatar name={m.name} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-base text-ink">{m.name}</span>
-                    {m.title && <span className="block text-ink-3 text-sm">{m.title}</span>}
+                    <span className="block truncate font-medium text-base text-ink">{r.name}</span>
+                    <span className="block truncate text-ink-3 text-sm">{m.table.name}</span>
                   </span>
                   <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
                 </a>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {p.rows.length > 0 && (
-          <Section title="In your modules" about="Rows that name them, by a person or an address">
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              {p.rows.map((r) => (
-                <div
-                  key={r.href}
-                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-                >
-                  <a href={r.href} className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-base text-ink">
-                        {r.name}
-                      </span>
-                      <span className="block truncate text-ink-3 text-sm">
-                        {r.module} · {r.table} · {r.field}
-                      </span>
-                    </span>
-                  </a>
-                  {r.field !== 'their own word' && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      data-tip="This row is someone else: it leaves with its own addresses"
-                      onClick={() => act(`${p.id}/not`, { record: r.record })}
-                    >
-                      Not this person
-                    </Button>
-                  )}
-                  <a href={r.href} aria-label={`Open ${r.name}`}>
-                    <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-                  </a>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {mentions.length > 0 && (
-          <Section title="Mentioned in" about="Notes on rows that mention them; each opens its row">
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              {mentions.flatMap((m) =>
-                m.rows.map((r) => (
-                  <a
-                    key={r.id}
-                    href={`#/row/${r.id}`}
-                    className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-base text-ink">
-                        {r.name}
-                      </span>
-                      <span className="block truncate text-ink-3 text-sm">{m.table.name}</span>
-                    </span>
-                    <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-                  </a>
-                )),
-              )}
-            </div>
-          </Section>
-        )}
-
-        {upcoming.length > 0 && (
-          <Section title="Coming up">
-            <History lines={upcoming.slice().reverse()} />
-          </Section>
-        )}
-        {!company && (
-          <Section title="Mail and meetings" about="Newest first; each opens its row">
-            {past.length ? (
-              <History lines={past} />
-            ) : (
-              <p className="text-ink-3 text-md">None in what Alpha has read.</p>
-            )}
-          </Section>
-        )}
-
-        <Section title="Where Alpha knows them from">
-          <div className="flex flex-wrap gap-2">
-            {p.from.map((f) => (
-              <span
-                key={f.name}
-                className="rounded-md border border-line bg-surface px-2.5 py-1 text-ink-2 text-sm"
-              >
-                {f.name}
-                {f.count > 1 ? ` · ${f.count} rows` : ''}
-              </span>
-            ))}
-            {p.from.length === 0 && (
-              <span className="text-ink-3 text-sm">Only what merged into this one</span>
+              )),
             )}
           </div>
         </Section>
-
-        {p.merged.length > 0 && (
-          <Section
-            title="Merged into this one"
-            about="Unmerge gives one back its own addresses and rows, kept apart from then on"
-          >
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              {p.merged.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0"
-                >
-                  <Avatar name={m.name} organization={company} />
-                  <span className="min-w-0 flex-1 truncate text-base text-ink">{m.name}</span>
-                  <Button size="sm" onClick={() => act(`${m.id}/unmerge`)}>
-                    Unmerge
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-      </div>
-    </Record>
-  )
-}
-
-function Detail({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 border-hair border-t px-4 py-2.5 text-md first:border-t-0">
-      <span className="w-16 shrink-0 text-ink-3 text-sm">{label}</span>
-      <span className="min-w-0 flex-1 truncate">{children}</span>
+      )}
     </div>
   )
-}
-
-function History({ lines }: { lines: PersonView['history'] }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
-      {lines.map((h) => (
-        <a
-          key={h.href}
-          href={h.href}
-          className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-        >
-          <span className="w-16 shrink-0 text-ink-3 text-sm tabular-nums">{date(h.at)}</span>
-          {h.channel === 'meeting' ? (
-            <CalendarDays className="size-3.5 shrink-0 text-ink-3" />
-          ) : (
-            <Mail className="size-3.5 shrink-0 text-ink-3" />
-          )}
-          <span className="min-w-0 flex-1 truncate text-base text-ink">
-            {h.about ?? (h.channel === 'meeting' ? 'A meeting' : 'A message')}
-          </span>
-          {h.by && (
-            <span className="shrink-0 text-ink-3 text-sm">
-              {h.channel === 'meeting'
-                ? h.by === 'you'
-                  ? 'You asked'
-                  : 'They asked'
-                : h.by === 'you'
-                  ? 'You wrote'
-                  : 'They wrote'}
+  const knowsBlock = (
+    <div className="flex flex-col gap-5">
+      <Section small title="Where Alpha knows them from">
+        <div className="flex flex-wrap gap-2">
+          {p.from.map((f) => (
+            <span
+              key={f.name}
+              className="rounded-md border border-line bg-surface px-2.5 py-1 text-ink-2 text-sm"
+            >
+              {f.name}
+              {f.count > 1 ? ` · ${f.count} rows` : ''}
             </span>
+          ))}
+          {p.from.length === 0 && (
+            <span className="text-ink-3 text-sm">Only what merged into this one</span>
           )}
-        </a>
-      ))}
+        </div>
+      </Section>
+
+      {p.merged.length > 0 && (
+        <Section
+          small
+          title="Merged into this one"
+          about="Unmerge gives one back its own addresses and rows, kept apart from then on"
+        >
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            {p.merged.map((m) => (
+              <div
+                key={m.id}
+                className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0"
+              >
+                <Avatar name={m.name} organization={company} />
+                <span className="min-w-0 flex-1 truncate text-base text-ink">{m.name}</span>
+                <Button size="sm" onClick={() => act(`${m.id}/unmerge`)}>
+                  Unmerge
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
     </div>
+  )
+  const blocks: Block[] = [
+    {
+      key: 'activity',
+      title: 'Activity',
+      about: 'Mail and meetings, newest first; each opens its row',
+      count: p.history.length,
+      short: activity(false),
+      full: activity(true),
+    },
+    {
+      key: 'related',
+      title: 'Related',
+      count:
+        p.companies.length +
+        p.people.length +
+        p.rows.length +
+        mentions.reduce((n, m) => n + m.rows.length, 0),
+      short: related,
+      full: related,
+    },
+    {
+      key: 'knows',
+      title: 'What Alpha knows',
+      count: p.from.length + p.merged.length,
+      short: knowsBlock,
+      full: knowsBlock,
+    },
+  ]
+  return (
+    <RecordPage
+      scope={p.kind}
+      name={p.name}
+      mark={<Avatar name={p.name} organization={company} big />}
+      title={
+        naming ? (
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (name.trim() && name.trim() !== p.name)
+                void act(`${p.id}/name`, { name: name.trim() })
+              setNaming(false)
+            }}
+          >
+            <Field
+              aria-label="Their name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-80"
+              autoFocus
+            />
+            <Button type="submit" size="sm" variant="primary">
+              Keep
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setNaming(false)}>
+              Cancel
+            </Button>
+          </form>
+        ) : (
+          <div className="flex items-center gap-2">
+            <h1 className="truncate font-serif text-ink text-xl">{p.name}</h1>
+            <button
+              type="button"
+              data-tip="Change the name"
+              aria-label="Change the name"
+              className="grid size-6 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink"
+              onClick={() => {
+                setName(p.name)
+                setNaming(true)
+              }}
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          </div>
+        )
+      }
+      under={
+        company
+          ? [p.domains.join(', '), plural(p.people.length, 'person', 'people')]
+              .filter(Boolean)
+              .join(' · ')
+          : now.map((c) => (c.title ? `${c.title}, ${c.name}` : c.name)).join(' · ') ||
+            'No organization known'
+      }
+      head={
+        <>
+          {problem && <p className="text-bad text-sm">{problem}</p>}
+          {!company && p.emails.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
+              {mine ? (
+                <>
+                  <span>
+                    {p.emails.join(', ')} will be known as your own, and {p.name} leaves People.
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={async () => {
+                      try {
+                        await api.post(`/api/people/${p.id}/you`)
+                        window.location.hash = '#/people'
+                      } catch (err) {
+                        setProblem(
+                          err instanceof Problem ? err.message : 'That did not go through.',
+                        )
+                      }
+                    }}
+                  >
+                    Yes, that's me
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setMine(false)}>
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="underline underline-offset-3 hover:text-ink"
+                  onClick={() => setMine(true)}
+                >
+                  This is you
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      }
+      properties={
+        <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
+          {!company && (
+            <div className="@3xl:col-span-2 rounded-lg border border-line bg-surface px-4 py-3 text-ink-2 text-md">
+              {contact.join(' · ')}
+            </div>
+          )}
+
+          {(p.emails.length > 0 || p.phones.length > 0 || p.profile) && (
+            <Section small title="How to reach them">
+              <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                {p.emails.map((e) => (
+                  <Detail key={e} label="Email">
+                    <a className="text-ink hover:underline" href={`mailto:${e}`}>
+                      {e}
+                    </a>
+                  </Detail>
+                ))}
+                {p.phones.map((n) => (
+                  <Detail key={n} label="Phone">
+                    {n}
+                  </Detail>
+                ))}
+                {p.profile && (
+                  <Detail label="Profile">
+                    <a
+                      className="text-ink hover:underline"
+                      href={`https://${p.profile}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {p.profile}
+                    </a>
+                  </Detail>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* their row in each one-row-per-person table of this module; a value
+            typed for someone with no row yet makes it */}
+          {p.per.map((t) => (
+            <Section
+              small
+              key={t.table.id}
+              title={t.table.name}
+              about="One row each; double-click to change"
+            >
+              <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                <FieldList
+                  tableId={t.table.id}
+                  fields={t.fields}
+                  row={t.row ?? { id: '', values: {}, sources: {} }}
+                  names={{}}
+                  onField={(slug) => {
+                    if (t.row)
+                      window.location.hash = `#/table/${t.table.id}/${t.row.id}?field=${slug}`
+                  }}
+                  onEdit={async (f, value) => {
+                    try {
+                      await api.post(`/api/people/${p.id}/per/${t.table.id}`, {
+                        field: f.name,
+                        value,
+                      })
+                      setProblem(null)
+                      load()
+                      return true
+                    } catch (err) {
+                      setProblem(err instanceof Problem ? err.message : 'That was not saved.')
+                      return false
+                    }
+                  }}
+                />
+              </div>
+            </Section>
+          ))}
+        </div>
+      }
+      blocks={blocks}
+    />
   )
 }

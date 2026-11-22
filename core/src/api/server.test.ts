@@ -432,6 +432,7 @@ describe('the api over a world', () => {
       listOrder: {},
       viewOf: {},
       tabs: {},
+      records: {},
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -464,6 +465,7 @@ describe('the api over a world', () => {
       listOrder: { t1: ['v2', 'all', 'v1'] },
       viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
       tabs: {},
+      records: {},
     })
     expect(
       (
@@ -510,6 +512,19 @@ describe('the api over a world', () => {
       [bakery.id]: { order: [], hidden: [], pinned: ['p'] },
     })
     expect((await tabs({ [shops.id]: { order: 'b' } })).statusCode).toBe(400)
+    // a record page's, the same way: one table (or person, company) at a time, none forgets it
+    const records = (payload: object) =>
+      a.inject({ method: 'POST', url: '/api/layout', headers: ok, payload: { records: payload } })
+    await records({ t1: { hidden: ['f1'], tabs: ['files'] } })
+    await records({ person: { hidden: [], tabs: ['related'] } })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().layout.records).toEqual({
+      t1: { hidden: ['f1'], tabs: ['files'] },
+      person: { hidden: [], tabs: ['related'] },
+    })
+    await records({ t1: null })
+    expect(
+      Object.keys((await a.inject({ url: '/api/me', headers: ok })).json().layout.records),
+    ).toEqual(['person'])
     // the text size is kept beside the look, each on its own
     const appearance = (payload: object) =>
       a.inject({ method: 'POST', url: '/api/appearance', headers: ok, payload })

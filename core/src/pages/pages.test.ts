@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Module, Table } from '../world/shape/index.ts'
 import { World } from '../world/world.ts'
-import { pageAnswer, pageDocument, pagesOf, printPage } from './pages.ts'
+import { pageAnswer, pageDocument, pageRecord, pagesFor, pagesOf, printPage } from './pages.ts'
 
 const BROWSERS = join(import.meta.dirname, '..', '..', '..', '.data', 'browsers')
 const alpha = { actor: { kind: 'alpha' as const } }
@@ -68,9 +68,24 @@ afterEach(() => {
 describe('pages', () => {
   it('lists a module’s pages by their titles, the front page first', () => {
     expect(pagesOf(m)).toEqual([
-      { name: 'funnel', title: 'Funnel', front: true },
-      { name: 'about', title: 'About', front: false },
+      { name: 'funnel', title: 'Funnel', front: true, record: null },
+      { name: 'about', title: 'About', front: false, record: null },
     ])
+  })
+
+  it('draws a page for one record of the table it names, and for no other row', () => {
+    writeFileSync(
+      join(m.dir, 'pages', 'deal.html'),
+      '<title>Deal</title><meta name="alpha-record" content="Deals"><p>One deal</p>',
+    )
+    expect(pagesOf(m).find((p) => p.name === 'deal')?.record).toBe('Deals')
+    expect(pagesFor(world, m).find((p) => p.name === 'deal')?.record).toBe(deals.id)
+    const [row] = world.records.list(deals.id)
+    const id = row?.id as string
+    expect(pageRecord(world, m, 'deal', id)).toBe(id)
+    expect(pageDocument(m, 'deal', undefined, id)).toContain(`window.alphaRecord="${id}"`)
+    expect(() => pageRecord(world, m, 'deal', 'r_nothere')).toThrow(/not drawn for that row/)
+    expect(() => pageRecord(world, m, 'funnel', id)).toThrow(/not drawn for that row/)
   })
 
   it('frames a page under a policy that lets nothing out, before any of its own words', () => {

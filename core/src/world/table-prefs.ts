@@ -1,9 +1,10 @@
 // How each person keeps a table (ui-rules T1): its lists in their own order (the first is where it
 // opens) and how they draw it (the view: a kind and what only that kind reads); and a module's
-// table tabs (M1, T19): their order, the ones hidden and the ones pinned. One preference per table,
-// or per module, and person, so two windows never write over each other's other tables or modules,
-// and each goes with its table, its list, its field or its module: nothing kept names a thing that
-// is gone.
+// table tabs (M1, T19): their order, the ones hidden and the ones pinned; and a record's page (a
+// row's, a person's, an organization's): the properties hidden from it and the blocks pinned as its
+// tabs. One preference per table, or per module, and person, so two windows never write over each
+// other's other tables or modules, and each goes with its table, its list, its field or its module:
+// nothing kept names a thing that is gone.
 import { all, type Db, run } from './db.ts'
 
 // How a table is drawn for a person; a list decides which rows show, never this.
@@ -32,9 +33,18 @@ export interface TabsKept {
   pinned: string[]
 }
 
+// A record page as one person keeps it, for every record of a table (record:<table id>), or of
+// People's and Organizations' (record:person, record:company): the properties hidden from it (field
+// ids) and the blocks pinned as its tabs, in the order the person put them.
+export interface RecordKept {
+  hidden: string[]
+  tabs: string[]
+}
+
 const ORDER = 'list_order:'
 const DRAWN = 'view_of:'
 const TABS = 'tabs:'
+const RECORD = 'record:'
 
 function kept<T>(db: Db, user: string, prefix: string): Record<string, T> {
   const rows = all<{ key: string; value: string }>(
@@ -100,9 +110,45 @@ export function setTabs(db: Db, user: string, module: string, tabs: TabsKept | n
   keep(db, user, TABS + module, any ? tabs : null)
 }
 
-// A table gone: everyone's order and view of it go too, and it leaves everyone's tabs.
+export const keptRecords = (db: Db, user: string) => kept<RecordKept>(db, user, RECORD)
+
+// How this person keeps a record page for a table (or person, company); none, or nothing in it,
+// forgets it.
+export function setRecord(db: Db, user: string, scope: string, r: RecordKept | null): void {
+  keep(db, user, RECORD + scope, r && (r.hidden.length || r.tabs.length) ? r : null)
+}
+
+// Every record page kept, its hidden properties and tabs each filtered: what goes leaves them.
+function forgetInRecords(db: Db, off: (r: RecordKept) => RecordKept): void {
+  for (const r of all<{ user_id: string; key: string; value: string }>(
+    db,
+    'SELECT user_id, key, value FROM preferences WHERE key LIKE ?',
+    `${RECORD}%`,
+  )) {
+    const was = JSON.parse(r.value) as RecordKept
+    const now = off(was)
+    if (now.hidden.length !== was.hidden.length || now.tabs.length !== was.tabs.length)
+      setRecord(db, r.user_id, r.key.slice(RECORD.length), now)
+  }
+}
+
+// A table gone: everyone's order and view of it go too, and it leaves everyone's tabs and record
+// pages (its own, and its fields and its part's tab on any other).
 export function forgetTable(db: Db, table: string): void {
-  run(db, 'DELETE FROM preferences WHERE key IN (?, ?)', ORDER + table, DRAWN + table)
+  run(
+    db,
+    'DELETE FROM preferences WHERE key IN (?, ?, ?)',
+    ORDER + table,
+    DRAWN + table,
+    RECORD + table,
+  )
+  const fields = new Set(
+    all<{ id: string }>(db, 'SELECT id FROM fields WHERE table_id = ?', table).map((f) => f.id),
+  )
+  forgetInRecords(db, (r) => ({
+    hidden: r.hidden.filter((f) => !fields.has(f)),
+    tabs: r.tabs.filter((t) => t !== `part:${table}`),
+  }))
   for (const r of all<{ user_id: string; key: string; value: string }>(
     db,
     'SELECT user_id, key, value FROM preferences WHERE key LIKE ?',
@@ -136,8 +182,9 @@ export function forgetList(db: Db, table: string, list: string): void {
   }
 }
 
-// A field gone: no one's view of its table lays rows on it any more.
+// A field gone: no one's view of its table lays rows on it any more, and no record page hides it.
 export function forgetField(db: Db, table: string, field: string): void {
+  forgetInRecords(db, (r) => ({ hidden: r.hidden.filter((f) => f !== field), tabs: r.tabs }))
   for (const r of all<{ user_id: string; value: string }>(
     db,
     'SELECT user_id, value FROM preferences WHERE key = ?',

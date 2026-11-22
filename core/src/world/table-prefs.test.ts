@@ -7,10 +7,12 @@ import { afterEach, beforeEach, expect, it } from 'vitest'
 import {
   drawnTables,
   forgetModule,
+  keptRecords,
   keptTabs,
   listOrders,
   setDrawn,
   setListOrder,
+  setRecord,
   setTabs,
 } from './table-prefs.ts'
 import { World } from './world.ts'
@@ -101,4 +103,40 @@ it('forgets a module’s tabs for everyone when the module goes', () => {
   setTabs(world.db, ann, 'm_here', { order: ['t_y'], hidden: [], pinned: [] })
   forgetModule(world.db, 'm_gone')
   expect(Object.keys(keptTabs(world.db, ann))).toEqual(['m_here'])
+})
+
+it('keeps a record page’s hidden properties and tabs one table at a time, and forgets what goes', () => {
+  const ann = world.owner('Ann').id
+  const ctx = { actor: { kind: 'person' as const, id: ann }, user: ann }
+  const m = world.shape.makeModule('Shop', ctx)
+  const orders = world.shape.makeTable(
+    m.id,
+    'Orders',
+    [
+      { name: 'Name', kind: 'text' },
+      { name: 'Day', kind: 'date' },
+    ],
+    ctx,
+  )
+  const lines = world.shape.makeTable(m.id, 'Lines', [{ name: 'Name', kind: 'text' }], ctx)
+  const day = orders.fields.find((f) => f.name === 'Day')?.id as string
+  setRecord(world.db, ann, orders.id, { hidden: [day], tabs: [`part:${lines.id}`, 'files'] })
+  setRecord(world.db, ann, lines.id, { hidden: [], tabs: ['tasks'] })
+  setRecord(world.db, ann, 'person', { hidden: [], tabs: ['related'] })
+  // one table set leaves the others as they were
+  setRecord(world.db, ann, lines.id, { hidden: [], tabs: ['tasks', 'files'] })
+  expect(keptRecords(world.db, ann)).toEqual({
+    [orders.id]: { hidden: [day], tabs: [`part:${lines.id}`, 'files'] },
+    [lines.id]: { hidden: [], tabs: ['tasks', 'files'] },
+    person: { hidden: [], tabs: ['related'] },
+  })
+  // a field gone leaves its table's hidden properties; a table gone takes its own and leaves the
+  // tabs that named it
+  world.shape.removeField(orders.id, 'Day', ctx)
+  expect(keptRecords(world.db, ann)[orders.id]?.hidden).toEqual([])
+  world.shape.removeTable(lines.id, ctx)
+  expect(keptRecords(world.db, ann)).toEqual({
+    [orders.id]: { hidden: [], tabs: ['files'] },
+    person: { hidden: [], tabs: ['related'] },
+  })
 })

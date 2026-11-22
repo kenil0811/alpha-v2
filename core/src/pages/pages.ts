@@ -14,6 +14,9 @@ export interface PageInfo {
   name: string // the file's name without .html
   title: string // its <title>
   front: boolean // <meta name="alpha-front">: the page the module opens on
+  // <meta name="alpha-record" content="Clients">: drawn for one record of that table, on its
+  // page; the table as the page names it here, its id once listed (pagesFor)
+  record: string | null
 }
 // <meta name="alpha-print" content="landscape">: a wide page prints across the paper
 
@@ -47,9 +50,36 @@ export function pagesOf(module: Module): PageInfo[] {
         name,
         title: /<title>([^<]*)<\/title>/i.exec(html)?.[1]?.trim() || name,
         front: /<meta\s+name=["']alpha-front["']/i.test(html),
+        record:
+          /<meta\s+name=["']alpha-record["']\s+content=["']([^"']+)["']/i.exec(html)?.[1] ?? null,
       }
     })
     .sort((a, b) => Number(b.front) - Number(a.front))
+}
+
+// A module's table by its lasting key or its name, as a page names it (rules M5).
+function tableNamed(world: World, module: Module, wanted: string) {
+  const tables = world.shape.tables(module.id)
+  const w = wanted.toLowerCase()
+  return (
+    tables.find((t) => t.key?.toLowerCase() === w) ?? tables.find((t) => t.name.toLowerCase() === w)
+  )
+}
+
+// A module's pages as the window lists them: a record's page names its table by id.
+export function pagesFor(world: World, module: Module): PageInfo[] {
+  return pagesOf(module).map((p) => ({
+    ...p,
+    record: p.record ? (tableNamed(world, module, p.record)?.id ?? null) : null,
+  }))
+}
+
+// The record a page is drawn for: one row of the table it names, else refused.
+export function pageRecord(world: World, module: Module, name: string, row: string): string {
+  const page = pagesFor(world, module).find((p) => p.name === name)
+  if (!page?.record || world.records.tableOf(row)?.id !== page.record)
+    throw new Refused(`${page?.title ?? name} is not drawn for that row.`)
+  return row
 }
 
 // The window's own fonts, carried inside the page, since the frame fetches nothing.
@@ -76,13 +106,20 @@ export function pageDocument(
   module: Module,
   name: string,
   inputs?: Record<string, string>,
+  record?: string, // the row it is drawn for (pageRecord), as alpha.record
 ): string {
   const inner = fileOf(module, name)
     .replace(/<!doctype[^>]*>/gi, '')
     .replace(/<\/?(html|head|body)\b[^>]*>/gi, '')
-  const given = inputs
-    ? `<script>window.alphaInputs=${JSON.stringify(inputs).replace(/</g, '\\u003c')}</script>`
-    : ''
+  const given =
+    inputs || record
+      ? `<script>${[
+          inputs && `window.alphaInputs=${JSON.stringify(inputs).replace(/</g, '\\u003c')}`,
+          record && `window.alphaRecord=${JSON.stringify(record).replace(/</g, '\\u003c')}`,
+        ]
+          .filter(Boolean)
+          .join(';')}</script>`
+      : ''
   return [
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',
     `<meta http-equiv="Content-Security-Policy" content="${CSP}">`,
@@ -105,11 +142,7 @@ export function pageAnswer(
   op: string,
   args: Record<string, unknown>,
 ): unknown {
-  const wanted = String(args.table ?? '').toLowerCase()
-  const tables = world.shape.tables(module.id)
-  const table =
-    tables.find((t) => t.key?.toLowerCase() === wanted) ??
-    tables.find((t) => t.name.toLowerCase() === wanted)
+  const table = tableNamed(world, module, String(args.table ?? ''))
   if (!table) throw new Refused(`${module.name} has no table called ${String(args.table)}.`)
   const nameOf = new Map(table.fields.map((f) => [f.slug, f.key ?? f.name]))
   const rows = world.records.list(table.id)
@@ -147,9 +180,14 @@ export function printPage(
   world: World,
   module: Module,
   name: string,
-  opts: { browsers: string; inputs?: Record<string, string>; as: 'pdf' | 'png' | 'text' },
+  opts: {
+    browsers: string
+    inputs?: Record<string, string>
+    record?: string
+    as: 'pdf' | 'png' | 'text'
+  },
 ): Promise<Buffer> {
-  const html = pageDocument(module, name, opts.inputs ?? {})
+  const html = pageDocument(module, name, opts.inputs ?? {}, opts.record)
   return renderPage(opts.browsers, html, {
     as: opts.as,
     landscape: /<meta\s+name=["']alpha-print["']\s+content=["']landscape["']/i.test(

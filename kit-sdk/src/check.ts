@@ -178,6 +178,19 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
         if (!own.has(table))
           problems.push(`setup.yaml has rows for ${table}, which the kit has no table called.`)
   }
+  // a page that belongs to a table's records names one of the kit's own tables
+  const pagesDir = join(dir, 'pages')
+  const owned = new Set([...own].map((t) => t.toLowerCase()))
+  if (existsSync(pagesDir))
+    for (const f of readdirSync(pagesDir).filter((x) => x.endsWith('.html'))) {
+      const record = /<meta\s+name=["']alpha-record["']\s+content=["']([^"']+)["']/i.exec(
+        readFileSync(join(pagesDir, f), 'utf8'),
+      )?.[1]
+      if (record && !owned.has(record.toLowerCase()))
+        problems.push(
+          `pages/${f} belongs to the records of ${record}, which the kit has no table called.`,
+        )
+    }
   const gated = new Set(CALLS.filter((c) => c.effect).map((c) => c.name))
   const schedulesDir = join(dir, 'schedules')
   const scheduleFiles = existsSync(schedulesDir)
