@@ -6,6 +6,7 @@ import type { CardView, FilingView, FoundRow } from '@alpha/core/api'
 import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
+import { openLink } from './opened.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
 import { Field, Select } from './ui/field.tsx'
@@ -70,7 +71,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
             type="button"
             data-tip="See the file"
             className="w-28 shrink-0 overflow-hidden rounded-sm border border-line bg-surface"
-            onClick={() => window.location.assign(`#/file/${filing.file}`)}
+            onClick={() => openLink(`#/file/${filing.file}`)}
           >
             <img
               src={api.tokened(`/api/files/${filing.file}/page/1`)}
@@ -83,7 +84,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
           <button
             type="button"
             className="truncate text-left text-ink hover:underline"
-            onClick={() => window.location.assign(`#/file/${filing.file}`)}
+            onClick={() => openLink(`#/file/${filing.file}`)}
           >
             {filing.name}
           </button>

@@ -5,6 +5,7 @@ import type { AgentView, ModuleSummary } from '@alpha/core/api'
 import { type ComponentType, useCallback } from 'react'
 import { api } from '../api.ts'
 import { useLayout } from '../layout.ts'
+import { openLink } from '../opened.ts'
 
 export { Check, LoaderCircle, Sparkles } from 'lucide-react'
 export { wordsOf } from '../api.ts'
@@ -44,7 +45,7 @@ export function routes(plugin: string) {
 
 // To another place in the window: a module, a connection, Home.
 export const go = (to: string) => {
-  window.location.hash = to
+  openLink(to)
 }
 
 // A module's page, by the module's name: none when it is not there.

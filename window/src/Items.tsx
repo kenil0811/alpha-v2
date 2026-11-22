@@ -7,6 +7,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { AgentSchedulePage } from './AgentSchedules.tsx'
 import { api } from './api.ts'
+import { openLink } from './opened.ts'
 import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -170,7 +171,7 @@ function SchedulePage({
               run={r}
               open={false}
               onOpen={() => {
-                window.location.hash = `#/run/${r.id}`
+                openLink(`#/run/${r.id}`)
               }}
               onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
             />

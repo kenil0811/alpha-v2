@@ -1,6 +1,7 @@
 import type { KeptTable } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { openLink } from './opened.ts'
 import { Embedded } from './Rules.tsx'
 import { useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -19,7 +20,7 @@ export function Schedules({ version }: { version: number }) {
         <Embedded
           data={data}
           open={(id) => {
-            window.location.hash = `#/schedule/${id}`
+            openLink(`#/schedule/${id}`)
           }}
           rowAction={(r) => <RunNow id={r.id} />}
         />

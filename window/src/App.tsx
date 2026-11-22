@@ -86,7 +86,7 @@ export function App() {
   const room = roomBeside(windowWidth, layout, asking)
   // a task, a run, a person or a row open beside the page, from the address
   const { base: besideBase, opened } = splitBeside(window.location.hash)
-  useOpenBeside(room)
+  useOpenBeside()
   const setAsking = useCallback(
     (open: boolean | ((was: boolean) => boolean)) =>
       setLayout((l) => {
@@ -415,14 +415,14 @@ export function App() {
           }}
           tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
         />
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="relative flex min-w-0 flex-1 flex-col">
           <Bar
             name={screenName()}
             middle={setMiddle}
             plain={place.at === 'work'}
             ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
             back={parentOf()}
-            next={place.at === 'home' && <NextChip version={version} room={room} />}
+            next={place.at === 'home' && <NextChip version={version} />}
           />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
@@ -535,17 +535,20 @@ export function App() {
               </div>
             </div>
           </BarMiddle>
+          {/* over the centre, never over the assistant: always room for it */}
+          {opened && (
+            <div className="absolute inset-y-0 right-0 z-(--z-raised) flex">
+              <OpenedPanel
+                opened={opened}
+                version={version}
+                width={besideWidth(windowWidth, layout, asking)}
+                onClose={() => {
+                  window.location.hash = besideBase
+                }}
+              />
+            </div>
+          )}
         </main>
-        {opened && room && (
-          <OpenedPanel
-            opened={opened}
-            version={version}
-            width={besideWidth(windowWidth, layout, asking)}
-            onClose={() => {
-              window.location.hash = besideBase
-            }}
-          />
-        )}
         {askable && (
           <SlideIn open={asking}>
             <Assistant
