@@ -8,6 +8,7 @@ import type { buildServer } from '../api/server.ts'
 import type { Engine } from '../engine/engine.ts'
 import { cardAgent } from '../modules/agent-marks.ts'
 import type { User, World } from '../world/world.ts'
+import { AS_WINDOW as HEADERS } from './headers.ts'
 
 export const PluginPress = z.object({
   name: z.string(),
@@ -37,7 +38,6 @@ export const Interview = z.object({
   at_most: z.number().default(60),
 })
 
-const HEADERS = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
 type App = ReturnType<typeof buildServer>
 
 // A button pressed or a screen read. A button that is not there fails the journey; a screen that

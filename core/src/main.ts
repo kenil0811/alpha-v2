@@ -15,6 +15,7 @@ import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
 import { SignIn } from './connectors/signin.ts'
 import { takeRestartNote } from './data.ts'
+import { answersWith } from './engine/ask.ts'
 import { ClaudeCodeProvider } from './engine/claudecode.ts'
 import { Engine } from './engine/engine.ts'
 import { ModelRoute } from './engine/route.ts'
@@ -399,6 +400,8 @@ const app = buildServer({
   failedConnectors: [...standard.failed, ...added.failed],
   plugins: plugins.routes,
   pluginsOn: plugins.on(),
+  chapters: plugins.chapters,
+  claudeAnswers: (given) => answersWith(world.paths.dir, given),
   bridgeDir: join(home, 'bridge'),
   ...(served ? { windowDir } : {}),
 })

@@ -38,8 +38,8 @@ const columns = (t: string) =>
 
 describe('the world’s shape', () => {
   it('is schema.sql and its migrations, and a fresh world is exactly schema.sql', () => {
-    expect(MIGRATIONS).toHaveLength(10)
-    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 10 })
+    expect(MIGRATIONS).toHaveLength(11)
+    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 11 })
     expect(made('table')).toEqual(named('TABLE'))
     expect(made('index')).toEqual(named('INDEX'))
     expect(made('trigger')).toEqual(named('TRIGGER'))
@@ -61,7 +61,7 @@ describe('the world’s shape', () => {
       ),
     ).not.toContain('place')
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(10)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(MIGRATIONS.length)
     expect(again.prepare("SELECT account, place FROM connections WHERE id = 'c1'").get()).toEqual({
       account: 'a@b.example',
       place: null,
@@ -85,7 +85,7 @@ describe('the world’s shape', () => {
     old.close()
     const again = new DatabaseSync(file)
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(10)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(MIGRATIONS.length)
     expect(again.prepare("SELECT computer FROM connections WHERE id = 'c1'").get()).toEqual({
       computer: null,
     })
@@ -105,7 +105,7 @@ describe('the world’s shape', () => {
     old.close()
     const again = new DatabaseSync(file)
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(10)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(MIGRATIONS.length)
     expect(again.prepare("SELECT left_out FROM connections WHERE id = 'c1'").get()).toEqual({
       left_out: null,
     })
@@ -120,7 +120,7 @@ describe('the world’s shape', () => {
     old.close()
     const again = new DatabaseSync(file)
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(10)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(MIGRATIONS.length)
     const cols = again.prepare("SELECT name FROM pragma_table_info('kits')").all() as {
       name: string
     }[]
@@ -136,11 +136,32 @@ describe('the world’s shape', () => {
     old.close()
     const again = new DatabaseSync(file)
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(10)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(MIGRATIONS.length)
     const cols = again.prepare("SELECT name FROM pragma_table_info('tables')").all() as {
       name: string
     }[]
     expect(cols.map((c) => c.name)).toContain('start_view')
+    again.close()
+  })
+
+  it('marks everyone in a world made before migration 11 as through Set up Alpha', async () => {
+    const file = join(home, 'story.sqlite')
+    const old = new DatabaseSync(file)
+    old.exec(SCHEMA.replace(/CREATE TABLE story \([^;]*;/, ''))
+    old.exec('PRAGMA user_version = 10')
+    old.exec(
+      "INSERT INTO users (id, name, role, created_at) VALUES ('u1', 'Kenil', 'owner', 'now'), ('u2', 'Priya', 'member', 'now')",
+    )
+    old.close()
+    const again = new DatabaseSync(file)
+    const { migrate } = await import('./schema.ts')
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(MIGRATIONS.length)
+    const rows = again.prepare('SELECT user_id, done_at FROM story ORDER BY user_id').all() as {
+      user_id: string
+      done_at: string | null
+    }[]
+    expect(rows.map((r) => r.user_id)).toEqual(['u1', 'u2'])
+    expect(rows.every((r) => r.done_at)).toBe(true)
     again.close()
   })
 

@@ -448,6 +448,11 @@
   .face-pulse {
     animation: face-pulse 1.4s ease-in-out infinite;
   }
+  /* Set up Alpha: a chapter's line and screen come in with a short fade and rise, and nothing else
+     moves (ui-rules U3) */
+  .story-rise {
+    animation: story-rise 220ms ease-out both;
+  }
 
   /* Source Serif 4 is for page titles and big numbers only */
   h1 {
@@ -478,6 +483,13 @@
   }
   97% {
     transform: scaleY(0.12);
+  }
+}
+
+@keyframes story-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 }
 

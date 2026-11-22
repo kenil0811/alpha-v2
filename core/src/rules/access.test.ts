@@ -163,6 +163,9 @@ rule('A6', 'every request carries a session, and a person’s own stays theirs',
         ['POST', '/api/accounts', { name: 'Sam', email: 'sam@example.com' }],
         ['POST', '/api/kits', { folder: '/nowhere' }],
         ['POST', '/api/workspace', { name: 'Bakery HQ' }],
+        // and in Set up Alpha, whose Your workspace and Your people are the owner's
+        ['POST', '/api/story/workspace', { name: 'Bakery HQ' }],
+        ['POST', '/api/story/people', { add: [{ name: 'Sam', email: 'sam@example.com' }] }],
       ] as const) {
         const out = await app.inject({ method, url, headers: member, payload })
         if (out.statusCode !== 409 || !/Only the owner/.test(out.json().problem)) return false

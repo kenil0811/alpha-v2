@@ -3,10 +3,11 @@
 // Rename and Change picture, the owner's (one name and picture for the whole Alpha), and Log out
 // where people sign in. Out of Shell.tsx, which holds the rail itself.
 import type { Me, Workspace as WorkspaceData } from '@alpha/core/api'
-import { Activity, Image, LogOut, Pencil } from 'lucide-react'
+import { Activity, Image, LogOut, Pencil, Sparkles } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
 import type { Place } from './place.ts'
+import { SET_UP } from './story/address.ts'
 import { CoreImage } from './ui/core-file.tsx'
 import { Field } from './ui/field.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
@@ -75,7 +76,7 @@ export function useWorkspaceHere(me: Me | null, place: Place, version: number): 
 }
 
 // A picture the person picked, drawn to a 96px square, so what the core keeps is small.
-function squared(f: File): Promise<string> {
+export function squared(f: File): Promise<string> {
   return new Promise((done, failed) => {
     const img = new window.Image()
     img.onload = () => {
@@ -223,6 +224,21 @@ export function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean
             >
               <Image className="size-3.5 text-ink-3" />
               Change picture
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                close()
+                // from the start, what was done shown as done
+                void api
+                  .post('/api/story/reopen')
+                  .catch(() => undefined)
+                  .finally(() => {
+                    window.location.hash = SET_UP
+                  })
+              }}
+            >
+              <Sparkles className="size-3.5 text-ink-3" />
+              Set up Alpha
             </MenuItem>
             {signIn && (
               <MenuItem onClick={logOut}>

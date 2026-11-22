@@ -13,6 +13,7 @@ import { PLUGINS_DIR, type Plugins } from '../plugins/plugins.ts'
 import type { Card } from '../world/cards.ts'
 import type { Table } from '../world/shape/index.ts'
 import type { User, World } from '../world/world.ts'
+import { AS_WINDOW as HEADERS } from './headers.ts'
 
 type Saw = { check: string; ok: boolean; saw: string }
 
@@ -60,8 +61,6 @@ export interface CheckHere {
   app: () => ReturnType<typeof buildServer>
   plugins: Plugins
 }
-
-const HEADERS = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
 
 // How to work's own lines, in the file the window and the desk read.
 const linesOf = (world: World, user: string | null): string[] => {

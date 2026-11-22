@@ -14,7 +14,7 @@ import { bridges } from '../bridge/hub.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
 import type { Install } from '../install.ts'
 import type { Platform } from '../platform/index.ts'
-import type { PluginRoute } from '../plugins/plugins.ts'
+import type { PluginChapter, PluginRoute } from '../plugins/plugins.ts'
 import type { Setup } from '../setup.ts'
 import { Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
@@ -40,6 +40,7 @@ import { cookieIn, cookieOf, registerSession, SESSION_PATHS } from './routes/ses
 import { registerSettings } from './routes/settings.ts'
 import { BACK, registerSignIn } from './routes/signin.ts'
 import { registerSites } from './routes/sites.ts'
+import { registerStory } from './routes/story.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerTables } from './routes/tables.ts'
 import { registerTasks } from './routes/tasks.ts'
@@ -90,6 +91,10 @@ export interface ServerOptions {
   }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
   plugins?: PluginRoute[] // what plugins answer, under /api/plugins/<name>/
+  chapters?: PluginChapter[] // what plugins add to Set up Alpha
+  // Set up Alpha's live check on a Claude token given: none when Claude answered with it, else
+  // the words why not; with none given, a token is taken unchecked (tests)
+  claudeAnswers?: (token: string) => Promise<string | null>
   pluginsOn?: string[] // the plugins on here, by name (rules P1)
   bridgeDir?: string // where the Bridge's downloads are, signed (pnpm server bridge)
   bridgeKey?: string // the key they are checked against: Kenil's when not given (a test gives its own)
@@ -215,6 +220,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   const ctx: Ctx = { ...base, views: makeViews(base) }
   registerSession(ctx)
   registerMe(ctx)
+  registerStory(ctx)
   registerDay(ctx)
   registerStream(ctx)
   registerCards(ctx)

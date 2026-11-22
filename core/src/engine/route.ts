@@ -14,6 +14,9 @@ export type RouteName = 'subscription' | 'key'
 export const KEY_REF = 'anthropic:api-key'
 export const TOKEN_REF = 'anthropic:oauth-token'
 
+// A subscription's token, as claude setup-token prints it.
+export const isClaudeToken = (t: string): boolean => /^sk-ant-[\w-]{20,}$/.test(t.trim())
+
 // A fresh Alpha's way to Claude in a journey: none yet, until a token is given it (the story's
 // Claude chapter), as a new server's is.
 export async function unsetRoute(world: World, home: string): Promise<{ route: ModelRoute }> {
@@ -84,7 +87,7 @@ export class ModelRoute {
   // A server has no browser for Claude's sign-in, so a subscription comes as a token.
   async setToken(token: string, by: string): Promise<void> {
     const given = token.trim()
-    if (!/^sk-ant-[\w-]{20,}$/.test(given))
+    if (!isClaudeToken(given))
       throw new Refused('That is not a Claude token: it starts with sk-ant-.')
     await this.secrets.set(TOKEN_REF, given)
     this.token = given
