@@ -37,4 +37,14 @@ export interface Layout {
   agent: string | null // the agent the assistant shows; none is the Chief of staff
   listOrder: Record<string, string[]> // a table's lists in the person's order: table id → list ids ('all' is All); the first is where the table opens
   viewOf: Record<string, ViewOf> // a table's view for this person: table id → how it is drawn; none opens on the first list's own layout
+  tabs: Record<string, TabsKept> // a module's table tabs for this person: module id → their order, the hidden and the pinned
+}
+
+// A module's table tabs as one person keeps them (ui-rules M1, T19): their order (table ids, the
+// ones not named after, as they came), the tables hidden from the header, and the part or setup
+// tables pinned to it beside those the module keeps as tabs for everyone.
+export interface TabsKept {
+  order: string[]
+  hidden: string[]
+  pinned: string[]
 }

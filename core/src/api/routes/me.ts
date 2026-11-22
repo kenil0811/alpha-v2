@@ -1,6 +1,13 @@
 import { z } from 'zod'
 import { atNumber } from '../../world/shape/numbers.ts'
-import { drawnTables, listOrders, setDrawn, setListOrder } from '../../world/table-prefs.ts'
+import {
+  drawnTables,
+  keptTabs,
+  listOrders,
+  setDrawn,
+  setListOrder,
+  setTabs,
+} from '../../world/table-prefs.ts'
 import { VIEW_KINDS } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FoundRow, Layout, Me, ViewOf } from '../types.ts'
@@ -29,6 +36,7 @@ export function registerMe(ctx: Ctx): void {
       agent: world.preference(user.id, 'agent_chosen'),
       listOrder: listOrders(world.db, user.id),
       viewOf: drawnTables(world.db, user.id) as Record<string, ViewOf>,
+      tabs: keptTabs(world.db, user.id),
     }
   }
 
@@ -76,6 +84,19 @@ export function registerMe(ctx: Ctx): void {
               .nullable(),
           )
           .optional(),
+        // each module named is kept on its own (none forgets it); modules not named stay as they are
+        tabs: z
+          .record(
+            z.string(),
+            z
+              .object({
+                order: z.array(z.string()),
+                hidden: z.array(z.string()),
+                pinned: z.array(z.string()),
+              })
+              .nullable(),
+          )
+          .optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -109,6 +130,8 @@ export function registerMe(ctx: Ctx): void {
       setListOrder(world.db, user.id, table, ids)
     for (const [table, drawn] of Object.entries(given.viewOf ?? {}))
       setDrawn(world.db, user.id, table, drawn)
+    for (const [module, tabs] of Object.entries(given.tabs ?? {}))
+      setTabs(world.db, user.id, module, tabs)
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
     return layoutOf()

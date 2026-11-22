@@ -75,6 +75,7 @@ export function App() {
       ...change,
       listOrder: { ...l.listOrder, ...change.listOrder },
       viewOf: { ...l.viewOf, ...change.viewOf },
+      tabs: { ...l.tabs, ...change.tabs },
     }))
     api.post('/api/layout', change).catch(() => undefined)
   }, [])

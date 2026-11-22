@@ -11,14 +11,17 @@ import type {
   ModuleView,
   TableView as TableData,
   TableSummary,
+  TabsKept,
 } from '@alpha/core/api'
 import { Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { useLayout } from './layout.ts'
 import { ModuleDetails, ModuleSetup } from './ModuleSetup.tsx'
 import { PageView } from './PageView.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
+import { arrangeTabs, inBar, moveBefore, NO_TABS, pinTab, type TabKeeping } from './ui/tab-order.ts'
 import { type Tab, Tabs } from './ui/tabs.tsx'
 import { Waiting } from './ui/waiting.tsx'
 
@@ -82,7 +85,10 @@ export function ModuleScreen({
   }, [firstTable, m?.people])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
-  const tabs: Tab[] = facts
+  // the person's own order, hidden and pinned table tabs, kept per person and module by the core
+  const { layout, change } = useLayout()
+  const kept = layout.tabs[moduleId] ?? NO_TABS
+  const all: Tab[] = facts
     ? [
         ...(facts.people ? peopleTabs(null) : []),
         ...(holds
@@ -95,13 +101,44 @@ export function ModuleScreen({
               },
             ]
           : []),
-        ...moduleTabs(facts, current),
+        ...moduleTabs(facts, current, kept),
       ]
     : []
+  const keep = (next: typeof kept) => change({ tabs: { [moduleId]: next } })
+  // the tables the person hid, to show again from the header's menu
+  const hiddenOnes = (facts?.tables ?? []).filter((t) => kept.hidden.includes(t.id))
+  const { shown: tabs } = arrangeTabs(all, kept.order)
+  const idOf = (key: string) => key.slice(2)
+  // every table tab in its order now
+  const ids = tabs.filter((t) => t.key.startsWith('t:')).map((t) => idOf(t.key))
+  const keeping: TabKeeping = {
+    hidden: hiddenOnes.map((t) => ({
+      key: `t:${t.id}`,
+      href: `#/table/${t.id}`,
+      label: t.name,
+      sel: false,
+    })),
+    move: (key, before) =>
+      keep({
+        ...kept,
+        order: moveBefore(ids, idOf(key), before === null ? null : idOf(before)),
+      }),
+    step: (key, by) => {
+      const i = ids.indexOf(idOf(key))
+      const to = ids[i + by]
+      if (to === undefined) return
+      // right: before the one after the neighbour, or last
+      keeping.move(key, by < 0 ? `t:${to}` : ids[i + 2] === undefined ? null : `t:${ids[i + 2]}`)
+    },
+    show: (key) => {
+      const t = hiddenOnes.find((x) => x.id === idOf(key))
+      if (t) keep(pinTab(t, kept, true))
+    },
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs label={facts?.name ?? 'Module'} tabs={tabs} />
+      <Tabs label={facts?.name ?? 'Module'} tabs={tabs} keeping={keeping} />
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
           m && <Overview m={m} />
@@ -133,6 +170,7 @@ export function ModuleScreen({
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
+  kept: TabsKept = NO_TABS, // the person's own: the tables they hid and the ones they pinned
 ): Tab[] => [
   ...[...m.pages]
     .sort((a, b) => Number(!!b.front) - Number(!!a.front))
@@ -143,16 +181,18 @@ export const moduleTabs = (
       icon: <LayoutDashboard className="size-3.5" />,
       sel: current?.kind === 'page' && current.name === p.name,
     })),
-  ...[
-    ...m.tables.filter((t) => t.place === 'main'),
-    ...m.tables.filter((t) => t.place !== 'main' && t.tab),
-  ].map((t) => ({
-    key: `t:${t.id}`,
-    href: `#/table/${t.id}`,
-    label: t.name,
-    count: t.rows,
-    sel: current?.kind === 'table' && current.id === t.id,
-  })),
+  ...[...m.tables.filter((t) => t.place === 'main'), ...m.tables.filter((t) => t.place !== 'main')]
+    // the one open stays in sight, hidden or not
+    .filter((t) => inBar(t, kept) || (current?.kind === 'table' && current.id === t.id))
+    .map((t) => ({
+      table: t,
+      module: m.id,
+      key: `t:${t.id}`,
+      href: `#/table/${t.id}`,
+      label: t.name,
+      count: t.rows,
+      sel: current?.kind === 'table' && current.id === t.id,
+    })),
   {
     key: 'setup',
     href: `#/module/${m.id}/setup`,

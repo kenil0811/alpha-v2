@@ -15,6 +15,7 @@ export const NO_LAYOUT: Layout = {
   agent: null,
   listOrder: {},
   viewOf: {},
+  tabs: {},
 }
 
 export const LayoutContext = createContext<{

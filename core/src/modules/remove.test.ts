@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { run } from '../world/db.ts'
+import { keptTabs, setTabs } from '../world/table-prefs.ts'
 import { World } from '../world/world.ts'
 import { install } from './kits/index.ts'
 import { deleteModule } from './remove.ts'
@@ -59,6 +60,9 @@ describe('deleting a module', () => {
   it('all of it: the module, the modules inside it, their tables, rows and folder', async () => {
     const { m, inner } = await bakery()
     const tables = [...world.shape.tables(m.id), ...world.shape.tables(inner.id)].map((t) => t.id)
+    const me = world.owner('Kenil').id
+    setTabs(world.db, me, m.id, { order: [], hidden: [], pinned: tables.slice(0, 1) })
+    setTabs(world.db, me, inner.id, { order: tables.slice(-1), hidden: [], pinned: [] })
     const words = await deleteModule(world, m.id, false, ctx)
     expect(words).toMatch(/^Deleted the module Bakery and the 1 module inside it, with \d+ tables/)
     expect(world.shape.module(m.id)).toBeUndefined()
@@ -66,6 +70,8 @@ describe('deleting a module', () => {
     for (const t of tables) expect(world.shape.table(t)).toBeUndefined()
     expect(existsSync(m.dir)).toBe(false)
     expect(world.lines({ kinds: ['removed'] }).at(-1)?.words).toBe(words)
+    // and how anyone kept their tabs
+    expect(keptTabs(world.db, me)).toEqual({})
   }, 60_000)
 
   it('takes a mirror its connector no longer fills, and refuses one it still fills', async () => {

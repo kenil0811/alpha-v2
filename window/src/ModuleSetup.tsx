@@ -17,6 +17,7 @@ import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { originWords, when } from './Modules.tsx'
+import { TableTab } from './TableTab.tsx'
 import { KINDS } from './table/KindPicker.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -249,8 +250,9 @@ function AllSchedules({
 }
 
 // Every table of the module in the order of its number (shape/numbers.ts), a name that opens
-// it, how it opens for everyone, and how many rows it has. Whether a setup table or a part is kept
-// as a tab is on that table's own ⋮ menu.
+// it, how it opens for everyone, and how many rows it has. Right-click a table's name for Rename,
+// Pin to header and Hide from header, kept per person; a double-click renames it. Whether a setup
+// table or a part is kept as a tab for everyone is on that table's own ⋮ menu.
 function Tables({ m }: { m: ModuleView }) {
   const at = (t: { number: string | null }) => Number(t.number?.split('.').pop() ?? 0)
   const all = [...m.tables].sort((a, b) => at(a) - at(b))
@@ -273,10 +275,16 @@ function Tables({ m }: { m: ModuleView }) {
             return (
               <tr key={t.id} className="border-hair border-t">
                 <td className="py-1.5 text-ink-3 tabular-nums">{t.number}</td>
-                <td className="max-w-0 truncate py-1.5">
-                  <a href={`#/table/${t.id}`} className="text-ink hover:underline">
-                    {t.name}
-                  </a>
+                <td className="max-w-0 py-1.5">
+                  <TableTab table={t} module={m.id}>
+                    {(on) => (
+                      <div {...on} className="flex min-w-0">
+                        <a href={`#/table/${t.id}`} className="truncate text-ink hover:underline">
+                          {t.name}
+                        </a>
+                      </div>
+                    )}
+                  </TableTab>
                 </td>
                 <td className="py-1.5 text-ink-2">
                   <span className="flex items-center gap-1.5">

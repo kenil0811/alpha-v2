@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { all, run, tx } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
+import { forgetModule } from '../world/table-prefs.ts'
 import type { World } from '../world/world.ts'
 import { removeAgent } from './agents.ts'
 import { commitAll } from './git.ts'
@@ -86,6 +87,7 @@ export async function deleteModule(
         m,
       )
       run(world.db, 'UPDATE documents SET module_id = NULL WHERE module_id = ?', m)
+      forgetModule(world.db, m)
       run(world.db, 'DELETE FROM modules WHERE id = ?', m)
     }
   })

@@ -355,6 +355,7 @@ describe('the api over a world', () => {
       agent: null,
       listOrder: {},
       viewOf: {},
+      tabs: {},
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -386,6 +387,7 @@ describe('the api over a world', () => {
       agent: null,
       listOrder: { t1: ['v2', 'all', 'v1'] },
       viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
+      tabs: {},
     })
     expect(
       (
@@ -418,6 +420,20 @@ describe('the api over a world', () => {
       listOrder: { t1: ['v2', 'all', 'v1'], t2: ['all'] },
       viewOf: {},
     })
+    // a module's tabs, kept the same way: one module at a time, none forgets it
+    const tabs = (payload: object) =>
+      a.inject({ method: 'POST', url: '/api/layout', headers: ok, payload: { tabs: payload } })
+    await tabs({ [shops.id]: { order: ['b', 'a'], hidden: ['a'], pinned: [] } })
+    await tabs({ [bakery.id]: { order: [], hidden: [], pinned: ['p'] } })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().layout.tabs).toEqual({
+      [shops.id]: { order: ['b', 'a'], hidden: ['a'], pinned: [] },
+      [bakery.id]: { order: [], hidden: [], pinned: ['p'] },
+    })
+    await tabs({ [shops.id]: null })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().layout.tabs).toEqual({
+      [bakery.id]: { order: [], hidden: [], pinned: ['p'] },
+    })
+    expect((await tabs({ [shops.id]: { order: 'b' } })).statusCode).toBe(400)
     // the text size is kept beside the look, each on its own
     const appearance = (payload: object) =>
       a.inject({ method: 'POST', url: '/api/appearance', headers: ok, payload })
