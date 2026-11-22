@@ -113,7 +113,6 @@ describe('the window', () => {
         waiting={2}
         onNew={() => undefined}
         tasksDue={0}
-        online
         layout={open}
         onLayout={() => undefined}
       />,
@@ -145,7 +144,6 @@ describe('the window', () => {
         waiting={0}
         onNew={() => undefined}
         tasksDue={0}
-        online
         layout={{ ...open, folded: ['m_1'] }}
         onLayout={() => undefined}
       />,
@@ -161,7 +159,6 @@ describe('the window', () => {
         waiting={0}
         onNew={() => undefined}
         tasksDue={0}
-        online
         layout={{ ...open, railFolded: true }}
         onLayout={() => undefined}
       />,
@@ -169,6 +166,31 @@ describe('the window', () => {
     expect(strip).toContain('Show the sidebar')
     expect(strip).toContain('aria-label="Shops"')
     expect(strip).not.toContain('aria-label="Bakery"')
+  })
+
+  it('sits what the person pinned as tiles above Home, Home, Agents and Tasks included, out of the list below', () => {
+    const html = renderToString(
+      <Rail
+        modules={modules}
+        place={{ at: 'home' }}
+        here={null}
+        name="Kenil"
+        waiting={0}
+        onNew={() => undefined}
+        tasksDue={0}
+        layout={{ ...open, pinned: ['tasks', 'm_1', 'm_gone'] }}
+        onLayout={() => undefined}
+      />,
+    )
+    const at = (s: string) => html.indexOf(s)
+    // tiles in the order pinned, then Home; a pin of something not there does no harm
+    expect(at('aria-label="Tasks"')).toBeGreaterThan(-1)
+    expect(at('aria-label="Tasks"')).toBeLessThan(at('aria-label="Shops"'))
+    expect(at('aria-label="Shops"')).toBeLessThan(at('>Home<'))
+    // and they leave the list: no Tasks or Shops row
+    expect(html).not.toContain('>Tasks<')
+    expect(html).not.toContain('>Shops<')
+    expect(html).toContain('>Food<')
   })
 
   it('reads the tree from each module’s parent', () => {

@@ -1,28 +1,25 @@
 // The shell: the rail on the left, a 48px bar over every screen and the assistant on the right,
-// their headers on one line. The rail has the person's name at its top, Home with a badge for what
-// waits on the person, Agents, Tasks, the modules by name with the modules inside them, New module
-// last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
-// folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
+// their headers on one line. The rail has the person's name at its top, what they pinned as tiles,
+// then Home with a badge for what waits on the person, Agents, Tasks, the modules by name with the
+// modules inside them, New module last in the list, and Intelligence and Settings at its foot; no
+// headings and no status lines. Its rows are in RailEntries.tsx. It folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
 // buttons.
 import type { Layout, ModuleSummary } from '@alpha/core/api'
 import {
   ChevronDown,
   ChevronRight,
-  House,
-  ListChecks,
-  MessageSquare,
   PanelLeft,
-  Pin,
   Plus,
   SlidersHorizontal,
   Sparkles,
 } from 'lucide-react'
 import { createContext, type ReactNode, useContext, useState } from 'react'
 import { api } from './api.ts'
-import { HiddenMenu, type Hiding, ModuleMenu, shownTops } from './ModuleMenu.tsx'
+import { HiddenMenu, type Hiding, ModuleMenu } from './ModuleMenu.tsx'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { inIntelligence, type Place } from './place.ts'
+import { type Entry, entriesOf, FixedItem, Nav, PinnedTile } from './RailEntries.tsx'
 import { MOD } from './time.ts'
 import { ancestors, childrenOf, inside, landingOf } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
@@ -33,38 +30,6 @@ import { Popover, useContextMenu } from './ui/popover.tsx'
 import { Renamable } from './ui/rename.tsx'
 import { SlideWidth } from './ui/slide.tsx'
 
-function Nav({
-  href,
-  icon,
-  label,
-  current,
-  extra,
-  small,
-}: {
-  href: string
-  icon: ReactNode
-  label: string
-  current: boolean
-  extra?: ReactNode
-  small?: boolean
-}) {
-  return (
-    <a
-      href={href}
-      aria-current={current ? 'page' : undefined}
-      className={cn(
-        'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-        small ? 'h-7' : 'h-7.5',
-        current && 'bg-rail-sel font-medium text-rail-ink',
-      )}
-    >
-      <span className={cn('shrink-0 text-rail-ink-3', current && 'text-rail-ink')}>{icon}</span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {extra}
-    </a>
-  )
-}
-
 // Each module's signal, for its dot in the rail.
 const Signals = createContext<Record<string, Signal>>({})
 
@@ -74,7 +39,6 @@ export function Rail({
   name,
   waiting,
   tasksDue,
-  online,
   here,
   layout,
   onLayout,
@@ -88,7 +52,6 @@ export function Rail({
   name: string
   waiting: number
   tasksDue: number // tasks due today or overdue
-  online: boolean
   layout: Layout
   onLayout: (change: Partial<Layout>) => void
   onNew: () => void // New module: a conversation with the Module builder
@@ -103,6 +66,8 @@ export function Rail({
     pinned: layout.pinned,
     pin: (ids) => onLayout({ pinned: ids }),
   }
+  const entries = entriesOf(modules, place, waiting, tasksDue, hiding.hidden, hiding.pinned)
+  const pinnedEntries = entries.filter((e) => hiding.pinned.includes(e.id))
   const empty = useContextMenu()
   const keepWidth = (w: number) => onLayout({ railWidth: w })
   // open and folded alike sit in one slide, so a fold or an open eases
@@ -112,12 +77,9 @@ export function Rail({
         <Strip
           modules={modules}
           place={place}
+          entries={entries}
           here={here}
           name={name}
-          waiting={waiting}
-          tasksDue={tasksDue}
-          hidden={hiding.hidden}
-          pinned={hiding.pinned}
           onNew={onNew}
           onOpen={() => onLayout({ railFolded: false })}
           onOpenAt={(w) => onLayout({ railFolded: false, railWidth: w })}
@@ -166,27 +128,14 @@ export function Rail({
           </button>
           <Workspace name={name} />
         </div>
-        <Nav
-          href="#/"
-          icon={<House className="size-4" />}
-          label="Home"
-          current={place.at === 'home'}
-          extra={waiting > 0 && <Badge n={waiting} />}
-        />
-        <Nav
-          href="#/conversation"
-          icon={<MessageSquare className="size-4" />}
-          label="Agents"
-          current={place.at === 'conversation'}
-        />
-        <Nav
-          href="#/tasks"
-          icon={<ListChecks className="size-4" />}
-          label="Tasks"
-          current={place.at === 'tasks'}
-          extra={tasksDue > 0 && <Badge n={tasksDue} />}
-        />
-        {/* every row 30px, the modules straight after Tasks */}
+        {pinnedEntries.length > 0 && (
+          <div className="flex flex-wrap gap-1 py-1.5">
+            {pinnedEntries.map((e) => (
+              <PinnedTile key={e.id} e={e} modules={modules} here={here} hiding={hiding} />
+            ))}
+          </div>
+        )}
+        {/* every row 30px, one list: Home, Agents, Tasks and the modules alike */}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
         <div
           className="min-h-0 flex-1 overflow-y-auto"
@@ -199,17 +148,23 @@ export function Rail({
             <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
           </Popover>
           <Signals.Provider value={signals}>
-            {shownTops(modules, hiding.hidden, hiding.pinned).map((m) => (
-              <ModuleItem
-                key={m.id}
-                m={m}
-                modules={modules}
-                here={here}
-                folded={layout.folded}
-                onFold={fold}
-                hiding={hiding}
-              />
-            ))}
+            {entries
+              .filter((e) => !hiding.pinned.includes(e.id))
+              .map((e) =>
+                e.m ? (
+                  <ModuleItem
+                    key={e.id}
+                    m={e.m}
+                    modules={modules}
+                    here={here}
+                    folded={layout.folded}
+                    onFold={fold}
+                    hiding={hiding}
+                  />
+                ) : (
+                  <FixedItem key={e.id} e={e} modules={modules} hiding={hiding} />
+                ),
+              )}
           </Signals.Provider>
           <button
             type="button"
@@ -256,14 +211,6 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   )
 }
 
-function Badge({ n }: { n: number }) {
-  return (
-    <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
-      {n}
-    </span>
-  )
-}
-
 // A module in the rail: its name only (its pages and tables are its screen's tabs), the modules
 // inside it under it, and its menu on ⋮ or a right-click.
 function ModuleItem({
@@ -304,11 +251,9 @@ function ModuleItem({
                 icon={<ModuleIcon name={m.name} className="size-4" />}
                 label={m.name}
                 current={here === m.id}
+                onDoubleClick={start}
                 extra={
                   <>
-                    {!m.parent && hiding.pinned.includes(m.id) && (
-                      <Pin aria-label="Pinned" className="size-3 shrink-0 text-rail-ink-3" />
-                    )}
                     {signal && <Dot s={signal} />}
                     <span className="w-11 shrink-0" />
                   </>
@@ -368,24 +313,18 @@ function ModuleItem({
 function Strip({
   modules,
   place,
+  entries,
   here,
   name,
-  waiting,
-  tasksDue,
-  hidden,
-  pinned,
   onNew,
   onOpen,
   onOpenAt,
 }: {
   modules: ModuleSummary[]
   place: Place
+  entries: Entry[]
   here: string | null
   name: string
-  waiting: number
-  tasksDue: number
-  hidden: string[]
-  pinned: string[]
   onNew: () => void
   onOpen: () => void
   onOpenAt: (width: number) => void // dragged out from its edge to this width
@@ -447,38 +386,19 @@ function Strip({
       <div className="mt-1 mb-2">
         <Workspace name={name} tileOnly />
       </div>
-      {icon(
-        '#/',
-        waiting ? `Home, ${waiting} waiting for you` : 'Home',
-        place.at === 'home',
-        <House className="size-4" />,
-        waiting > 0 && (
-          <span
-            className="absolute top-1 right-1 size-2 rounded-full bg-accent"
-            aria-hidden="true"
-          />
-        ),
-      )}
-      {icon(
-        '#/conversation',
-        'Agents',
-        place.at === 'conversation',
-        <MessageSquare className="size-4" />,
-      )}
-      {icon(
-        '#/tasks',
-        tasksDue ? `Tasks, ${tasksDue} due` : 'Tasks',
-        place.at === 'tasks',
-        <ListChecks className="size-4" />,
-      )}
-      <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
       <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
-        {shownTops(modules, hidden, pinned).map((m) =>
+        {entries.map((e) =>
           icon(
-            landingOf(modules, m),
-            m.name,
-            top === m.id,
-            <ModuleIcon name={m.name} className="size-4" />,
+            e.href,
+            e.tip ?? e.label,
+            e.m ? top === e.id : !!e.on,
+            e.icon,
+            e.dot && (
+              <span
+                className="absolute top-1 right-1 size-2 rounded-full bg-accent"
+                aria-hidden="true"
+              />
+            ),
           ),
         )}
         <button

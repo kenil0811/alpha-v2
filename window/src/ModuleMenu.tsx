@@ -1,22 +1,11 @@
 // A module's menu in the rail, on ⋮ or a right-click, and the modules hidden from the rail. Out
 // of Shell.tsx, which holds the rail itself.
 import type { ModuleSummary } from '@alpha/core/api'
-import {
-  CornerLeftUp,
-  EllipsisVertical,
-  EyeOff,
-  FolderInput,
-  PanelRightOpen,
-  PencilLine,
-  Pin,
-  PinOff,
-  Trash2,
-} from 'lucide-react'
+import { EllipsisVertical, EyeOff, PencilLine, Pin, PinOff, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { api } from './api.ts'
 import { DeleteModule } from './DeleteModule.tsx'
 import { ModuleIcon } from './moduleIcon.tsx'
-import { flat, inside, landingOf, tops } from './tree.ts'
+import { tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
@@ -73,8 +62,7 @@ export function HiddenMenu({
   )
 }
 
-// A module's menu: Open, Move to › every other module it may sit inside (never itself or one of its
-// own) or the top, Pin to top or Unpin, Hide, Hidden modules ›, and Delete
+// A module's menu: Rename, Pin to top or Unpin, Hide, Hidden modules ›, and Delete
 export function ModuleMenu({
   m,
   modules,
@@ -82,6 +70,7 @@ export function ModuleMenu({
   point,
   onShut,
   onRename,
+  fixed,
 }: {
   m: ModuleSummary
   modules: ModuleSummary[]
@@ -89,23 +78,15 @@ export function ModuleMenu({
   point: { x: number; y: number } | null // a right-click's place
   onShut: () => void
   onRename: (() => void) | undefined // its name edited in place in the rail
+  fixed?: boolean // Home, Agents or Tasks: the same menu, what a module alone can do greyed
 }) {
+  const notModule = fixed ? `${m.name} is not a module` : undefined
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
   const anchor = useRef<HTMLButtonElement>(null)
-  const own = new Set(inside(modules, m.id))
   const close = () => {
     setOpen(false)
     onShut()
-  }
-  const move = async (within: string | null) => {
-    try {
-      await api.post(`/api/modules/${m.id}/place`, { within })
-      close()
-    } catch (err) {
-      setProblem(err instanceof Error ? err.message : 'That did not move.')
-    }
   }
   const shown = shownTops(modules, hiding.hidden)
   const last = shown.length === 1 && shown[0]?.id === m.id
@@ -117,7 +98,6 @@ export function ModuleMenu({
         aria-label={`${m.name} menu`}
         data-tip={`${m.name} menu`}
         onClick={() => {
-          setProblem(null)
           setOpen((o) => !o)
         }}
         className={cn(
@@ -130,58 +110,14 @@ export function ModuleMenu({
       <Popover anchor={anchor} point={point} open={open || !!point} onClose={close}>
         <MenuItem
           onClick={() => {
-            window.location.hash = landingOf(modules, m)
             close()
+            onRename?.()
           }}
+          reason={notModule}
         >
-          <PanelRightOpen className="size-3.5 text-ink-3" />
-          Open
+          <PencilLine className="size-3.5 text-ink-3" />
+          Rename
         </MenuItem>
-        {onRename && (
-          <MenuItem
-            onClick={() => {
-              close()
-              onRename()
-            }}
-          >
-            <PencilLine className="size-3.5 text-ink-3" />
-            Rename
-          </MenuItem>
-        )}
-        <SubMenu
-          label={
-            <>
-              <FolderInput className="size-3.5 text-ink-3" />
-              Move to
-            </>
-          }
-        >
-          {flat(modules)
-            .filter(({ module }) => !own.has(module.id))
-            .map(({ module, depth }) => (
-              <MenuItem
-                key={module.id}
-                checked={m.parent === module.id}
-                onClick={() => move(module.id)}
-              >
-                <span
-                  className={cn(
-                    'flex min-w-0 items-center gap-2',
-                    depth === 1 && 'pl-3',
-                    depth > 1 && 'pl-6',
-                  )}
-                >
-                  <ModuleIcon name={module.name} className="size-3.5 shrink-0 text-ink-3" />
-                  {module.name}
-                </span>
-              </MenuItem>
-            ))}
-          <MenuLine />
-          <MenuItem checked={!m.parent} onClick={() => move(null)}>
-            <CornerLeftUp className="size-3.5 text-ink-3" />
-            Top level
-          </MenuItem>
-        </SubMenu>
         {hiding.pinned.includes(m.id) && !m.parent ? (
           <MenuItem
             onClick={() => {
@@ -209,7 +145,13 @@ export function ModuleMenu({
             hiding.set([...hiding.hidden, m.id])
             close()
           }}
-          reason={last ? 'The last module in the sidebar stays' : undefined}
+          reason={
+            fixed
+              ? `${m.name} always stays`
+              : last
+                ? 'The last module in the sidebar stays'
+                : undefined
+          }
         >
           <EyeOff className="size-3.5 text-ink-3" />
           Hide
@@ -227,11 +169,11 @@ export function ModuleMenu({
             close()
             setDeleting(true)
           }}
+          reason={notModule}
         >
           <Trash2 className="size-3.5" />
           Delete
         </MenuItem>
-        {problem && <p className="max-w-60 px-2.5 py-1.5 text-bad text-sm">{problem}</p>}
       </Popover>
       <DeleteModule module={m} open={deleting} onClose={() => setDeleting(false)} />
     </>
