@@ -218,7 +218,8 @@ export function TableView({
   const band =
     !!pasting ||
     ticked.size > 0 ||
-    !!data.mirror ||
+    // a table a connection fills, only while some of its rows are gone from the source (MirrorGone)
+    (!!data.mirror && (showingGone || data.rows.some((r) => r.gone))) ||
     !!config.search ||
     config.filters.rules.length > 0 ||
     config.sorts.length > 0 ||
