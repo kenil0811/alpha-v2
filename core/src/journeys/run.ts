@@ -26,7 +26,7 @@ import { ConnectorService } from '../connectors/service.ts'
 import { revertAll } from '../connectors/takeback.ts'
 import { ClaudeCodeProvider } from '../engine/claudecode.ts'
 import { Engine } from '../engine/engine.ts'
-import { tokenRoute } from '../engine/route.ts'
+import { tokenRoute, unsetRoute } from '../engine/route.ts'
 import { stillReading } from '../files/documents.ts'
 import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { REVIEW } from '../modules/reviews.ts'
@@ -49,6 +49,7 @@ import { kitStep } from './kit-step.ts'
 import { interview, press, turnEnds } from './plugin-steps.ts'
 import { type Site, serve } from './site.ts'
 import { spentIn } from './spent.ts'
+import { personNamed, storyCheck, storyStep } from './story-steps.ts'
 import { webCheck } from './web-checks.ts'
 import { inWindow } from './window.ts'
 
@@ -122,7 +123,9 @@ export async function runOne(
     },
   )
   runner.drafts = drafts
-  const routed = await tokenRoute(world, home)
+  // a fresh Alpha's: no way to Claude until the story's Claude chapter is given the runner's token
+  const routed =
+    journey.claude === 'unset' ? await unsetRoute(world, home) : await tokenRoute(world, home)
   // the plugins this Alpha has switched on, and only those (rules P1)
   const asker = new ClaudeCodeProvider({ ...routed, askDir: world.paths.dir })
   const on = await switchOn(journey.plugins ?? [], {
@@ -166,17 +169,33 @@ export async function runOne(
     ...on.problems.map((p) => `**${p}**\n`),
   ]
   // the window's own routes, in this process, for a step the person takes on a page
-  const served: { app?: ReturnType<typeof buildServer> } = {}
-  const page = () => {
-    served.app ??= buildServer({
-      engine,
-      user,
-      token: 'journey',
-      ports: [4700],
-      plugins: on.plugins.routes,
-      pluginsOn: on.plugins.on(),
-    })
-    return served.app
+  const served = new Map<string, ReturnType<typeof buildServer>>()
+  // as the owner, or as a member by name (story-steps.ts)
+  const page = (as?: string) => {
+    const who = personNamed(world, user, as)
+    const made =
+      served.get(who.id) ??
+      buildServer({
+        engine,
+        user: who,
+        token: 'journey',
+        ports: [4700],
+        plugins: on.plugins.routes,
+        pluginsOn: on.plugins.on(),
+      })
+    served.set(who.id, made)
+    return made
+  }
+  // the story's steps and checks: {site} as the made-up site, {claude} as the runner's own token
+  const storyHere = {
+    world,
+    owner: user,
+    app: page,
+    limit: config.limits().journey_step_minutes * 60_000,
+    fill: (w: string) =>
+      w
+        .replaceAll('{site}', site?.url ?? '{site}')
+        .replaceAll('{claude}', process.env.CLAUDE_CODE_OAUTH_TOKEN ?? ''),
   }
   const asWindow = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
   // a plugin named that did not load fails the journey before its first step
@@ -395,13 +414,24 @@ export async function runOne(
         out.what += ': **the turn did not finish.**'
       passed &&= out.ok
       what = out.what
+    } else if (step.story) {
+      const out = await storyStep(step.story, storyHere)
+      // an act may start the model's work (the website read, the draft): it goes on behind
+      passed &&= out.ok
+      what = out.what
+    } else if (step.member) {
+      world.accounts.add(step.member.name, step.member.email, {
+        actor: { kind: 'person', id: user.id },
+        user: user.id,
+      })
+      what = `The owner added ${step.member.name} (${step.member.email})`
     } else if (step.interview) {
       const at = site?.url ?? null
       const out = await interview(step.interview, {
         world,
         user,
         engine,
-        app: page,
+        app: () => page(),
         limit,
         site: at,
       })
@@ -495,7 +525,8 @@ export async function runOne(
     for (const check of step.checks) {
       const o =
         webCheck(check, site, world) ??
-        (await interviewCheck(check, { world, user, app: page, plugins: on.plugins })) ??
+        (await storyCheck(check, storyHere)) ??
+        (await interviewCheck(check, { world, user, app: () => page(), plugins: on.plugins })) ??
         (await judge(world, user, check))
       passed &&= check.waits ? !o.ok : o.ok
       const mark = !check.waits
@@ -544,7 +575,7 @@ export async function runOne(
   const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${prompt}.md`)
   mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
   writeFileSync(out, `${report.join('\n').trim()}\n`)
-  await served.app?.close()
+  for (const a of served.values()) await a.close()
   await computer.standIn?.close()
   engine.close()
   await browser.close()

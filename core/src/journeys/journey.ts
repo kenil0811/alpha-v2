@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { Check } from './checks.ts'
 import { Interview, PluginPress } from './plugin-steps.ts'
+import { MemberAdd, StoryPress } from './story-steps.ts'
 import { Edit, Remove, Reset } from './window.ts'
 
 export const Journey = z.object({
@@ -13,6 +14,9 @@ export const Journey = z.object({
   // the plugins this Alpha has switched on, as its alpha.yaml names them (plugins: [interviews]);
   // none when it names none (rules P1)
   plugins: z.array(z.string()).optional(),
+  // unset: the Alpha starts with no way to Claude, as a fresh one does, until the story's Claude
+  // chapter is given the runner's own token ({claude}); otherwise the runner's token from the start
+  claude: z.literal('unset').optional(),
   steps: z.array(
     z.object({
       say: z.string().optional(),
@@ -92,6 +96,10 @@ export const Journey = z.object({
       plugin: PluginPress.optional(),
       // an agent's cards answered one at a time as they come, as the person answers them
       interview: Interview.optional(),
+      // Set up Alpha pressed through its own routes, as the person goes through it (story-steps.ts)
+      story: StoryPress.optional(),
+      // someone added to this Alpha by the owner, to join through their own story
+      member: MemberAdd.optional(),
       // every waiting card of a schedule's rows decided: each row not yet decided takes this choice
       review: z.object({ choice: z.string(), words: z.string().optional() }).optional(),
       // Revert from Activity, as the person: the newest run or turn that wrote rows, or revert

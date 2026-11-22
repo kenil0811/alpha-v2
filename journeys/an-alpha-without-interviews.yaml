@@ -1,13 +1,16 @@
 name: an-alpha-without-interviews
-title: An Alpha that has not switched interviews on shows no trace of them
+title: An Alpha that has not switched interviews on still has its first run, with no trace of them
 why: >
-  Which Alphas have it (Kenil's plan, 18 Nov, calls 47 and 48): interviews come only to an Alpha
-  whose alpha.yaml names them (plugins: [interviews]). One that does not, here with no plugins
-  line at all, loads none of it: no Interviewer, no schedule or check, no Your work module, no
-  route, no Home row, nothing in its name in the journal (rules P1).
+  Which Alphas have interviews (Kenil's 18 Nov calls 47 and 48), and the redesign (22 Nov, call 2):
+  the core owns Set up Alpha, so every Alpha has a first run; the interviews plugin adds its two
+  chapters, Get to know you and What I learned, only where alpha.yaml names it. One that does not,
+  here with no plugins line at all, has the story without them, and loads none of the plugin: no
+  Interviewer, no schedule or check, no Your work module, no route, no Home row, nothing in its
+  name in the journal (rules P1).
 steps:
   - plugin: { name: interviews, get: home }
     checks:
+      - story: { chapters: [welcome, workspace, connect, people, done], at: welcome, done: false }
       - plugin_route: { name: interviews, get: home, status: 404 }
       - no_trace: interviews
       - errors: 0

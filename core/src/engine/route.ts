@@ -14,6 +14,14 @@ export type RouteName = 'subscription' | 'key'
 export const KEY_REF = 'anthropic:api-key'
 export const TOKEN_REF = 'anthropic:oauth-token'
 
+// A fresh Alpha's way to Claude in a journey: none yet, until a token is given it (the story's
+// Claude chapter), as a new server's is.
+export async function unsetRoute(world: World, home: string): Promise<{ route: ModelRoute }> {
+  const route = new ModelRoute(world, new MemorySecrets(), home)
+  await route.load()
+  return { route }
+}
+
 // A run handed its token in the environment, as the journeys are on a server; otherwise no route.
 export async function tokenRoute(world: World, home: string): Promise<{ route?: ModelRoute }> {
   const token = process.env.CLAUDE_CODE_OAUTH_TOKEN

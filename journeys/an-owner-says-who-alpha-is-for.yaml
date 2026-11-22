@@ -1,30 +1,36 @@
 name: an-owner-says-who-alpha-is-for
-title: The owner of a practice says who Alpha is for, in their own words; Alpha reads their site and keeps only what they keep
+title: The owner of a practice says who Alpha is for in Your workspace, in their own words; Alpha reads their site in the background and keeps only what they keep
 why: >
-  Onboarding (Kenil's plan, 18 Nov, call 10): no fixed idea of a firm. The Interviewer first asks
-  who the work is for, in the owner's own words, and uses those words from then on. It guesses
-  the site from the email's domain and confirms it on a card, reads its public pages, asks what
-  it cannot find, and drafts lines that land in How to work › For everyone here only on the
-  owner's Keep. A made-up dental practice and its made-up site; the owner calls it "the practice".
+  Onboarding redesigned (Kenil's calls, 22 Nov, call 20, carrying the 18 Nov call 10): no fixed
+  idea of a firm. Your workspace asks who the work is for, in the owner's own word, and the story
+  uses that word from then on. The site is guessed from the email's domain, confirmed with one
+  press, and read in the background; what it drafts from it lands in How to work › For everyone
+  here only on the owner's Keep, in What I learned. A made-up dental practice and its made-up site;
+  the owner calls it "the practice", and lets Alpha read nothing else.
 plugins: [interviews]
 steps:
   - site: { from: journeys/fixtures/sites/lakeside-dental }
   - connect: { connector: gmail, account: dana@lakesidedental.example }
-  - plugin: { name: interviews, post: start }
+  - story: { chapter: welcome }
+    checks:
+      # the site guessed from the domain, offered for one press
+      - story_says: { chapter: workspace, matches: 'lakesidedental' }
+  - story:
+      chapter: workspace
+      body:
+        for: 'Lakeside Dental, our family practice: two dentists, three hygienists, and Maria at the front desk.'
+        site: '{site}'
     checks:
       - errors: 0
-  - interview:
-      agent: Interviewer
+  - story: { chapter: connect }
+  # every source switched off: only the site is read
+  - story: { chapter: know, body: { off: [mail, calendar, contacts, alpha] } }
+  - story: { chapter: people }
+  - story:
+      chapter: learned
       answers:
-        - card: 'website|web site|your site'
-          choice: 'Yes, our site is {site}'
-        - card: 'system|software|tool|book'
+        - match: 'system|software|tool|book'
           choice: 'ToothTrack for bookings and patient records, and Ledgerly for the books.'
-        - card: '\bwho\b|business|team|just you|on your own'
-          choice: 'Lakeside Dental, our family practice: two dentists, three hygienists, and Maria at the front desk.'
-      # the who-it-is-for part only: the sources' first card waits, and the owner finishes there
-      until: '^(Mail|Calendar|A folder|Browsing|AI work|What you have in Alpha)'
-  - plugin: { name: interviews, post: finish }
     checks:
       # its site's pages were read
       - site_requests: { path: /, count: 1, at_least: true }
@@ -32,6 +38,10 @@ steps:
       # kept lines, in the owner's own word for it, and no fixed idea of a firm anywhere
       - how_to_work: { for: everyone, kept: true, at_least: 2, matches: 'practice' }
       - nowhere: { matches: '\bfirm\b', module: Your work }
-      # About you comes later in the interview: nothing for the owner alone yet
-      - how_to_work: { for: me, count: 0 }
+      # the story speaks of the practice, never of a firm
+      - story_says: { chapter: learned, matches: 'practice', never: '\bfirm\b' }
       - errors: 0
+  - story: { chapter: done }
+    checks:
+      - story: { done: true }
+      - needs_you: { count: 0 }
