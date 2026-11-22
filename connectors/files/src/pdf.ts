@@ -5,13 +5,14 @@ import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Problem } from '@alpha/connector-sdk'
 import type { Piece } from './read.ts'
 
 const DOCLING = 'docling==2.140.0'
-const SCRIPT = new URL('../py/read_pdf.py', import.meta.url).pathname
-const RENDER = new URL('../py/render_page.py', import.meta.url).pathname
-const PEEK = new URL('../py/peek_pdf.py', import.meta.url).pathname
+const SCRIPT = fileURLToPath(new URL('../py/read_pdf.py', import.meta.url))
+const RENDER = fileURLToPath(new URL('../py/render_page.py', import.meta.url))
+const PEEK = fileURLToPath(new URL('../py/peek_pdf.py', import.meta.url))
 
 // Everything uv and Docling write stays in Alpha's own folder (envs): the Python uv fetches, its
 // cache and Docling's models, never ~/.local, ~/.cache or a Python of the Mac's own.
