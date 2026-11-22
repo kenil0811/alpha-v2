@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { run } from '../world/db.ts'
+import { moduleNumber } from '../world/shape/numbers.ts'
 import { listOrders, setListOrder } from '../world/table-prefs.ts'
 import { World } from '../world/world.ts'
 import { history } from './git.ts'
@@ -564,8 +565,9 @@ describe('a module inside another', () => {
     expect(world.shape.module(m.id)?.parent).toBe(shops?.id)
     expect(world.shape.placedBy(m.id)).toBe('kit')
     expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('within: Shops')
+    // a moved module's line says its new address (shape/numbers.ts)
     expect(world.lines({ kinds: ['shaped'] }).map((l) => l.words)).toContain(
-      'Put Bakery inside Shops.',
+      `Put Bakery inside Shops; it is ${moduleNumber(world.db, m.id)} now.`,
     )
   })
 
@@ -597,7 +599,7 @@ describe('a module inside another', () => {
     world.shape.place(c.id, null, ctx)
     expect(world.shape.module(c.id)?.parent).toBeNull()
     expect(world.lines({ kinds: ['shaped'] }).at(-1)?.words).toBe(
-      'Moved C out of B, to the top level.',
+      `Moved C out of B, to the top level; it is ${moduleNumber(world.db, c.id)} now.`,
     )
   })
 })

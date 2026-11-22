@@ -14,6 +14,7 @@ import {
   valueWords,
 } from '../kinds.ts'
 import { type Field, findField, type Table } from '../shape/index.ts'
+import { nextRow } from '../shape/numbers.ts'
 import { provenanceOf, rowVals } from './reading.ts'
 import type { Records } from './records.ts'
 import type { Row, Snapshot } from './types.ts'
@@ -133,13 +134,15 @@ export function insert(
   by: string,
   itemKey: string | null,
 ): void {
-  // its place in the registry: a number that never changes, under which its words are indexed
+  // its place in the registry: a number that never changes, under which its words are indexed;
+  // and its number in its table, the next from the table's counter, never given again
   run(
     records.db,
-    'INSERT INTO records (id, table_id, created_at, seq) VALUES (?, ?, ?, (SELECT coalesce(max(seq), 0) + 1 FROM records))',
+    'INSERT INTO records (id, table_id, created_at, seq, number) VALUES (?, ?, ?, (SELECT coalesce(max(seq), 0) + 1 FROM records), ?)',
     id,
     table.id,
     at,
+    nextRow(records.db, table.id),
   )
   const cols: string[] = ['id', 'version', 'made_by', 'created_at', 'updated_at', 'item_key']
   const args: unknown[] = [id, 1, by, at, at, itemKey]

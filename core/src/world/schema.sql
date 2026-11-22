@@ -90,7 +90,9 @@ CREATE TABLE modules (
   created_at TEXT NOT NULL,
   parent_id TEXT REFERENCES modules (id),
   placed_by TEXT CHECK (placed_by IN ('kit', 'person', 'alpha')),
-  key TEXT COLLATE NOCASE
+  key TEXT COLLATE NOCASE,
+  number INTEGER, -- its place among its parent's modules and tables, or the top level's (1.3.4)
+  next_number INTEGER NOT NULL DEFAULT 1 -- the number the next module or table made in it takes
 );
 CREATE UNIQUE INDEX modules_key ON modules (key) WHERE key IS NOT NULL;
 
@@ -112,7 +114,9 @@ CREATE TABLE tables (
   added_on TEXT,
   key TEXT COLLATE NOCASE,
   mirror TEXT,
-  start_view TEXT -- how its kit says the table first opens: {kind, by, until, group, measure}, by field id
+  start_view TEXT, -- how its kit says the table first opens: {kind, by, until, group, measure}, by field id
+  number INTEGER, -- its place among its module's modules and tables (1.3.4)
+  next_row INTEGER NOT NULL DEFAULT 1 -- the number its next row takes; only goes up
 );
 CREATE UNIQUE INDEX tables_key ON tables (module_id, key) WHERE key IS NOT NULL;
 
@@ -166,10 +170,14 @@ CREATE TABLE records (
   created_at TEXT NOT NULL,
   seq INTEGER,
   read_at TEXT,
-  gone_at TEXT
+  gone_at TEXT,
+  number INTEGER -- its place in its table, never given again (1.3.4)
 );
 CREATE INDEX records_table ON records (table_id, created_at);
 CREATE UNIQUE INDEX records_seq ON records (seq);
+
+-- A row's number, never given twice in its table (shape/numbers.ts).
+CREATE UNIQUE INDEX records_number ON records (table_id, number) WHERE number IS NOT NULL;
 
 -- A row's earlier values, each with the journal line that replaced it.
 CREATE TABLE versions (

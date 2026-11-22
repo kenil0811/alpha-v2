@@ -27,6 +27,7 @@ import { fieldsOf } from './fields-read.ts'
 import { claimModule, claimTable, ownModule, ownTable, rekeyModule } from './keys.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
 import { renameModule } from './naming.ts'
+import { moduleNumber, nextIn } from './numbers.ts'
 import { partRows, partsOf, setPartOf, setSetup, setTab } from './parts.ts'
 import { perAllowed, setPer } from './per.ts'
 import {
@@ -125,20 +126,25 @@ export class Shape {
       const by: PlacedBy =
         ctx.actor.kind === 'person' ? 'person' : ctx.actor.kind === 'system' ? 'kit' : 'alpha'
       const was = m.parent ? this.module(m.parent) : undefined
+      const moved = (was?.id ?? null) !== (parent?.id ?? null)
+      // moved, it takes the next number where it lands; the line says its new address
       run(
         this.db,
-        'UPDATE modules SET parent_id = ?, placed_by = ? WHERE id = ?',
+        'UPDATE modules SET parent_id = ?, placed_by = ?, number = coalesce(?, number) WHERE id = ?',
         parent?.id ?? null,
         by,
+        moved ? nextIn(this.db, parent?.id ?? null) : null,
         m.id,
       )
-      if ((was?.id ?? null) !== (parent?.id ?? null))
+      if (moved)
         append(this.db, {
           actor: ctx.actor,
           kind: 'shaped',
-          words: parent
-            ? `Put ${m.name} inside ${parent.name}.`
-            : `Moved ${m.name} out of ${was?.name}, to the top level.`,
+          words: `${
+            parent
+              ? `Put ${m.name} inside ${parent.name}`
+              : `Moved ${m.name} out of ${was?.name}, to the top level`
+          }; it is ${moduleNumber(this.db, m.id)} now.`,
           data: { module: m.id, within: parent?.id ?? null, was: was?.id ?? null },
           user: ctx.user ?? null,
           turn: ctx.turn ?? null,
@@ -172,13 +178,14 @@ export class Shape {
       )
       run(
         this.db,
-        'INSERT INTO modules (id, name, slug, made_by, created_at, key) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO modules (id, name, slug, made_by, created_at, key, number) VALUES (?, ?, ?, ?, ?, ?, ?)',
         id,
         name.trim(),
         slug,
         actorName(ctx.actor),
         now(),
         key ?? null,
+        nextIn(this.db, null),
       )
       append(this.db, {
         actor: ctx.actor,
@@ -279,7 +286,7 @@ export class Shape {
       const slug = freeSlug(slugify(name), (s) => this.slugTaken(s))
       run(
         this.db,
-        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden, setup, about, about_by, key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden, setup, about, about_by, key, number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         id,
         module.id,
         name.trim(),
@@ -291,6 +298,7 @@ export class Shape {
         options.about?.trim() || null,
         options.about?.trim() ? (options.aboutBy ?? 'person') : null,
         options.key ?? null,
+        nextIn(this.db, module.id),
       )
       for (const f of fields) this.insertField(id, f, false)
       const table = this.table(id) as Table

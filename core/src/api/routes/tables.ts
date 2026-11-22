@@ -7,6 +7,7 @@ import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { managedBy } from '../../world/maintained.ts'
 import { resetWords } from '../../world/records/index.ts'
 import { findField } from '../../world/shape/index.ts'
+import { tableNumber } from '../../world/shape/numbers.ts'
 import { drawnTable } from '../../world/table-prefs.ts'
 import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
@@ -451,6 +452,7 @@ export function registerTables(ctx: Ctx): void {
         views: world.views.list(t.id).map(savedView),
         startView: t.startView as ViewOf | null,
         drawn: drawnTable(world.db, user.id, t.id) as ViewOf | null,
+        number: tableNumber(world.db, t.id),
         readBy: readByOf(ctx, t.id),
         rows: [],
         names: {},
@@ -469,6 +471,7 @@ export function registerTables(ctx: Ctx): void {
       views: world.views.list(t.id).map(savedView),
       startView: t.startView as ViewOf | null,
       drawn: drawnTable(world.db, user.id, t.id) as ViewOf | null,
+      number: tableNumber(world.db, t.id),
       readBy: readByOf(ctx, t.id),
       rows: listed.map((r) => cellSources(rowOut(t, r))),
       names: {

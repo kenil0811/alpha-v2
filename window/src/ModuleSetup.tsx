@@ -11,14 +11,16 @@ import type {
   ScheduleView,
   YoursView,
 } from '@alpha/core/api'
-import { CalendarClock, ChevronRight, FileText, Table2, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronRight, FileText, Trash2 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { originWords, when } from './Modules.tsx'
+import { KINDS } from './table/KindPicker.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Select } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
@@ -238,35 +240,50 @@ function AllSchedules({
   )
 }
 
-// Every table of the module, its own tabs first: a name that opens it and how many rows it has.
-// Whether a setup table or a part is kept as a tab is on that table's own ⋮ menu.
+// Every table of the module in the order of its number (shape/numbers.ts), a name that opens
+// it, how it opens for everyone, and how many rows it has. Whether a setup table or a part is kept
+// as a tab is on that table's own ⋮ menu.
 function Tables({ m }: { m: ModuleView }) {
-  const all = [
-    ...m.tables.filter((t) => t.place === 'main'),
-    ...m.tables.filter((t) => t.place !== 'main'),
-  ]
+  const at = (t: { number: string | null }) => Number(t.number?.split('.').pop() ?? 0)
+  const all = [...m.tables].sort((a, b) => at(a) - at(b))
   if (!all.length) return null
+  const head = 'pb-1.5 text-left font-normal text-ink-3 text-sm'
   return (
     <Part title="Tables">
-      <ul className="flex flex-col">
-        {all.map((t) => (
-          <li
-            key={t.id}
-            className="flex items-center gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
-          >
-            <Table2 className="size-4 shrink-0 text-ink-3" />
-            <a
-              href={`#/table/${t.id}`}
-              className="min-w-0 flex-1 truncate text-ink hover:underline"
-            >
-              {t.name}
-            </a>
-            <span className="w-14 text-right text-ink-3 tabular-nums">
-              {t.rows.toLocaleString()}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <table className="w-full border-collapse text-md">
+        <thead>
+          <tr>
+            <th className={cn(head, 'w-20')}>No.</th>
+            <th className={head}>Table</th>
+            <th className={cn(head, 'w-36')}>Default view</th>
+            <th className={cn(head, 'w-16 text-right')}>Rows</th>
+          </tr>
+        </thead>
+        <tbody>
+          {all.map((t) => {
+            const view = KINDS.find((k) => k.kind === t.view)
+            return (
+              <tr key={t.id} className="border-hair border-t">
+                <td className="py-1.5 text-ink-3 tabular-nums">{t.number}</td>
+                <td className="max-w-0 truncate py-1.5">
+                  <a href={`#/table/${t.id}`} className="text-ink hover:underline">
+                    {t.name}
+                  </a>
+                </td>
+                <td className="py-1.5 text-ink-2">
+                  <span className="flex items-center gap-1.5">
+                    {view?.icon}
+                    {view?.words ?? t.view}
+                  </span>
+                </td>
+                <td className="py-1.5 text-right text-ink-3 tabular-nums">
+                  {t.rows.toLocaleString()}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </Part>
   )
 }

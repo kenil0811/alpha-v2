@@ -8,6 +8,7 @@ import { junctionName, lit, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import type { Shape, Table, WriteCtx } from '../shape/index.ts'
+import { nextRow } from '../shape/numbers.ts'
 import { removedKey } from './beside.ts'
 import type { Records } from './records.ts'
 import { columnValues, index, setLists } from './storing.ts'
@@ -25,7 +26,13 @@ export interface Pointer {
 }
 
 export interface Kept {
-  meta: { version: number; made_by: string; created_at: string; updated_at: string }
+  meta: {
+    version: number
+    made_by: string
+    created_at: string
+    updated_at: string
+    number?: number | null // its place in its table, back with it (none from before numbers)
+  }
   itemKey: string | null
   vals: Record<string, unknown> // by field id, list relations as lists of row ids
   names: Record<string, string> // each field's name when it went, to say which were left out
@@ -46,6 +53,9 @@ export function keep(records: Records, table: Table, row: Row): Omit<Kept, 'poin
       made_by: String(row.made_by),
       created_at: String(row.created_at),
       updated_at: String(row.updated_at),
+      number:
+        one<{ number: number | null }>(records.db, 'SELECT number FROM records WHERE id = ?', id)
+          ?.number ?? null,
     },
     itemKey: (row.item_key as string | null) ?? null,
     vals: records.rowVals(table, row, undefined),
@@ -235,10 +245,11 @@ export function bringBack(
     if (exists(id)) continue
     run(
       records.db,
-      'INSERT INTO records (id, table_id, created_at, seq) VALUES (?, ?, ?, (SELECT coalesce(max(seq), 0) + 1 FROM records))',
+      'INSERT INTO records (id, table_id, created_at, seq, number) VALUES (?, ?, ?, (SELECT coalesce(max(seq), 0) + 1 FROM records), ?)',
       id,
       table.id,
       kept.meta.created_at,
+      kept.meta.number ?? nextRow(records.db, table.id),
     )
     const cols = ['id', 'version', 'made_by', 'created_at', 'updated_at', 'item_key']
     const args: unknown[] = [

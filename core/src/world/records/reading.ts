@@ -13,7 +13,11 @@ import { CHUNK, resolve } from './types.ts'
 
 export function list(records: Records, tableId: string): RecordOut[] {
   const table = records.mustTable(tableId)
-  const rows = all<Row>(records.db, `SELECT * FROM ${quote(table.slug)} ORDER BY created_at, rowid`)
+  // each row with its number, in the one read
+  const rows = all<Row>(
+    records.db,
+    `SELECT t.*, r.number AS alpha_number FROM ${quote(table.slug)} AS t JOIN records AS r ON r.id = t.id ORDER BY t.created_at, t.rowid`,
+  )
   const lists = listsOf(records, table, null)
   const prov = provenanceOfTable(records, table)
   const sums = summed(records, table, rows)
@@ -23,16 +27,20 @@ export function list(records: Records, tableId: string): RecordOut[] {
     return {
       ...out(records, table, r, vals, resolve(prov.get(r.id), vals), sums(r.id)),
       ...read(r.id),
+      ...(r.alpha_number ? { number: Number(r.alpha_number) } : {}),
     }
   })
 }
 
-// When a read last met each row, and when its source said it was gone (rules D8, D12).
+// When a read last met each row, and when its source said it was gone (rules D8, D12); for one
+// row, its number too (a table's rows bring theirs in their own read).
 function readOf(records: Records, tableId: string, id?: string) {
   const at = new Map(
-    all<{ id: string; read_at: string | null; gone_at: string | null }>(
+    all<{ id: string; read_at: string | null; gone_at: string | null; number: number | null }>(
       records.db,
-      `SELECT id, read_at, gone_at FROM records WHERE table_id = ? ${id ? 'AND id = ?' : ''} AND (read_at IS NOT NULL OR gone_at IS NOT NULL)`,
+      id
+        ? 'SELECT id, read_at, gone_at, number FROM records WHERE table_id = ? AND id = ?'
+        : 'SELECT id, read_at, gone_at, NULL AS number FROM records WHERE table_id = ? AND (read_at IS NOT NULL OR gone_at IS NOT NULL)',
       ...(id ? [tableId, id] : [tableId]),
     ).map((x) => [x.id, x]),
   )
@@ -41,6 +49,7 @@ function readOf(records: Records, tableId: string, id?: string) {
     return {
       ...(x?.read_at ? { readAt: x.read_at } : {}),
       ...(x?.gone_at ? { goneAt: x.gone_at } : {}),
+      ...(x?.number ? { number: x.number } : {}),
     }
   }
 }

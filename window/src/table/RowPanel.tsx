@@ -31,14 +31,32 @@ import { TagChips } from './Tags.tsx'
 import { canEdit, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
 
 // The side panel's way in: the row's view, with Open full to its own page.
+// A row's address, its table's number then its own (1.3.4), where both have one.
+export const rowAddress = (t: { number?: string | null }, r: { number?: number }) =>
+  t.number && r.number ? `${t.number}.${r.number}` : undefined
+
 export function RowPanel({
   title,
+  number,
   onClose,
   ...rest
-}: Parameters<typeof RowBody>[0] & { title: string; onClose: () => void }) {
+}: Parameters<typeof RowBody>[0] & {
+  title: string
+  number?: string | undefined
+  onClose: () => void
+}) {
   const row = useSources(rest.row) // a table's read carries only what its cells draw
   return (
-    <SidePanel title={title || 'A row'} onClose={onClose} full={`#/row/${row.id}`}>
+    <SidePanel
+      title={
+        <>
+          {title || 'A row'}
+          {number && <span className="ml-2 font-normal text-ink-3 tabular-nums">{number}</span>}
+        </>
+      }
+      onClose={onClose}
+      full={`#/row/${row.id}`}
+    >
       <RowBody {...rest} row={row} />
     </SidePanel>
   )

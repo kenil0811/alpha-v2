@@ -31,7 +31,7 @@ import { PasteBar, TickedBar } from './table/Many.tsx'
 import { MirrorGone, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
 import { readByWords } from './table/ReadNow.tsx'
-import { RowPanel } from './table/RowPanel.tsx'
+import { RowPanel, rowAddress } from './table/RowPanel.tsx'
 import { Showing } from './table/Showing.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips } from './table/Toolbar.tsx'
@@ -615,6 +615,7 @@ export function TableView({
               names={data.names}
               onEdit={kept ? undefined : (f, v, g) => edit(openedRow, f, v, g)}
               title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
+              number={rowAddress(data, openedRow)}
               onField={(slug) => {
                 setPicked({ row: openedRow.id, field: slug })
                 setOpened(null)

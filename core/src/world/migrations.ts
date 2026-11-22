@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Db } from './db.ts'
+import { numbers } from './shape/numbers.ts'
 
 export const SCHEMA = readFileSync(join(import.meta.dirname, 'schema.sql'), 'utf8')
 
@@ -92,4 +93,7 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   PRIMARY KEY (record_id, field_id, value)
 ) STRICT`)
   },
+  // 9, 22 Nov 2026: every module, table and row numbered (1.3.4), each from a counter that only
+  // goes up (shape/numbers.ts)
+  numbers,
 ]
