@@ -328,24 +328,30 @@ export class BrowserEngine {
   // signed in to on their own computer is driven there, through the Bridge.
   private async context(host: string): Promise<BrowserContext> {
     const key = `${this.who}/${siteOf(host)}`
+    const pc = this.computerOf(host)
+    // a site on a computer: whether the computer is there is asked at every step, so a step just
+    // after it went says so, rather than meeting the pages it took with it before they report closed
+    const there = pc ? this.computers : undefined
+    if (pc) {
+      const away = there
+        ? there.away(pc, siteOf(host))
+        : `${siteOf(host)} is signed in to on your computer, and this Alpha cannot reach it.`
+      if (away || !there) {
+        this.contexts.delete(key)
+        throw new Problem(away ?? '', 'away')
+      }
+    }
     let c = this.contexts.get(key)
     if (!c) {
       const dir = this.profileOf(host)
-      const pc = this.computerOf(host)
-      if (pc) {
-        const there = this.computers
-        const away = there
-          ? there.away(pc, siteOf(host))
-          : `${siteOf(host)} is signed in to on your computer, and this Alpha cannot reach it.`
-        if (away || !there) throw new Problem(away ?? '', 'away')
-        c = await there.context(pc, siteOf(host))
-      } else mkdirSync(dir, { recursive: true })
+      if (pc && there) c = await there.context(pc, siteOf(host))
+      else mkdirSync(dir, { recursive: true })
       if (c) {
         // the computer went: its pages went with it, and the next step opens them again
-        const there = c
-        there.on('close', () => {
-          if (this.contexts.get(key) === there) this.contexts.delete(key)
-          for (const [k, p] of this.tabs) if (p.context() === there) this.tabs.delete(k)
+        const made = c
+        made.on('close', () => {
+          if (this.contexts.get(key) === made) this.contexts.delete(key)
+          for (const [k, p] of this.tabs) if (p.context() === made) this.tabs.delete(k)
         })
       } else if (existsSync(join(dir, SIGNED_IN))) {
         if (!chromePath())
