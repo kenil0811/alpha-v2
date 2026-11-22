@@ -1,7 +1,8 @@
+import type { TaskLineView } from '@alpha/core/api'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { NO_LAYOUT } from './layout.ts'
-import { askFor, NewModule } from './NewModule.tsx'
+import { askFor, NewModule, underWay } from './NewModule.tsx'
 import { forward, placeOf } from './place.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
@@ -188,6 +189,20 @@ describe('the window', () => {
     ).toBe(
       'A deal tracker\n\nFiles I brought in (open each by its id): invoice.pdf, id ab12; invoice.pdf, id cd34',
     )
+    // the builds still under way, each one click from its work
+    const line = (id: string, title: string, state: TaskLineView['state']) =>
+      ({ id, title, state, ownerKind: 'alpha' }) as TaskLineView
+    expect(
+      underWay([
+        line('k_1', 'Build a module: A deal tracker', 'doing'),
+        line('k_2', 'Call Priya', 'todo'),
+        line('k_3', 'Build a module: Payroll', 'done'),
+        line('k_4', 'Build a module: Bakery orders', 'waiting'),
+      ]),
+    ).toEqual([
+      { id: 'k_1', what: 'A deal tracker', state: 'doing' },
+      { id: 'k_4', what: 'Bakery orders', state: 'waiting' },
+    ])
     const page = renderToString(
       <NewModule setup={false} task={null} version={0} onBuild={async () => ''} />,
     )

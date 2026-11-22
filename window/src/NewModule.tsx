@@ -3,22 +3,37 @@
 // to the Module builder as a task, whose work then runs right here in the page's central column,
 // the task in the address (#/new/<task>) so leaving and coming back finds the build. Import beside
 // Send brings a file in (kept the way any file is), named to the builder by its id.
+import type { TaskLineView, TasksView } from '@alpha/core/api'
 import { ArrowUp, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { AgentPage, CHIEF } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import { TaskWork } from './TaskThread.tsx'
 import { Button } from './ui/button.tsx'
+import { List, Row } from './ui/list.tsx'
 import { Tabs } from './ui/tabs.tsx'
 
 const noName = () => undefined
+
+const BUILD = 'Build a module: '
+const STATE: Partial<Record<TaskLineView['state'], string>> = {
+  todo: 'Not started',
+  doing: 'Working',
+  waiting: 'Waits for you',
+}
+
+// The builds still under way: open tasks this page made, each one click from its work.
+export const underWay = (lines: TaskLineView[]) =>
+  lines
+    .filter((l) => l.title.startsWith(BUILD) && STATE[l.state])
+    .map((l) => ({ id: l.id, what: l.title.slice(BUILD.length), state: l.state }))
 
 // Send gives the Module builder (the Chief of staff once it has gone) a task, which starts at once;
 // the page then shows that task's work.
 async function giveBuilder(words: string): Promise<string> {
   const b = await api.get<{ id: string | null }>('/api/agents/builder').catch(() => null)
   const t = await api.post<{ id: string }>('/api/tasks', {
-    title: `Build a module: ${words.split('\n')[0]?.slice(0, 60) ?? ''}`,
+    title: `${BUILD}${words.split('\n')[0]?.slice(0, 60) ?? ''}`,
     notes: words,
     owner: { kind: 'alpha', id: b?.id ?? CHIEF },
   })
@@ -57,6 +72,14 @@ export function NewModule({
       () => undefined,
     )
   }, [])
+  const [builds, setBuilds] = useState<ReturnType<typeof underWay>>([])
+  useEffect(() => {
+    if (version >= 0)
+      api.get<TasksView>('/api/tasks?list=open').then(
+        (v) => setBuilds(underWay(v.lines)),
+        () => undefined,
+      )
+  }, [version])
   const bring = async (picked: File[]) => {
     setBusy(true)
     for (const f of picked)
@@ -129,6 +152,25 @@ export function NewModule({
               Send
             </Button>
           </div>
+          {builds.length > 0 && (
+            <div className="mt-6 flex flex-col gap-1.5">
+              <h2 className="text-ink-3 text-sm">Under way</h2>
+              <List>
+                {builds.map((b) => (
+                  <Row
+                    key={b.id}
+                    className="relative hover:bg-canvas"
+                    title={
+                      <a href={`#/new/${b.id}`} className="after:absolute after:inset-0">
+                        {b.what}
+                      </a>
+                    }
+                    sub={STATE[b.state]}
+                  />
+                ))}
+              </List>
+            </div>
+          )}
         </div>
       )}
     </div>
