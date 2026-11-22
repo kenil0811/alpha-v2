@@ -17,6 +17,7 @@ import { Search } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
+import { useFieldsAt } from './table/AddFieldForm.tsx'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
 import { TableName } from './table/context.ts'
@@ -76,6 +77,7 @@ export function TableView({
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
   // where a row's change goes: the module table's own rows, or the kept list's
+  const fieldsAt = useFieldsAt() // People and Organizations add a property in place
   const rowsAt = own ? `/api/kept/${own.name}/rows` : `/api/tables/${data.id}/rows`
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
@@ -327,7 +329,7 @@ export function TableView({
                     shown={shown}
                     config={config}
                     layout={layout}
-                    adding={!kept}
+                    adding={!kept || !!fieldsAt}
                     onConfig={setConfig}
                     tab={
                       summary && (summary.place === 'part' || summary.place === 'setup')

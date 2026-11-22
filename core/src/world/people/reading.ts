@@ -117,9 +117,31 @@ export function get(people: People, id: string): PersonOut | undefined {
 // Who a person field's value names: one of the person's people by their id, an address they
 // hold, or a name only one of them has. Anyone else is refused in words (a wall: a person field
 // never holds a stranger's name as text).
-export function ref(people: People, said: string): string {
+export function ref(people: People, said: string, company = false): string {
   const v = said.trim()
   if (!v) throw new Refused('A person field needs someone.')
+  // a field one row per organization names an organization: by its id, its domain (acme.com), or
+  // a name only one of them has, as a person is named
+  if (company) {
+    const c = people.row(v)
+    if (c) {
+      if (c.kind !== 'company') throw new Refused(`${c.name} is a person, not an organization.`)
+      return people.root(c.id)
+    }
+    const byDomain = people.byKey('domain', v.toLowerCase().replace(/^www\./, ''))
+    if (byDomain) return byDomain
+    const named = all<{ id: string }>(
+      people.db,
+      "SELECT id FROM people WHERE kind = 'company' AND merged_into IS NULL AND lower(name) = lower(?)",
+      v,
+    )
+    if (named.length === 1) return (named[0] as { id: string }).id
+    if (named.length > 1)
+      throw new Refused(
+        `${named.length} of the person's organizations are called ${v}: name one by its domain or id (view companies).`,
+      )
+    throw new Refused(`No organization called ${v} among the person's (view companies).`)
+  }
   const p = people.row(v)
   if (p) {
     if (p.kind !== 'person') throw new Refused(`${p.name} is a company, not a person.`)

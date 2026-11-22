@@ -33,7 +33,7 @@ export interface Field {
   summary: SummarySpec | null // worked out from the rows that point here, never stored
   // a person field whose table holds one row per person: a second is refused, and a merge of two
   // people folds their rows into one
-  per: 'person' | null
+  per: 'person' | 'company' | null
   sensitive: boolean // its values never reach a journal line: "(kept out)" there
   // a relation whose rows are part of the row they point at: shown on it, removed and brought back
   // with it, never empty
@@ -128,7 +128,7 @@ export interface FieldInput {
   many?: boolean // a relation holding a list of rows, or a choice holding several (tags)
   partOf?: boolean // its rows are part of the row it points at
   summary?: SummaryInput // a summary's table, relation, what it takes and its condition
-  per?: 'person' // on a person field: one row per person in its table
+  per?: 'person' | 'company' // on a person field: one row per person in its table
   indexed?: boolean // an index on it, for a field filtered on often
   sensitive?: boolean // its values never reach a journal line
   key?: string // a kit field's stable name

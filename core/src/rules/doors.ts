@@ -200,6 +200,7 @@ export const DOORS: Door[] = [
       'POST /api/tables/:id/about',
       'POST /api/tables/:id/name',
       'POST /api/tables/:id/fields',
+      'POST /api/kept/*/fields', // a property on People or Organizations, in its one-row-per-person or per-organization table
       'POST /api/tables/:id/tab',
       'POST /api/tables/:id/sidebar',
       'POST /api/tables/:id/default', // a choice's ★: the default a new row takes

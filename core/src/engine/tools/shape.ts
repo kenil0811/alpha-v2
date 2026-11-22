@@ -50,7 +50,8 @@ const SHAPE_INPUT = {
   setup: z.boolean().optional(), // make_table and setup: a table the module's schedules read
   part_of: z.boolean().optional(), // part_of: the relation field's rows are part of their row, or not
   tab: z.boolean().optional(), // keep_tab: a part or setup table shown as a tab too, or not
-  per: z.boolean().optional(), // per: false takes a table's one row per person off
+  // per: false takes a table's one row per person off; organization for one row per organization
+  per: z.union([z.boolean(), z.literal('organization')]).optional(),
   // a module's business case: who it is for, what it keeps, the decisions it serves
   business_case: z
     .object({ for: z.string().min(1), keeps: z.string().min(1), decides: z.string().min(1) })
@@ -266,12 +267,13 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
     case 'per': {
       if (!a.field) throw new Refused('per needs field: the person field the rows are one per.')
       const t = tableOf(world, table)
+      const whose = a.per === 'organization' ? 'organization' : 'person'
       if (a.per === false) world.shape.setPer(t.id, a.field, false, c)
-      else setPer(world.records, t.id, a.field, c)
+      else setPer(world.records, t.id, a.field, c, a.per === 'organization' ? 'company' : 'person')
       return say(
         a.per === false
-          ? `${t.name} may hold more than one row per person again.`
-          : `${t.name} holds one row per person now, by ${a.field}; rows that shared a person were folded into one.`,
+          ? `${t.name} may hold more than one row per ${whose} again.`
+          : `${t.name} holds one row per ${whose} now, by ${a.field}; rows that shared one were folded into one.`,
       )
     }
     case 'setup': {

@@ -1,12 +1,15 @@
 import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
+import { DETAILS } from '../../world/maintained.ts'
 import { phoneWords } from '../../world/phones.ts'
+import { manifestSays } from '../../world/shape/manifest.ts'
 import { peopleTables, perField } from '../../world/shape/per.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptEdit, keptField, keptTable } from '../kept.ts'
 import { perColumns, perRows, setForPerson, typed } from '../per.ts'
 import type { CardView, KeptTable, PersonView, Pick } from '../types.ts'
 import { fieldViews } from './rows.ts'
+import { addFieldBody, fieldInput } from './tables.ts'
 
 export function registerPeople(ctx: Ctx): void {
   const { app, world, live, asPerson, user } = ctx
@@ -18,20 +21,33 @@ export function registerPeople(ctx: Ctx): void {
     'Only the name changes here; the rest comes from where Alpha read it, so change it there.'
   const keptPeople = (kind: 'person' | 'company'): KeptTable => {
     const lines = world.people.list(kind, '')
+    // after its own columns, the fields of the one-row-per tables
+    const cols = perColumns(world, kind)
+    const rows = perRows(world, [...new Set(cols.map((c) => c.table))])
+    const mine = (p: { id: string }) =>
+      Object.fromEntries(
+        cols.map((c) => [
+          c.view.slug,
+          rows.get(c.table.id)?.get(p.id)?.values[c.field.slug] ?? null,
+        ]),
+      )
+    const editable = ['Name', ...cols.filter((c) => typed(c.field)).map((c) => c.view.name)]
     if (kind === 'company')
       return keptTable(
         'organizations',
         'Organizations',
-        [keptField('Name', 'text'), keptField('Domain', 'text'), keptField('People', 'number')],
+        [
+          keptField('Name', 'text'),
+          keptField('Domain', 'text'),
+          keptField('People', 'number'),
+          ...cols.map((c) => c.view),
+        ],
         lines.map((p) => ({
           id: p.id,
-          values: { name: p.name, domain: p.domains.join(', '), people: p.people },
+          values: { name: p.name, domain: p.domains.join(', '), people: p.people, ...mine(p) },
         })),
-        { editable: ['Name'], why: WHY },
+        { editable, why: WHY },
       )
-    // after its own columns, the fields of the one-row-per-person tables
-    const cols = perColumns(world)
-    const rows = perRows(world, [...new Set(cols.map((c) => c.table))])
     return keptTable(
       'people',
       'People',
@@ -53,18 +69,10 @@ export function registerPeople(ctx: Ctx): void {
           phone: p.phones[0] ? phoneWords(p.phones[0]) : null,
           last: p.last,
           talks: p.count,
-          ...Object.fromEntries(
-            cols.map((c) => [
-              c.view.slug,
-              rows.get(c.table.id)?.get(p.id)?.values[c.field.slug] ?? null,
-            ]),
-          ),
+          ...mine(p),
         },
       })),
-      {
-        editable: ['Name', ...cols.filter((c) => typed(c.field)).map((c) => c.view.name)],
-        why: WHY,
-      },
+      { editable, why: WHY },
     )
   }
   app.get('/api/kept/people', async () => keptPeople('person'))
@@ -81,7 +89,9 @@ export function registerPeople(ctx: Ctx): void {
   for (const list of ['people', 'organizations'])
     app.post(`/api/kept/${list}/rows/:id`, async (req) => {
       const { id } = z.object({ id: z.string() }).parse(req.params)
-      const cols = list === 'people' ? perColumns(world).filter((c) => typed(c.field)) : []
+      const cols = perColumns(world, list === 'people' ? 'person' : 'company').filter((c) =>
+        typed(c.field),
+      )
       const { field, value } = keptEdit(req.body, ['Name', ...cols.map((c) => c.view.name)], WHY)
       const col = cols.find((c) => c.view.name === field)
       if (col) {
@@ -92,6 +102,31 @@ export function registerPeople(ctx: Ctx): void {
       const name = String(value ?? '').trim()
       if (!name) throw new Refused('A name is needed.')
       world.people.name(id, name, asPerson)
+      live()
+      return { ok: true }
+    })
+
+  // A property added from either list's header: a field of the table that keeps one row for each
+  // person (or organization) in the module that keeps people, the table made if there is none
+  for (const list of ['people', 'organizations'])
+    app.post(`/api/kept/${list}/fields`, async (req) => {
+      const kind = list === 'people' ? 'person' : 'company'
+      const body = addFieldBody.parse(req.body)
+      // Alpha's own People module, which keeps people; its details tables by their lasting keys
+      const mod = world.shape.ownModule('People')
+      if (!mod || !manifestSays(mod, 'people'))
+        throw new Refused('No module keeps people yet, so there is nowhere to add it.')
+      const c = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
+      const table =
+        world.shape.ownTable(mod.id, DETAILS[kind]) ??
+        world.shape.makeTable(
+          mod.id,
+          DETAILS[kind],
+          [{ name: kind === 'person' ? 'Person' : 'Organization', kind: 'person', per: kind }],
+          c,
+          { key: DETAILS[kind] },
+        )
+      world.shape.addFields(table.id, [fieldInput(body)], c)
       live()
       return { ok: true }
     })
@@ -148,7 +183,10 @@ export function registerPeople(ctx: Ctx): void {
   }
 
   const perOf = (id: string): PersonView['per'] => {
-    const tables = peopleTables(world.shape)
+    const tables = peopleTables(
+      world.shape,
+      world.people.get(id)?.kind === 'company' ? 'company' : 'person',
+    )
     const rows = perRows(world, tables)
     const view = fieldViews(world.shape)
     return tables.map((t) => {
@@ -172,7 +210,9 @@ export function registerPeople(ctx: Ctx): void {
   app.post('/api/people/:id/per/:table', async (req) => {
     const { id, table } = z.object({ id: z.string(), table: z.string() }).parse(req.params)
     const { field, value } = z.object({ field: z.string(), value: z.unknown() }).parse(req.body)
-    const t = peopleTables(world.shape).find((x) => x.id === table)
+    const t = [...peopleTables(world.shape), ...peopleTables(world.shape, 'company')].find(
+      (x) => x.id === table,
+    )
     const f = t?.fields.find((x) => x.name === field)
     if (!t || !f) throw new Refused('That field is not there.')
     setForPerson(world, user, t, id, f, value)

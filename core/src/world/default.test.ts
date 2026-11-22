@@ -9,6 +9,7 @@ import { checkKit } from '@alpha/kit-sdk'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { landIn } from '../connectors/places.ts'
 import { run } from './db.ts'
+import { redo } from './shape/asks.ts'
 import { World } from './world.ts'
 
 let home: string
@@ -139,4 +140,19 @@ it('is checked in a kit: one of the choices of a choice holding one', () => {
     yaml('{ name: Stage, kind: choice, choices: [New, Won], default: New }'),
   )
   expect(checkKit(kit)).toEqual([])
+})
+
+it('is made on a maintainer’s card when the person says do it now anyway', () => {
+  const t = deals()
+  const said = redo(
+    world.shape,
+    {
+      words: 'start new rows of Deals with Stage New',
+      method: 'setDefault',
+      args: [t.id, 'Stage', 'New'],
+    },
+    person,
+  )
+  expect(said).toBe('Start new rows of Deals with Stage New.')
+  expect(stage(t.id)?.default).toBe('New')
 })

@@ -2,6 +2,7 @@
 // break it. M6 to M8 are written with Dell's contract.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { keepDefaults } from '../modules/defaults.ts'
 import { checkSigned, install } from '../modules/kits/index.ts'
 import { api } from '../modules/runs/api.ts'
 import type { ScheduleRunner } from '../modules/runs/runner.ts'
@@ -93,6 +94,46 @@ rule('M2', 'in a managed module nobody changes its shape, and each door says who
   attempt: (a, act) => tryShape(a, act, 'Cases', 'Case desk'),
   holds: (w, refused, act) =>
     refusedWith(refused, /manag/i) && unchanged(w, act, 'Cases', 'Case desk', about),
+  cases: {
+    'the person’s + on People and Organizations grows only their two details tables': async (w) => {
+      await keepDefaults(w.world, { actor: { kind: 'system' } })
+      const add = (list: string, name: string) =>
+        w.post(`/api/kept/${list}/fields`, { name, kind: 'text' })
+      const theirs = (await add('people', 'Nickname')).status === 200
+      const orgs = (await add('organizations', 'Tier')).status === 200
+      const people = w.world.shape.ownModule('People')
+      const details = people && w.world.shape.ownTable(people.id, 'People details')
+      // Alpha's tool may not add to it, and the person may not make another table there
+      const tool = await alpha(w, 'shape', {
+        action: 'add_fields',
+        table: 'People details',
+        fields: [{ name: 'Guess', kind: 'text', about: 'A guess.' }],
+      }).then(
+        () => null,
+        (e: unknown) => e,
+      )
+      const other = (() => {
+        try {
+          w.world.shape.makeTable(
+            people?.id as string,
+            'Tiers',
+            [{ name: 'Person', kind: 'person', per: 'person' }],
+            { actor: { kind: 'person', id: w.user.id }, user: w.user.id },
+          )
+          return null
+        } catch (e) {
+          return e
+        }
+      })()
+      return (
+        theirs &&
+        orgs &&
+        !!details?.fields.some((f) => f.name === 'Nickname') &&
+        refusedWith(tool as never, /manag/i) &&
+        refusedWith(other as never, /manag/i)
+      )
+    },
+  },
   later: {
     'in a managed mirror the kit decides whether its source fields take corrections (D6)': CONTRACT,
   },

@@ -380,7 +380,7 @@ export class Shape {
       ...(f.indexed && f.kind !== 'relation' && !summary ? { indexed: true } : {}),
       ...(f.sensitive ? { sensitive: true } : {}),
       ...(summary ? { summary } : {}),
-      ...(f.per ? { per: 'person' } : {}),
+      ...(f.per ? { per: f.per } : {}),
     }
     const id = newId('f')
     run(
@@ -490,7 +490,12 @@ export class Shape {
   setPartOf(tableId: string, field: string, partOf: boolean, ctx: WriteCtx): Table {
     return setPartOf(this, tableId, field, partOf, ctx)
   }
-  setPer(tableId: string, field: string, per: boolean, ctx: WriteCtx): Table {
+  setPer(
+    tableId: string,
+    field: string,
+    per: boolean | 'person' | 'company',
+    ctx: WriteCtx,
+  ): Table {
     return setPer(this, tableId, field, per, ctx)
   }
   partsOf(tableId: string): { table: Table; field: string }[] {

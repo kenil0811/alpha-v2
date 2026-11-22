@@ -230,7 +230,8 @@ export function prepare(
             `${f.name} points at a row of ${records.shape.table(f.relatesTo ?? '')?.name ?? 'a table removed since'} that is not there.`,
           )
     }
-    if (f.kind === 'person' && typeof v === 'string' && records.personOf) v = records.personOf(v)
+    if (f.kind === 'person' && typeof v === 'string' && records.personOf)
+      v = records.personOf(v, f.per === 'company')
     vals[f.id] = v
     // nothing is a value that is not there: a null clears the column and carries no provenance
     if (v === null) continue

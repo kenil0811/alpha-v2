@@ -157,7 +157,7 @@ export function shapeTables(
       const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
       if (!was || was.per) continue
       try {
-        setPer(world.records, t.id, was.id, ctx)
+        setPer(world.records, t.id, was.id, ctx, f.per)
       } catch (err) {
         if (!(err instanceof Refused)) throw err
         world.line({

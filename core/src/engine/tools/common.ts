@@ -90,7 +90,7 @@ export const Field = z.object({
   many: z.boolean().optional(), // a relation holding a list of rows, a choice holding several
   part_of: z.boolean().optional(), // a relation to one row whose rows are part of it
   summary: Summary.optional(), // a summary's rows, what it does and its condition
-  per: z.enum(['person']).optional(), // a person field: its table holds one row per person
+  per: z.enum(['person', 'company']).optional(), // a person field: its table holds one row per person
 })
 
 export type Result = ToolResult

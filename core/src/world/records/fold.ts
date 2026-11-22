@@ -367,8 +367,14 @@ export function unfoldPeople(records: Records, otherId: string, ctx: WriteCtx): 
   return [undone.words, ...undone.left].join(' ')
 }
 
-// A table made one row per person: rows that share a person folded first, on one line.
-export function setPer(records: Records, tableId: string, field: string, ctx: WriteCtx): Table {
+// A table made one row per person (or organization): rows that share one folded first, on one line.
+export function setPer(
+  records: Records,
+  tableId: string,
+  field: string,
+  ctx: WriteCtx,
+  kind: 'person' | 'company' = 'person',
+): Table {
   const table = records.mustTable(tableId)
   const f = table.fields.find((x) => x.id === field || x.name.toLowerCase() === field.toLowerCase())
   if (!f) throw new Refused(`${table.name} has no field called ${field}.`)
@@ -396,5 +402,5 @@ export function setPer(records: Records, tableId: string, field: string, ctx: Wr
       `Folded ${n(w.folded.length, 'row')} of ${table.name} into the row of the person ${w.folded.length === 1 ? 'it' : 'each'} shares, to make it one row per person.`,
       { table: table.id },
     )
-  return records.shape.setPer(table.id, f.id, true, ctx)
+  return records.shape.setPer(table.id, f.id, kind, ctx)
 }

@@ -12,16 +12,17 @@ import type { Table, WriteCtx } from './types.ts'
 import { findField } from './types.ts'
 
 // The person field a table's rows are one per, if any.
-export const perField = (t: Table) => t.fields.find((f) => f.per === 'person')
+export const perField = (t: Table) => t.fields.find((f) => f.per)
 
 // The one-row-per-person tables of the module People lives in (Network's): their fields join
 // People's own columns, a person's page and the model's people view.
-export const peopleTables = (shape: Shape): Table[] =>
+// `per` says whose rows: a person's (People's columns) or an organization's (Organizations').
+export const peopleTables = (shape: Shape, kind: 'person' | 'company' = 'person'): Table[] =>
   shape
     .modules()
     .filter((m) => manifestSays(m, 'people'))
     .flatMap((m) => shape.tables(m.id))
-    .filter((t) => !!perField(t))
+    .filter((t) => perField(t)?.per === kind)
 
 // Only a person field, once a table, and only while every row has its person.
 export function perAllowed(shape: Shape, table: Table, name: string, kind: string, made: boolean) {
@@ -45,14 +46,17 @@ export function setPer(
   shape: Shape,
   tableId: string,
   field: string,
-  per: boolean,
+  per: boolean | 'person' | 'company', // true is one row per person
   ctx: WriteCtx,
 ): Table {
+  // the kind it is given stays its kind: an organization's table toggled off and on again is one
+  const kind = per === 'company' ? 'company' : per ? 'person' : null
+  const whose = kind === 'company' ? 'organization' : 'person'
   asks(
     shape,
     { table: tableId },
     (t) => ({
-      words: `${per ? 'keep' : 'stop keeping'} one row per person in ${t?.name}`,
+      words: `${kind ? 'keep' : 'stop keeping'} one row per ${whose} in ${t?.name}`,
       method: 'setPer',
       args: [tableId, field, per],
     }),
@@ -62,8 +66,8 @@ export function setPer(
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
     const f = findField(table, field)
-    if ((f.per === 'person') === per) return table
-    if (per) {
+    if (f.per === kind) return table
+    if (kind) {
       perAllowed(shape, table, f.name, f.kind, false)
       if (one(shape.db, `SELECT 1 FROM ${quote(table.slug)} WHERE ${quote(f.slug)} IS NULL`))
         throw new Refused(
@@ -78,16 +82,16 @@ export function setPer(
     run(
       shape.db,
       'UPDATE fields SET options = ? WHERE id = ?',
-      json(per ? { ...rest, per: 'person' } : rest),
+      json(kind ? { ...rest, per: kind } : rest),
       f.id,
     )
     append(shape.db, {
       actor: ctx.actor,
       kind: 'shaped',
-      words: per
-        ? `${table.name} holds one row per person now, by ${f.name}.`
-        : `${table.name} may hold more than one row per person again.`,
-      data: { table: table.id, field: f.id, per: per ? 'person' : null },
+      words: kind
+        ? `${table.name} holds one row per ${whose} now, by ${f.name}.`
+        : `${table.name} may hold more than one row per ${f.per === 'company' ? 'organization' : 'person'} again.`,
+      data: { table: table.id, field: f.id, per: kind },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,
       module: table.module.id,

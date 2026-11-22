@@ -318,7 +318,8 @@
                 "per": {
                   "type": "string",
                   "enum": [
-                    "person"
+                    "person",
+                    "company"
                   ]
                 },
                 "part_of": {

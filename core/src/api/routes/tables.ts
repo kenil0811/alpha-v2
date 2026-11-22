@@ -32,6 +32,22 @@ export const cellSources = (r: RowView): RowView => ({
   ),
 })
 
+// A field the person adds from a header: its name and kind, with what the kind needs.
+export const addFieldBody = z.object({
+  name: z.string().trim().min(1),
+  kind: z.enum(FIELD_KINDS),
+  choices: z.array(z.string().trim().min(1)).optional(),
+  relatesTo: z.string().optional(),
+  many: z.boolean().optional(), // a choice holding several: tags
+})
+export const fieldInput = (f: z.infer<typeof addFieldBody>) => ({
+  name: f.name,
+  kind: f.kind,
+  ...(f.choices ? { choices: f.choices } : {}),
+  ...(f.relatesTo ? { relatesTo: f.relatesTo } : {}),
+  ...(f.many ? { many: true } : {}),
+})
+
 export function registerTables(ctx: Ctx): void {
   const { app, world, engine, user, asPerson, live } = ctx
   const { sourceView, savedView, rowOut } = ctx.views
@@ -307,28 +323,10 @@ export function registerTables(ctx: Ctx): void {
   // The person adds a field from the table's header.
   app.post('/api/tables/:id/fields', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
-    const f = z
-      .object({
-        name: z.string().trim().min(1),
-        kind: z.enum(FIELD_KINDS),
-        choices: z.array(z.string().trim().min(1)).optional(),
-        relatesTo: z.string().optional(),
-        many: z.boolean().optional(), // a choice holding several: tags
-      })
-      .parse(req.body)
-    world.shape.addFields(
-      id,
-      [
-        {
-          name: f.name,
-          kind: f.kind,
-          ...(f.choices ? { choices: f.choices } : {}),
-          ...(f.relatesTo ? { relatesTo: f.relatesTo } : {}),
-          ...(f.many ? { many: true } : {}),
-        },
-      ],
-      { actor: { kind: 'person', id: user.id }, user: user.id },
-    )
+    world.shape.addFields(id, [fieldInput(addFieldBody.parse(req.body))], {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
   })

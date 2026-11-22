@@ -95,11 +95,27 @@ export function countChange(
   )
 }
 
+// What a person adds to People and Organizations lives in two tables of Alpha's own People
+// module, marked by these lasting keys: one row per person, one per organization (ui-rules T16).
+export const DETAILS = { person: 'People details', company: 'Organization details' } as const
+
+// Rules M2's one exception: the person makes those two tables and adds fields to them in People,
+// which Alpha manages. Nothing else in a managed module, and not Alpha's tool or a kit.
+function ownDetails(world: World, moduleId: string, redo: Redo, ctx: WriteCtx): boolean {
+  if (ctx.actor.kind !== 'person' || world.shape.ownModule('People')?.id !== moduleId) return false
+  const keys: string[] = Object.values(DETAILS)
+  if (redo.method === 'makeTable') return keys.includes(redo.args[3]?.key ?? '')
+  if (redo.method === 'addFields') return keys.includes(world.shape.table(redo.args[0])?.key ?? '')
+  return false
+}
+
 export function askMaintainer(world: World, moduleId: string, redo: Redo, ctx: WriteCtx): void {
   if (ctx.actor.kind === 'system') return
-  refuseManaged(world, moduleId, redo.words, ctx)
+  const details = ownDetails(world, moduleId, redo, ctx)
+  if (!details) refuseManaged(world, moduleId, redo.words, ctx)
+  // a connection's field stays its connector's, even there
   refuseSourceField(world, redo, ctx)
-  if (ctx.anyway) return
+  if (details || ctx.anyway) return
   const kit = maintainerOf(world, moduleId)
   const m = world.shape.module(moduleId)
   if (!kit || !m) return

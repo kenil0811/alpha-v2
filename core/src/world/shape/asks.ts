@@ -17,7 +17,8 @@ export type Redo = { words: string } & (
   | { method: 'setDefault'; args: [string, string, string | null] }
   | { method: 'describe'; args: [{ table: string; field?: string }, string | null, AboutBy] }
   | { method: 'setMany' | 'removeField'; args: [string, string] }
-  | { method: 'setPartOf' | 'setPer'; args: [string, string, boolean] }
+  | { method: 'setPartOf'; args: [string, string, boolean] }
+  | { method: 'setPer'; args: [string, string, boolean | 'person' | 'company'] }
   | { method: 'removeTable'; args: [string] }
   | {
       method: 'setBusinessCase'
@@ -88,6 +89,9 @@ export function redo(shape: Shape, r: Redo, ctx: WriteCtx): string {
     case 'setTones':
       shape.setTones(r.args[0], r.args[1], r.args[2], c)
       break
+    case 'setDefault':
+      shape.setDefault(r.args[0], r.args[1], r.args[2], c)
+      break
     case 'describe':
       shape.describe(r.args[0], r.args[1], r.args[2], c)
       break
@@ -96,8 +100,10 @@ export function redo(shape: Shape, r: Redo, ctx: WriteCtx): string {
       shape[r.method](r.args[0], r.args[1], c)
       break
     case 'setPartOf':
+      shape.setPartOf(r.args[0], r.args[1], r.args[2], c)
+      break
     case 'setPer':
-      shape[r.method](r.args[0], r.args[1], r.args[2], c)
+      shape.setPer(r.args[0], r.args[1], r.args[2], c)
       break
     case 'removeTable':
       shape.removeTable(r.args[0], c)

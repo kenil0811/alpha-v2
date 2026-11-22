@@ -29,7 +29,7 @@ export function fieldsOf(db: Db, tableId: string): Field[] {
       indexed?: boolean
       sensitive?: boolean
       summary?: SummarySpec
-      per?: 'person'
+      per?: 'person' | 'company'
     }>(f.options, {})
     return {
       id: f.id,
@@ -43,7 +43,7 @@ export function fieldsOf(db: Db, tableId: string): Field[] {
       many: f.kind === 'relation' && !!o.many,
       tags: f.kind === 'choice' && !!o.many,
       summary: f.kind === 'summary' ? (o.summary ?? null) : null,
-      per: f.kind === 'person' && o.per === 'person' ? ('person' as const) : null,
+      per: f.kind === 'person' && (o.per === 'person' || o.per === 'company') ? o.per : null,
       partOf: f.kind === 'relation' && !o.many && !!o.partOf,
       indexed: !!o.indexed,
       sensitive: !!o.sensitive,

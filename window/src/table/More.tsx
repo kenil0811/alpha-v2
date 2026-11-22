@@ -23,9 +23,9 @@ import {
 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { MenuItem, MenuLine, Popover, SubMenu } from '../ui/popover.tsx'
+import { AddFieldForm } from './AddFieldForm.tsx'
 import { setGroup } from './edits.ts'
 import { canGroup } from './engine.ts'
-import { AddFieldForm } from './Grid.tsx'
 import { ImportDialog } from './ImportDialog.tsx'
 import { KindIcon } from './KindIcon.tsx'
 import type { LayoutNow } from './layout.ts'
@@ -189,7 +189,7 @@ export function More({
         </SubMenu>
         <MenuItem
           reason={
-            fixed ?? (adding ? undefined : 'This table has its own page; add properties there.')
+            fixed ?? (adding ? undefined : 'This list has its own page; add properties there.')
           }
           onClick={() => {
             setOpen(false)
