@@ -22,6 +22,7 @@ import { Edge, Opening, SIDE_MIN, STRIP, stripItem } from './ui/edge.tsx'
 import { Popover, useContextMenu } from './ui/popover.tsx'
 import { Renamable } from './ui/rename.tsx'
 import { SlideWidth } from './ui/slide.tsx'
+import { Workspace } from './Workspace.tsx'
 
 // Each module's signal, for its dot in the rail.
 const Signals = createContext<Record<string, Signal>>({})
@@ -179,22 +180,6 @@ export function Rail({
         </div>
       </nav>
     </SlideWidth>
-  )
-}
-
-// The rail's head: the person's initial on an accent tile and their name. The window moves by it in
-// Alpha's own Mac window, so it takes no clicks.
-function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
-  const label = name ? `${name}'s workspace` : 'Your workspace'
-  return (
-    <div className="pointer-events-none flex min-w-0 flex-1 items-center gap-2 p-1">
-      <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
-        {(name.trim()[0] ?? 'A').toUpperCase()}
-      </span>
-      <span className={tileOnly ? 'sr-only' : 'min-w-0 flex-1 truncate font-semibold text-md'}>
-        {label}
-      </span>
-    </div>
   )
 }
 

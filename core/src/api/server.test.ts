@@ -231,6 +231,61 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('counts what is new in Activity since the person last looked, and a first look writes nothing', async () => {
+    const a = app()
+    const me = world.owner('Kenil').id
+    const count = async () => (await a.inject({ url: '/api/activity/new', headers: ok })).json()
+    const seen = () => world.preference(me, 'activity_seen')
+    // no mark yet: nothing counts, and asking writes nothing (a GET never writes)
+    expect(await count()).toEqual({ count: 0, marked: false })
+    expect(seen()).toBeNull()
+    await a.inject({ method: 'POST', url: '/api/activity/seen', headers: ok })
+    expect(await count()).toEqual({ count: 0, marked: true })
+    // what Alpha does after the mark counts: a turn's rows once, a read on its own
+    const t = world.shape.makeTable(
+      world.shape.makeModule('Shop', { actor: { kind: 'alpha' } }).id,
+      'Orders',
+      [{ name: 'Name', kind: 'text' }],
+      { actor: { kind: 'alpha' } },
+    )
+    const turn = { actor: { kind: 'alpha' as const }, turn: 'turn_1' }
+    const guess = { kind: 'estimated' as const, basis: 'a test' }
+    world.records.add(t.id, [{ values: { Name: 'A' }, provenance: guess }], turn)
+    world.records.add(t.id, [{ values: { Name: 'B' }, provenance: guess }], turn)
+    world.line({
+      actor: { kind: 'connector', id: 'gmail' },
+      kind: 'connection_read',
+      words: 'Read Gmail.',
+    })
+    expect(await count()).toEqual({ count: 2, marked: true })
+    await a.inject({ method: 'POST', url: '/api/activity/seen', headers: ok })
+    expect(await count()).toEqual({ count: 0, marked: true })
+    await a.close()
+  })
+
+  it('keeps one workspace name and picture for the whole Alpha, the picture at its own address', async () => {
+    const a = app()
+    const me = async () => (await a.inject({ url: '/api/me', headers: ok })).json().workspace
+    expect(await me()).toEqual({ name: null, picture: null })
+    const png = 'data:image/png;base64,iVBORw0KGgo='
+    const set = (payload: object) =>
+      a.inject({ method: 'POST', url: '/api/workspace', headers: ok, payload })
+    expect((await set({ name: '  Bakery HQ ', picture: png })).statusCode).toBe(200)
+    const ws = await me()
+    expect(ws.name).toBe('Bakery HQ')
+    expect(ws.picture).toMatch(/^\/api\/workspace\/picture\?v=\w+$/)
+    const pic = await a.inject({ url: ws.picture, headers: ok })
+    expect(pic.headers['content-type']).toBe('image/png')
+    expect(pic.rawPayload.subarray(1, 4).toString()).toBe('PNG')
+    // a picture from elsewhere, or not a picture, is turned away; none puts the initial back
+    expect((await set({ picture: 'https://elsewhere/x.png' })).statusCode).toBe(400)
+    expect((await set({ picture: 'data:text/html;base64,PGI+' })).statusCode).toBe(400)
+    await set({ name: null, picture: null })
+    expect(await me()).toEqual({ name: null, picture: null })
+    expect((await a.inject({ url: '/api/workspace/picture', headers: ok })).statusCode).toBe(404)
+    await a.close()
+  })
+
   it('shows a stored file inline only when it is harmless, HTML in a sandbox, the rest as a download', async () => {
     const a = app()
     const person = { actor: { kind: 'person' as const, id: world.owner('Kenil').id } }

@@ -7,6 +7,7 @@ import { ancestors, flat, inside } from './tree.ts'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Question } from './ui/question.tsx'
+import { NO_WORKSPACE, WorkspaceContext, type WorkspaceHere } from './Workspace.tsx'
 
 describe('delete', () => {
   it('sits behind ⋮, hidden until the row is hovered, and is not on the screen until ⋮ opens', () => {
@@ -133,6 +134,29 @@ describe('the window', () => {
     expect(html).toContain('href="#/settings"')
     expect(html).not.toContain('Alpha is running')
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
+  })
+
+  it('names the workspace once for the Alpha, and counts on its tile what is new in Activity', () => {
+    const rail = (here: Partial<WorkspaceHere>) =>
+      renderToString(
+        <WorkspaceContext.Provider value={{ ...NO_WORKSPACE, ...here }}>
+          <Rail
+            modules={modules}
+            place={{ at: 'home' }}
+            here={null}
+            name="Kenil"
+            waiting={0}
+            onNew={() => undefined}
+            tasksDue={0}
+            layout={open}
+            onLayout={() => undefined}
+          />
+        </WorkspaceContext.Provider>,
+      )
+    expect(rail({ news: 7 })).toContain('aria-label="Kenil&#x27;s workspace, 7 new in Activity"')
+    const named = rail({ workspace: { name: 'Bakery HQ', picture: null } })
+    expect(named).toContain('aria-label="Bakery HQ"')
+    expect(named).not.toContain('Kenil&#x27;s workspace')
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {

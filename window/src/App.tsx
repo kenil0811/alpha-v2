@@ -50,6 +50,7 @@ import { applyTextSize, applyTheme } from './theme.ts'
 import { inside, landingOf } from './tree.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
+import { useWorkspaceHere, WorkspaceContext } from './Workspace.tsx'
 
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
@@ -58,6 +59,7 @@ export function App() {
   const [table, setTable] = useState<TableData | null>(null)
   const [busyTurn, setBusyTurn] = useState<string | null>(null)
   const [name, setName] = useState('')
+  const [me, setMe] = useState<Me | null>(null)
   const [fileName, setFileName] = useState('')
   const [personName, setPersonName] = useState('')
   const [taskName, setTaskName] = useState('')
@@ -140,6 +142,8 @@ export function App() {
   const mood: Mood = stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'
   // the agent the assistant shows, kept per person; the Chief of staff when it has gone
   const agents = useAgents(version)
+  // the workspace tile: one name and picture for the Alpha, and what is new in Activity
+  const workspaceHere = useWorkspaceHere(me, place, version)
   const asked = layout.agent ?? CHIEF
   const chosen = agents.some((a) => a.id === asked) ? asked : CHIEF
   const agentHere = agents.find((a) => a.id === chosen) ?? null
@@ -254,6 +258,7 @@ export function App() {
       (me) => {
         switchedOn(me.plugins) // a plugin's screens show only where the core says it is on
         setName(me.user.name)
+        setMe(me)
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
         applyTextSize(me.textSize)
@@ -405,182 +410,184 @@ export function App() {
   }
   return (
     <LayoutContext.Provider value={layoutHere}>
-      <div className="flex h-screen bg-canvas text-base text-ink">
-        <Rail
-          modules={modules}
-          place={place}
-          here={moduleHere?.id ?? null}
-          layout={layout}
-          onLayout={changeLayout}
-          name={name}
-          waiting={stream?.cards.length ?? 0}
-          signals={moduleSignals(stream)}
-          onNew={() => {
-            openBuilder()
-          }}
-          tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
-        />
-        <main className="relative flex min-w-0 flex-1 flex-col">
-          <Bar
-            name={screenName()}
-            middle={setMiddle}
-            plain={place.at === 'work'}
-            ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
-            back={parentOf()}
-            next={place.at === 'home' && <NextChip version={version} />}
+      <WorkspaceContext.Provider value={workspaceHere}>
+        <div className="flex h-screen bg-canvas text-base text-ink">
+          <Rail
+            modules={modules}
+            place={place}
+            here={moduleHere?.id ?? null}
+            layout={layout}
+            onLayout={changeLayout}
+            name={name}
+            waiting={stream?.cards.length ?? 0}
+            signals={moduleSignals(stream)}
+            onNew={() => {
+              openBuilder()
+            }}
+            tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
           />
-          {problem && (
-            <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
-              {problem}
-            </div>
-          )}
-          <BarMiddle value={middle}>
-            <div className="flex min-h-0 flex-1">
-              <div className="min-w-0 flex-1">
-                {place.at === 'home' ? (
-                  <Home
-                    stream={stream}
-                    name={name}
-                    agents={agents}
-                    onAsked={() => setAsking(true)}
-                  />
-                ) : place.at === 'conversation' ? (
-                  <AgentsScreen
-                    setup={place.setup}
-                    agents={agents}
-                    chosen={chosen}
-                    agent={agentHere}
-                    onPick={pickAgent}
-                    stream={stream}
-                    busyTurn={busyTurn}
-                    version={version}
-                  />
-                ) : place.at === 'parts' ? (
-                  <Parts />
-                ) : place.at === 'plugin' ? (
-                  <PluginPage name={place.name} />
-                ) : place.at === 'file' ? (
-                  <FileView place={place.place} onName={setFileName} />
-                ) : place.at === 'work' ? (
-                  <TaskWork key={place.id} id={place.id} version={version} onName={setItemName} />
-                ) : place.at === 'computer' ? (
-                  <ComputerPage
-                    key={place.id}
-                    id={place.id}
-                    version={version}
-                    onName={setItemName}
-                  />
-                ) : place.at === 'agent' ? (
-                  <AgentPage id={place.id} version={version} onName={setItemName} />
-                ) : place.at === 'row' ? (
-                  <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
-                ) : place.at === 'card' ? (
-                  <CardPage key={place.id} id={place.id} version={version} />
-                ) : place.at === 'item' ? (
-                  <ItemPage
-                    key={`${place.kind}/${place.id}`}
-                    kind={place.kind}
-                    id={place.id}
-                    version={version}
-                    onName={setItemName}
-                  />
-                ) : place.at === 'tasks' ? (
-                  <Tasks
-                    list={place.list}
-                    id={place.id}
-                    setup={place.setup}
-                    version={version}
-                    onName={setTaskName}
-                  />
-                ) : place.at === 'people' ? (
-                  <People
-                    kind={place.kind}
-                    id={place.id}
-                    version={version}
-                    net={network(modules)}
-                    onName={setPersonName}
-                  />
-                ) : place.at === 'settings' ? (
-                  <Settings
-                    tab={place.section}
-                    open={place.open}
-                    version={version}
-                    cards={stream?.cards ?? []}
-                  />
-                ) : moduleHereId ? (
-                  <ModuleScreen
-                    moduleId={moduleHereId}
-                    known={modules.find((x) => x.id === moduleHereId) ?? null}
-                    inside={modules.filter((x) => x.parent === moduleHereId).length}
-                    tab={
-                      place.at === 'table'
-                        ? { kind: 'table', id: place.id }
-                        : place.tab
-                          ? { kind: place.tab }
-                          : place.page
-                            ? { kind: 'page', name: place.page }
-                            : null
-                    }
-                    version={version}
-                    table={tableHere}
-                    renderTable={(t, summary) => (
-                      <TableView
-                        key={t.id}
-                        data={t}
-                        loading={rowsComing || (place.at === 'table' && table?.id !== place.id)}
-                        summary={summary}
-                        row={place.at === 'table' ? place.row : null}
-                        only={place.at === 'table' ? place.only : null}
-                        of={place.at === 'table' ? place.of : null}
-                        field={place.at === 'table' ? place.field : null}
-                        // one panel beside the page: a page opened beside takes the row's place
-                        quiet={(asking && !room) || !!opened}
-                      />
-                    )}
-                  />
-                ) : (
-                  // a table on its way: nothing to read yet, and never a word that it is not there
-                  <Waiting />
-                )}
+          <main className="relative flex min-w-0 flex-1 flex-col">
+            <Bar
+              name={screenName()}
+              middle={setMiddle}
+              plain={place.at === 'work'}
+              ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
+              back={parentOf()}
+              next={place.at === 'home' && <NextChip version={version} />}
+            />
+            {problem && (
+              <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
+                {problem}
               </div>
-            </div>
-          </BarMiddle>
-          {/* over the centre, never over the assistant: always room for it */}
-          {opened && (
-            <div className="absolute inset-y-0 right-0 z-(--z-raised) flex">
-              <OpenedPanel
-                opened={opened}
-                version={version}
-                width={besideWidth(windowWidth, layout, asking)}
-                onClose={() => {
-                  window.location.hash = besideBase
-                }}
-              />
-            </div>
+            )}
+            <BarMiddle value={middle}>
+              <div className="flex min-h-0 flex-1">
+                <div className="min-w-0 flex-1">
+                  {place.at === 'home' ? (
+                    <Home
+                      stream={stream}
+                      name={name}
+                      agents={agents}
+                      onAsked={() => setAsking(true)}
+                    />
+                  ) : place.at === 'conversation' ? (
+                    <AgentsScreen
+                      setup={place.setup}
+                      agents={agents}
+                      chosen={chosen}
+                      agent={agentHere}
+                      onPick={pickAgent}
+                      stream={stream}
+                      busyTurn={busyTurn}
+                      version={version}
+                    />
+                  ) : place.at === 'parts' ? (
+                    <Parts />
+                  ) : place.at === 'plugin' ? (
+                    <PluginPage name={place.name} />
+                  ) : place.at === 'file' ? (
+                    <FileView place={place.place} onName={setFileName} />
+                  ) : place.at === 'work' ? (
+                    <TaskWork key={place.id} id={place.id} version={version} onName={setItemName} />
+                  ) : place.at === 'computer' ? (
+                    <ComputerPage
+                      key={place.id}
+                      id={place.id}
+                      version={version}
+                      onName={setItemName}
+                    />
+                  ) : place.at === 'agent' ? (
+                    <AgentPage id={place.id} version={version} onName={setItemName} />
+                  ) : place.at === 'row' ? (
+                    <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
+                  ) : place.at === 'card' ? (
+                    <CardPage key={place.id} id={place.id} version={version} />
+                  ) : place.at === 'item' ? (
+                    <ItemPage
+                      key={`${place.kind}/${place.id}`}
+                      kind={place.kind}
+                      id={place.id}
+                      version={version}
+                      onName={setItemName}
+                    />
+                  ) : place.at === 'tasks' ? (
+                    <Tasks
+                      list={place.list}
+                      id={place.id}
+                      setup={place.setup}
+                      version={version}
+                      onName={setTaskName}
+                    />
+                  ) : place.at === 'people' ? (
+                    <People
+                      kind={place.kind}
+                      id={place.id}
+                      version={version}
+                      net={network(modules)}
+                      onName={setPersonName}
+                    />
+                  ) : place.at === 'settings' ? (
+                    <Settings
+                      tab={place.section}
+                      open={place.open}
+                      version={version}
+                      cards={stream?.cards ?? []}
+                    />
+                  ) : moduleHereId ? (
+                    <ModuleScreen
+                      moduleId={moduleHereId}
+                      known={modules.find((x) => x.id === moduleHereId) ?? null}
+                      inside={modules.filter((x) => x.parent === moduleHereId).length}
+                      tab={
+                        place.at === 'table'
+                          ? { kind: 'table', id: place.id }
+                          : place.tab
+                            ? { kind: place.tab }
+                            : place.page
+                              ? { kind: 'page', name: place.page }
+                              : null
+                      }
+                      version={version}
+                      table={tableHere}
+                      renderTable={(t, summary) => (
+                        <TableView
+                          key={t.id}
+                          data={t}
+                          loading={rowsComing || (place.at === 'table' && table?.id !== place.id)}
+                          summary={summary}
+                          row={place.at === 'table' ? place.row : null}
+                          only={place.at === 'table' ? place.only : null}
+                          of={place.at === 'table' ? place.of : null}
+                          field={place.at === 'table' ? place.field : null}
+                          // one panel beside the page: a page opened beside takes the row's place
+                          quiet={(asking && !room) || !!opened}
+                        />
+                      )}
+                    />
+                  ) : (
+                    // a table on its way: nothing to read yet, and never a word that it is not there
+                    <Waiting />
+                  )}
+                </div>
+              </div>
+            </BarMiddle>
+            {/* over the centre, never over the assistant: always room for it */}
+            {opened && (
+              <div className="absolute inset-y-0 right-0 z-(--z-raised) flex">
+                <OpenedPanel
+                  opened={opened}
+                  version={version}
+                  width={besideWidth(windowWidth, layout, asking)}
+                  onClose={() => {
+                    window.location.hash = besideBase
+                  }}
+                />
+              </div>
+            )}
+          </main>
+          {askable && (
+            <SlideIn open={asking}>
+              <Assistant
+                onClose={() => setAsking(false)}
+                title={<AgentPicker agents={agents} chosen={chosen} onPick={pickAgent} />}
+                mood={mood}
+                width={layout.panel}
+                onWidth={(panel) => changeLayout({ panel })}
+              >
+                <Conversation
+                  stream={stream}
+                  busyTurn={busyTurn}
+                  from={moduleHere}
+                  compact
+                  agent={agentHere}
+                  agents={agents}
+                />
+              </Assistant>
+            </SlideIn>
           )}
-        </main>
-        {askable && (
-          <SlideIn open={asking}>
-            <Assistant
-              onClose={() => setAsking(false)}
-              title={<AgentPicker agents={agents} chosen={chosen} onPick={pickAgent} />}
-              mood={mood}
-              width={layout.panel}
-              onWidth={(panel) => changeLayout({ panel })}
-            >
-              <Conversation
-                stream={stream}
-                busyTurn={busyTurn}
-                from={moduleHere}
-                compact
-                agent={agentHere}
-                agents={agents}
-              />
-            </Assistant>
-          </SlideIn>
-        )}
-        {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
-      </div>
+          {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
+        </div>
+      </WorkspaceContext.Provider>
     </LayoutContext.Provider>
   )
 }

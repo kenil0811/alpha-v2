@@ -11,6 +11,14 @@ export interface Me {
   textSize: 'small' | 'medium' | 'large' // Appearance: Medium is the window's own sizes
   layout: Layout
   plugins: string[] // the plugins on here (rules P1): the window shows a plugin's screens only then
+  workspace: Workspace // the whole Alpha's, the same for everyone
+}
+
+// The workspace tile's name and picture, one for the whole Alpha, set by the owner; none: the
+// person's name ("Kenil's workspace") and initial, as before.
+export interface Workspace {
+  name: string | null
+  picture: string | null // its own address, which changes with the picture
 }
 
 // How the person left the window: all of it here, none in the browser.

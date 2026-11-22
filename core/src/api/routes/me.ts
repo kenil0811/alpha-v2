@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { Refused } from '../../world/kinds.ts'
 import { atNumber } from '../../world/shape/numbers.ts'
 import {
   drawnTables,
@@ -9,6 +10,12 @@ import {
   setTabs,
 } from '../../world/table-prefs.ts'
 import { VIEW_KINDS } from '../../world/views.ts'
+import {
+  PICTURE_MAX,
+  setWorkspace,
+  workspaceName,
+  workspacePicture,
+} from '../../world/workspace.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FoundRow, Layout, Me, ViewOf } from '../types.ts'
 
@@ -52,7 +59,38 @@ export function registerMe(ctx: Ctx): void {
       textSize: size === 'small' || size === 'large' ? size : 'medium',
       layout: layoutOf(),
       plugins: options.pluginsOn ?? [],
+      workspace: workspaceOf(),
     }
+  })
+
+  // The workspace's name and picture: one for the whole Alpha, the owner's to set (rules A6).
+  const workspaceOf = () => {
+    const pic = workspacePicture(world.db)
+    return {
+      name: workspaceName(world.db),
+      picture: pic ? `/api/workspace/picture?v=${pic.version}` : null,
+    }
+  }
+  app.get('/api/workspace/picture', async (_req, reply) => {
+    const pic = workspacePicture(world.db)
+    if (!pic) return reply.code(404).send({ problem: 'This workspace has no picture.' })
+    return reply.header('content-type', pic.type).header('cache-control', 'private').send(pic.bytes)
+  })
+  app.post('/api/workspace', async (req) => {
+    if (user.role !== 'owner') throw new Refused('Only the owner names the workspace.')
+    const given = z
+      .object({
+        name: z.string().max(80).nullable().optional(),
+        picture: z
+          .string()
+          .max(PICTURE_MAX)
+          .regex(/^data:image\/(png|jpeg|webp);base64,/)
+          .nullable()
+          .optional(),
+      })
+      .parse(req.body)
+    setWorkspace(world.db, given, { kind: 'person', id: user.id })
+    return workspaceOf()
   })
 
   // How the person left the window: the rail, its folds, the side conversation's width.

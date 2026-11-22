@@ -155,11 +155,14 @@ rule('A6', 'every request carries a session, and a person’s own stays theirs',
         w.world.cards.get(card.id)?.state === 'waiting'
       )
     },
-    'only the owner sets the data, adds people, installs a pack': async (w) => {
+    'only the owner sets the data, adds people, installs a pack, names the workspace': async (
+      w,
+    ) => {
       const { app, member } = await people(w)
       for (const [method, url, payload] of [
         ['POST', '/api/accounts', { name: 'Sam', email: 'sam@example.com' }],
         ['POST', '/api/kits', { folder: '/nowhere' }],
+        ['POST', '/api/workspace', { name: 'Bakery HQ' }],
       ] as const) {
         const out = await app.inject({ method, url, headers: member, payload })
         if (out.statusCode !== 409 || !/Only the owner/.test(out.json().problem)) return false
