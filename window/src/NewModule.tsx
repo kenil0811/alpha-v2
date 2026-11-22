@@ -30,7 +30,7 @@ export const underWay = (lines: TaskLineView[]) =>
 
 // Send gives the Module builder (the Chief of staff once it has gone) a task, which starts at once;
 // the page then shows that task's work.
-async function giveBuilder(words: string): Promise<string> {
+export async function giveBuilder(words: string): Promise<string> {
   const b = await api.get<{ id: string | null }>('/api/agents/builder').catch(() => null)
   const t = await api.post<{ id: string }>('/api/tasks', {
     title: `${BUILD}${words.split('\n')[0]?.slice(0, 60) ?? ''}`,

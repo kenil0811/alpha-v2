@@ -15,9 +15,6 @@ import { Section } from './ui/section.tsx'
 export function Sites({ version }: { version: number }) {
   const [sites, setSites] = useState<SiteView[]>([])
   const [address, setAddress] = useState('')
-  const [live, setLive] = useState<{ card: string; site: string } | null>(null)
-  // a sign-in window open: in Chrome on this Mac, or on a computer of yours (the Bridge)
-  const [opened, setOpened] = useState<{ site: string; on: string | null } | null>(null)
   const load = useCallback(() => {
     api.get<SiteView[]>('/api/sites').then(setSites, () => setSites([]))
   }, [])
@@ -25,16 +22,10 @@ export function Sites({ version }: { version: number }) {
     if (version >= 0) load()
   }, [load, version])
   const { busy, problem, act } = useAct(load)
-  // the same Sign in card a run meets, answered here at once: your own Chrome on a Mac, the live
-  // picture of the server's browser otherwise
+  const site = useSiteSignIn(load)
   const signIn = (url: string) =>
     act(async () => {
-      const { card, site } = await api.post<{ card: string; site: string }>('/api/sites/sign-in', {
-        url,
-      })
-      const r = await api.post<{ live?: boolean; on?: string }>(`/api/cards/${card}/sign-in`)
-      if (r.live) setLive({ card, site })
-      else setOpened({ site, on: r.on ?? null })
+      await site.signIn(url)
       setAddress('')
     })
   const submit = (e: FormEvent) => {
@@ -84,6 +75,29 @@ export function Sites({ version }: { version: number }) {
           Sign in
         </Button>
       </form>
+      <Refusal words={problem} />
+      {site.shown}
+    </Section>
+  )
+}
+
+// Signing in to a site in Alpha's browser, as a run's Sign in card does: your own Chrome on a Mac,
+// a computer of yours through the Bridge, or the live picture of the server's browser. What it
+// shows while the person signs in; in Settings › Sites and on Set up Alpha's Apps you use.
+export function useSiteSignIn(onDone: () => void) {
+  const [live, setLive] = useState<{ card: string; site: string } | null>(null)
+  // a sign-in window open: in Chrome on this Mac, or on a computer of yours (the Bridge)
+  const [opened, setOpened] = useState<{ site: string; on: string | null } | null>(null)
+  const signIn = async (url: string) => {
+    const { card, site } = await api.post<{ card: string; site: string }>('/api/sites/sign-in', {
+      url,
+    })
+    const r = await api.post<{ live?: boolean; on?: string }>(`/api/cards/${card}/sign-in`)
+    if (r.live) setLive({ card, site })
+    else setOpened({ site, on: r.on ?? null })
+  }
+  const shown = (
+    <>
       {opened && (
         <p className="text-ink-3 text-sm">
           {opened.on
@@ -91,17 +105,17 @@ export function Sites({ version }: { version: number }) {
             : `${opened.site} opened in its own window of Google Chrome: sign in there, then quit that Chrome (⌘Q).`}
         </p>
       )}
-      <Refusal words={problem} />
       {live && (
         <LiveSignIn
           card={live.card}
           site={live.site}
           onClose={() => {
             setLive(null)
-            load()
+            onDone()
           }}
         />
       )}
-    </Section>
+    </>
   )
+  return { signIn, shown }
 }

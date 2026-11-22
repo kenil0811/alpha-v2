@@ -341,6 +341,7 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/story/:chapter/skip': 'how far a person has gone through Set up Alpha, kept with them',
   'POST /api/story/decline': 'Set up Alpha put off by a person, kept with them',
   'POST /api/story/reopen': 'Set up Alpha opened again by a person, kept with them',
+  'POST /api/story/apps/remove': 'an app left out of a person’s Apps you use, kept with them',
   'POST /api/accounts/:id/link': 'the owner making a new sign-in link',
   'POST /api/accounts/:id/remove': 'the owner removing a person’s way in; their history stays',
   'POST /api/runs/:id/stop': 'stops a run under way; what it wrote stays',

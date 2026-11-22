@@ -1,0 +1,41 @@
+# Work apps Alpha knows, for Set up Alpha's Apps you use: matched by code against the apps on the
+# person's own computer, as Alpha Bridge's Apps reader lists them (their names, when each was last
+# used and how often), and against the senders of their mail, by the domain of each site. Each is
+# connected where a connector ships, else signed in to at its site in Alpha's browser. None of these is a setting the person meets; the list grows as people use apps
+# Alpha does not know yet.
+
+# The apps shown: those on the computer used in the last so many days, and the work apps with at
+# least so many mails from them, this many at most (the onboarding plan's call 19: defaults in
+# config, never walls).
+recent_days: 30
+min_mails: 2
+shown: 10
+
+# desktop: the app's name on a computer where it differs from its name here
+apps:
+  - { name: QuickBooks, sites: [quickbooks.intuit.com], connector: quickbooks }
+  - { name: Xero, sites: [xero.com] }
+  - { name: FreshBooks, sites: [freshbooks.com] }
+  - { name: Stripe, sites: [dashboard.stripe.com] }
+  - { name: Square, sites: [squareup.com] }
+  - { name: Shopify, sites: [shopify.com] }
+  - { name: PayPal, sites: [paypal.com] }
+  - { name: Gusto, sites: [gusto.com] }
+  - { name: HubSpot, sites: [app.hubspot.com] }
+  - { name: Salesforce, sites: [salesforce.com] }
+  - { name: Pipedrive, sites: [pipedrive.com] }
+  - { name: Mailchimp, sites: [mailchimp.com] }
+  - { name: Slack, sites: [slack.com] }
+  - { name: Asana, sites: [app.asana.com] }
+  - { name: Trello, sites: [trello.com] }
+  - { name: Monday, sites: [monday.com] }
+  - { name: Notion, sites: [notion.so] }
+  - { name: Airtable, sites: [airtable.com] }
+  - { name: Calendly, sites: [calendly.com] }
+  - { name: DocuSign, sites: [docusign.com] }
+  - { name: Dropbox, sites: [dropbox.com] }
+  - { name: Zoom, sites: [zoom.us], desktop: [zoom.us] }
+  - { name: LinkedIn, sites: [linkedin.com] }
+  - { name: Linear, sites: [linear.app] }
+  - { name: Figma, sites: [figma.com] }
+  - { name: ClickUp, sites: [app.clickup.com] }

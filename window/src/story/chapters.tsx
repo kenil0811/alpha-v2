@@ -35,6 +35,7 @@ import { CopyButton } from '../ui/copy.tsx'
 import { Field } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { squared } from '../Workspace.tsx'
+import { Connect } from './connect.tsx'
 
 // The act at the story's foot: its words, whether it can be pressed, its words while it works,
 // and what it sends.
@@ -62,7 +63,7 @@ export function ChapterBody(p: Props) {
     case 'workspace':
       return <Workspace {...p} screen={s as WorkspaceScreen} />
     case 'connect':
-      return <Connect {...p} screen={s as ConnectScreen} />
+      return <Connect screen={s as ConnectScreen} reload={p.reload} next={p.next} />
     case 'people':
       return <People {...p} screen={s as PeopleScreen} />
     case 'here':
@@ -301,63 +302,6 @@ function Workspace({ screen, next }: Props & { screen: WorkspaceScreen }) {
             onChange={(e) => setSite(e.target.value)}
           />
         )}
-      </div>
-    </div>
-  )
-}
-
-function Connect({ screen, reload, next, leave }: Props & { screen: ConnectScreen }) {
-  // what lands is counted again while the chapter is open
-  useEffect(() => {
-    const t = setInterval(reload, 5000)
-    return () => clearInterval(t)
-  }, [reload])
-  useEffect(() => next({ label: 'Continue', ready: true }), [next])
-  return (
-    <div className="flex flex-col gap-5">
-      {screen.connections.length ? (
-        <ul className="flex flex-col">
-          {screen.connections.map((k) => (
-            <Item
-              key={k.id}
-              icon={<Plug className="size-4" />}
-              head={
-                <span className="flex items-center gap-2">
-                  {k.title}
-                  <span className="truncate text-ink-3">{k.account}</span>
-                </span>
-              }
-              sub={k.by === 'You' ? 'Connected by you' : `Connected by ${k.by}, for everyone`}
-              end={
-                <span className="flex shrink-0 flex-wrap justify-end gap-1">
-                  {k.state === 'connected' ? (
-                    k.landed.map((l) => (
-                      <Pill key={l} tone="good">
-                        {l}
-                      </Pill>
-                    ))
-                  ) : (
-                    <Pill tone="warn">
-                      {k.state === 'needs_sign_in' ? 'Needs sign-in' : 'Not reading'}
-                    </Pill>
-                  )}
-                </span>
-              }
-            />
-          ))}
-        </ul>
-      ) : (
-        <p className="text-ink-3">Nothing is connected yet.</p>
-      )}
-      <div>
-        <Button
-          onClick={() => {
-            leave()
-            window.location.hash = '#/settings/connections'
-          }}
-        >
-          <Plug className="size-3.5" /> Open Connections
-        </Button>
       </div>
     </div>
   )
