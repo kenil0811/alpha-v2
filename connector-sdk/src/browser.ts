@@ -1138,10 +1138,18 @@ export class BrowserEngine {
       rmSync(dir, { recursive: true, force: true })
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, SIGNED_IN), '')
-    // its own Chrome, apart from the person's everyday one; it ends when they quit it
+    // its own Chrome, apart from the person's everyday one, as a small window of its own, as a
+    // site's own sign-in pop-up opens: no tabs and no toolbar (Kenil, 22 Nov); it ends when they
+    // quit it
     const window = spawn(
       chrome,
-      [`--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', url],
+      [
+        `--user-data-dir=${dir}`,
+        '--no-first-run',
+        '--no-default-browser-check',
+        `--app=${url}`,
+        '--window-size=520,760',
+      ],
       { stdio: 'ignore' },
     )
     await new Promise<void>((resolve, reject) => {
