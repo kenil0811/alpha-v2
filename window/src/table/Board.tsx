@@ -4,8 +4,8 @@ import { api } from '../api.ts'
 import { askForNew } from '../ask.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
 import { cn } from '../ui/cn.ts'
-import { Select } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
+import { ChoiceSelect } from './ChoiceSelect.tsx'
 import { show } from './values.ts'
 
 // The board: a column per choice, each row a card with its name and a few of its values, moved
@@ -153,7 +153,7 @@ export function Board({
                       </div>
                     ) : null
                   })}
-                  <Select
+                  <ChoiceSelect
                     of={by}
                     className="mt-1 h-6.5 text-sm"
                     value={choice}
@@ -171,7 +171,7 @@ export function Board({
                         {c}
                       </option>
                     ))}
-                  </Select>
+                  </ChoiceSelect>
                   {on === r.id && <Refusal words={problem} />}
                 </div>
               ))}

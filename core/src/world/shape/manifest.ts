@@ -200,6 +200,7 @@ export function writeManifest(shape: Shape, m: Module): void {
         ...(f.about ? { about: f.about } : {}),
         ...(f.choices.length ? { choices: f.choices } : {}),
         ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
+        ...(f.default ? { default: f.default } : {}),
         ...(f.relatesTo ? { relates_to: shape.table(f.relatesTo)?.name } : {}),
         ...(f.many || f.tags ? { many: true } : {}),
         ...(f.partOf ? { part_of: true } : {}),

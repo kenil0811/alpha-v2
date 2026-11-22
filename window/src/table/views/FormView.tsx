@@ -5,7 +5,8 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { askForNew } from '../../ask.ts'
 import { Button, IconButton } from '../../ui/button.tsx'
-import { Field, Select } from '../../ui/field.tsx'
+import { Field } from '../../ui/field.tsx'
+import { ChoiceSelect } from '../ChoiceSelect.tsx'
 import { TagPicker } from '../Tags.tsx'
 import { canType, isTags, readValue, show, titleOf, typedOf } from '../values.ts'
 
@@ -105,7 +106,7 @@ export function FormView({
                   onTyped={(t) => setTyped({ ...typed, [f.slug]: t })}
                 />
               ) : f.kind === 'choice' ? (
-                <Select
+                <ChoiceSelect
                   of={f}
                   id={`form-${f.id}`}
                   value={typed[f.slug] ?? ''}
@@ -119,7 +120,7 @@ export function FormView({
                   {f.choices.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
-                </Select>
+                </ChoiceSelect>
               ) : (
                 <Field
                   id={`form-${f.id}`}

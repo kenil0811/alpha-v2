@@ -9,6 +9,7 @@ export interface FieldView {
   kind: string // a summary's is the kind it shows as: a count is a number
   choices: string[]
   tones: Record<string, 'good' | 'warn' | 'bad' | 'accent'> // a choice's colour, where it is a state
+  default: string | null // the choice a new row takes when it gives none, for everyone (★)
   many: boolean // a relation holding a list of rows, or a choice holding several (tags)
   relatesTo: string | null // the table a relation's rows are picked from
   // a summary: what it is in words; worked out from other rows, never written

@@ -5,8 +5,9 @@ import { askForNew } from '../ask.ts'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Dialog } from '../ui/dialog.tsx'
-import { Field, Select } from '../ui/field.tsx'
+import { Field } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
+import { ChoiceSelect } from './ChoiceSelect.tsx'
 import { TagPicker } from './Tags.tsx'
 import { isTags, readValue } from './values.ts'
 
@@ -73,7 +74,7 @@ export function AddRow({
               onTyped={(t) => setValues((v) => ({ ...v, [f.name]: t }))}
             />
           ) : f.kind === 'choice' ? (
-            <Select
+            <ChoiceSelect
               of={f}
               id={`add-${f.id}`}
               value={values[f.name] ?? ''}
@@ -84,7 +85,7 @@ export function AddRow({
               {f.choices.map((c) => (
                 <option key={c}>{c}</option>
               ))}
-            </Select>
+            </ChoiceSelect>
           ) : (
             <Field
               id={`add-${f.id}`}

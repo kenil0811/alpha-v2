@@ -10,9 +10,11 @@ import { append } from '../journal.ts'
 import { FIELD_KINDS, type FieldKind, Refused } from '../kinds.ts'
 import { type Asks, asksAdd, asksMake } from './asks.ts'
 import {
+  defaultSetByOthers,
   describe,
   rename,
   setChoices,
+  setDefault,
   setDocuments,
   setHidden,
   setKey,
@@ -21,6 +23,7 @@ import {
   setTones,
   tonesSetByOthers,
 } from './fields.ts'
+import { fieldsOf } from './fields-read.ts'
 import { claimModule, claimTable, ownModule, ownTable, rekeyModule } from './keys.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
 import { renameModule } from './naming.ts'
@@ -231,52 +234,7 @@ export class Shape {
     )
     if (!t) return undefined
     const module = this.module(t.module_id) as Module
-    // a field a kit no longer uses is hidden: its column stays, the table does not show it
-    const fields = all<{
-      id: string
-      name: string
-      slug: string
-      kind: FieldKind
-      options: string
-      key: string | null
-      about: string | null
-      about_by: AboutBy | null
-    }>(
-      this.db,
-      'SELECT id, name, slug, kind, options, key, about, about_by FROM fields WHERE table_id = ? AND hidden = 0 ORDER BY position',
-      t.id,
-    ).map((f) => {
-      const o = parse<{
-        choices?: string[]
-        tones?: Record<string, Tone>
-        relatesTo?: string
-        many?: boolean
-        partOf?: boolean
-        indexed?: boolean
-        sensitive?: boolean
-        summary?: SummarySpec
-        per?: 'person'
-      }>(f.options, {})
-      return {
-        id: f.id,
-        name: f.name,
-        slug: f.slug,
-        kind: f.kind,
-        choices: o.choices ?? [],
-        tones: o.tones ?? {},
-        relatesTo: o.relatesTo ?? null,
-        many: f.kind === 'relation' && !!o.many,
-        tags: f.kind === 'choice' && !!o.many,
-        summary: f.kind === 'summary' ? (o.summary ?? null) : null,
-        per: f.kind === 'person' && o.per === 'person' ? ('person' as const) : null,
-        partOf: f.kind === 'relation' && !o.many && !!o.partOf,
-        indexed: !!o.indexed,
-        sensitive: !!o.sensitive,
-        key: f.key,
-        about: f.about,
-        aboutBy: f.about_by,
-      }
-    })
+    const fields = fieldsOf(this.db, t.id)
     return {
       id: t.id,
       module,
@@ -413,6 +371,9 @@ export class Shape {
     const options = {
       ...(f.choices?.length ? { choices: f.choices } : {}),
       ...(f.tones && Object.keys(f.tones).length ? { tones: f.tones } : {}),
+      ...(f.kind === 'choice' && !f.many && f.default && f.choices?.includes(f.default)
+        ? { default: f.default }
+        : {}),
       ...(f.relatesTo ? { relatesTo: (this.table(f.relatesTo) as Table).id } : {}),
       ...(many || (f.kind === 'choice' && f.many) ? { many: true } : {}),
       ...(f.partOf ? { partOf: true } : {}),
@@ -473,11 +434,17 @@ export class Shape {
   setChoices(tableId: string, field: string, choices: string[], ctx: WriteCtx): Table {
     return setChoices(this, tableId, field, choices, ctx)
   }
+  setDefault(tableId: string, field: string, value: string | null, ctx: WriteCtx): void {
+    setDefault(this, tableId, field, value, ctx)
+  }
   setTones(tableId: string, field: string, tones: Record<string, Tone>, ctx: WriteCtx): void {
     setTones(this, tableId, field, tones, ctx)
   }
   tonesSetByOthers(fieldId: string): boolean {
     return tonesSetByOthers(this, fieldId)
+  }
+  defaultSetByOthers(fieldId: string): boolean {
+    return defaultSetByOthers(this, fieldId)
   }
   describe(
     where: { table: string; field?: string },

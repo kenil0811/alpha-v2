@@ -193,6 +193,7 @@ export const DOORS: Door[] = [
       'POST /api/tables/:id/fields',
       'POST /api/tables/:id/tab',
       'POST /api/tables/:id/sidebar',
+      'POST /api/tables/:id/default', // a choice's ★: the default a new row takes
     ],
     // a field is renamed by asking Alpha; the window renames the table only
     can: ['addField', 'renameTable', 'describe'],

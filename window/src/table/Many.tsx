@@ -8,6 +8,7 @@ import { Button } from '../ui/button.tsx'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
+import { ChoiceSelect } from './ChoiceSelect.tsx'
 import { useTableName } from './context.ts'
 import type { PastePlan } from './Grid.tsx'
 import { useGoes } from './goes.ts'
@@ -135,7 +136,7 @@ function SetForm({
       {field && isTags(field) ? (
         <TagPicker field={field} typed={typed} onTyped={setTyped} />
       ) : field?.kind === 'choice' ? (
-        <Select
+        <ChoiceSelect
           of={field}
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
@@ -150,7 +151,7 @@ function SetForm({
           {field.choices.map((c) => (
             <option key={c}>{c}</option>
           ))}
-        </Select>
+        </ChoiceSelect>
       ) : (
         <Field
           value={typed}

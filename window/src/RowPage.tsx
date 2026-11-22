@@ -53,7 +53,7 @@ export function RowPage({
       },
     )
   return (
-    <TableName.Provider value={view.table.name}>
+    <TableName.Provider value={{ name: view.table.name, id: view.table.id }}>
       <Record kind={view.table.name}>
         <PageTitle
           name={view.title}

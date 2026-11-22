@@ -134,7 +134,7 @@ export function Select({
   'data-tip'?: string | undefined // our tip, never the browser's title: a refusal's words
   of?: Choices | undefined // a field's choices: each line in its own colour
   // the default line, and what a click on a line's ★ does (on the default: stops it being one)
-  star?: { value: string | null; onStar: (value: string) => void } | undefined
+  star?: { value: string | null; onStar: (value: string) => Promise<unknown> } | undefined
   adds?: Adds | undefined // Add new at the list's foot, where a list can grow
   startOpen?: boolean | undefined // opened at once: a cell being changed
   onDismiss?: (() => void) | undefined // closed with no pick: a click away, Escape
@@ -145,6 +145,7 @@ export function Select({
   const [open, setOpen] = useState(!!startOpen)
   const [words, setWords] = useState('')
   const anchor = useRef<HTMLButtonElement>(null)
+  const starring = useAct() // a ★ the core refused says why at the list's foot
   const close = () => {
     setOpen(false)
     setWords('')
@@ -210,7 +211,10 @@ export function Select({
                 onClick={() => pick(o.value)}
                 star={
                   star && o.value
-                    ? { on: star.value === o.value, onClick: () => star.onStar(o.value) }
+                    ? {
+                        on: star.value === o.value,
+                        onClick: () => void starring.act(() => star.onStar(o.value)),
+                      }
                     : undefined
                 }
               >
@@ -219,6 +223,7 @@ export function Select({
             ))}
             {shown.length === 0 && <p className="px-2.5 py-1.5 text-ink-3 text-md">No match.</p>}
           </div>
+          {starring.problem && <Refusal words={starring.problem} />}
           {adds && <MenuLine />}
           {adds && <AddNew adds={adds} onDone={dismiss} />}
         </div>

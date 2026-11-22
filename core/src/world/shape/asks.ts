@@ -14,6 +14,7 @@ export type Redo = { words: string } & (
   | { method: 'rename'; args: [{ table: string; field?: string }, string] }
   | { method: 'setChoices'; args: [string, string, string[]] }
   | { method: 'setTones'; args: [string, string, Record<string, Tone>] }
+  | { method: 'setDefault'; args: [string, string, string | null] }
   | { method: 'describe'; args: [{ table: string; field?: string }, string | null, AboutBy] }
   | { method: 'setMany' | 'removeField'; args: [string, string] }
   | { method: 'setPartOf' | 'setPer'; args: [string, string, boolean] }

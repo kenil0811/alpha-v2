@@ -107,12 +107,22 @@ export function setChoices(
       one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
       {},
     )
-    run(shape.db, 'UPDATE fields SET options = ? WHERE id = ?', json({ ...o, choices }), f.id)
+    // a default no longer offered goes with its choice
+    const { default: def, ...rest } = o
+    const kept = typeof def === 'string' && choices.includes(def) ? { default: def } : {}
+    run(
+      shape.db,
+      'UPDATE fields SET options = ? WHERE id = ?',
+      json({ ...rest, choices, ...kept }),
+      f.id,
+    )
+    // the default said when it goes with its choice, never silently
+    const gone = typeof def === 'string' && !choices.includes(def)
     append(shape.db, {
       actor: ctx.actor,
       kind: 'shaped',
-      words: `${f.name} in ${table.name} now offers ${choices.join(', ')}.`,
-      data: { table: table.id, field: f.id, choices },
+      words: `${f.name} in ${table.name} now offers ${choices.join(', ')}.${gone ? ` New rows no longer start with ${def}.` : ''}`,
+      data: { table: table.id, field: f.id, choices, ...(gone ? { default: null } : {}) },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,
       module: table.module.id,
@@ -121,6 +131,77 @@ export function setChoices(
     writeManifest(shape, table.module)
     return shape.table(table.id) as Table
   })
+}
+
+// The choice a new row of a table takes when it gives none, for everyone (★ in a dropdown); null
+// clears it. One of the field's own choices, on a field holding one (tags have none). It is the
+// table's shape, so it meets the shape's walls as choices and colours do (asks.ts): refused in a
+// managed module and on a connection's field, asked of a kit's maintainer; kept in module.yaml.
+export function setDefault(
+  shape: Shape,
+  tableId: string,
+  field: string,
+  value: string | null,
+  ctx: WriteCtx,
+): void {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: value
+        ? `start new rows of ${t?.name} with ${field} ${value}`
+        : `start new rows of ${t?.name} with no ${field}`,
+      method: 'setDefault',
+      args: [tableId, field, value],
+    }),
+    ctx,
+  )
+  const table = shape.table(tableId)
+  if (!table) throw new Refused('That table is not there.')
+  const f = findField(table, field)
+  if (f.kind !== 'choice' || f.tags) throw new Refused(`${f.name} takes no default.`)
+  if (value !== null && !f.choices.includes(value))
+    throw new Refused(`${value} is not one of ${f.name}'s choices.`)
+  if (f.default === value) return
+  tx(shape.db, () => {
+    const { default: _was, ...o } = parse<Record<string, unknown>>(
+      one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+      {},
+    )
+    run(
+      shape.db,
+      'UPDATE fields SET options = ? WHERE id = ?',
+      json({ ...o, ...(value === null ? {} : { default: value }) }),
+      f.id,
+    )
+    append(shape.db, {
+      actor: ctx.actor,
+      kind: 'shaped',
+      words:
+        value === null
+          ? `New rows in ${table.name} no longer start with a ${f.name}.`
+          : `New rows in ${table.name} now start with ${f.name} ${value}.`,
+      data: { table: table.id, field: f.id, default: value },
+      user: ctx.user ?? null,
+      turn: ctx.turn ?? null,
+      module: table.module.id,
+      run: ctx.run ?? null,
+    })
+    writeManifest(shape, table.module)
+  })
+}
+
+// Whether a field's default was last set by someone other than a kit (the person, Alpha): then it
+// is theirs, and a kit's update keeps it, as colours (tonesSetByOthers).
+export function defaultSetByOthers(shape: Shape, fieldId: string): boolean {
+  const last = one<{ actor_kind: string; actor_id: string | null }>(
+    shape.db,
+    `SELECT actor_kind, actor_id FROM journal WHERE kind = 'shaped'
+       AND json_extract(data, '$.field') = ? AND json_type(data, '$.default') IS NOT NULL
+     ORDER BY id DESC LIMIT 1`,
+    fieldId,
+  )
+  return !!last && !(last.actor_kind === 'system' && (last.actor_id ?? '').startsWith('kit:'))
 }
 
 // The colours of a choice field's choices (a kit's: Fits in green). Only the state colours.
@@ -153,10 +234,15 @@ export function setTones(
     JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort())
   if (same(f.tones, tones)) return
   tx(shape.db, () => {
+    // the rest of its options stay: whether it holds several, an index, its default
+    const { tones: _was, ...o } = parse<Record<string, unknown>>(
+      one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+      {},
+    )
     run(
       shape.db,
       'UPDATE fields SET options = ? WHERE id = ?',
-      json({ choices: f.choices, ...(Object.keys(tones).length ? { tones } : {}) }),
+      json({ ...o, ...(Object.keys(tones).length ? { tones } : {}) }),
       f.id,
     )
     append(shape.db, {

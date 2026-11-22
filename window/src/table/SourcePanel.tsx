@@ -6,9 +6,10 @@ import { askForNew } from '../ask.ts'
 import { fileHref } from '../FileView.tsx'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
-import { Field, Select } from '../ui/field.tsx'
+import { Field } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
+import { ChoiceSelect } from './ChoiceSelect.tsx'
 import { useSources } from './sources.ts'
 import { TagPicker } from './Tags.tsx'
 import {
@@ -242,7 +243,7 @@ function Correct({
       {isTags(field) ? (
         <TagPicker field={field} typed={typed} onTyped={setTyped} />
       ) : field.kind === 'choice' ? (
-        <Select
+        <ChoiceSelect
           of={field}
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
@@ -255,7 +256,7 @@ function Correct({
           {field.choices.map((c) => (
             <option key={c}>{c}</option>
           ))}
-        </Select>
+        </ChoiceSelect>
       ) : (
         <Field
           autoFocus

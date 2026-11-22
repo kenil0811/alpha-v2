@@ -67,6 +67,20 @@ export function registerTables(ctx: Ctx): void {
     return { ok: true }
   })
 
+  // ★ on a choice: the one a new row of the table takes when it gives none, for everyone; null
+  // clears it.
+  app.post('/api/tables/:id/default', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { field, value } = z
+      .object({ field: z.string(), value: z.string().nullable() })
+      .parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    world.shape.setDefault(t.id, field, value, asPerson)
+    live()
+    return { ok: true }
+  })
+
   // The person renames a table by double-clicking its name: the same core rename
   // Alpha's tool makes, walled and journaled the same.
   app.post('/api/tables/:id/name', async (req) => {

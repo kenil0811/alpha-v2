@@ -25,6 +25,7 @@ function fieldsOf(
       kind: f.kind,
       ...(f.choices ? { choices: f.choices } : {}),
       ...(f.tones ? { tones: f.tones } : {}),
+      ...(f.default ? { default: f.default } : {}),
       ...(f.relates_to ? { relatesTo: tableOf(f.relates_to) } : {}),
       ...(f.many ? { many: true } : {}),
       ...(f.part_of ? { partOf: true } : {}),
@@ -126,6 +127,10 @@ export function shapeTables(
       // those are theirs, and stand
       if (was && f.tones && !world.shape.tonesSetByOthers(was.id))
         world.shape.setTones(t.id, was.name, f.tones, ctx)
+      // its default the same: the kit's, unless someone else starred one since
+      const now = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
+      if (now && f.default && now.default !== f.default && !world.shape.defaultSetByOthers(now.id))
+        world.shape.setDefault(t.id, now.name, f.default, ctx)
     }
     // a relation the kit now says is part of its row; one whose rows don't all have
     // their row yet stays as it is, and says why

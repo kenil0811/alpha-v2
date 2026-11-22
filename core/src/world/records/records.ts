@@ -118,7 +118,8 @@ export class Records {
       const at = now()
       const ids = rows.map(() => newId('r'))
       const said = saidIn(ctx, nextLine(this.db))
-      for (const [i, row] of rows.entries()) {
+      for (const [i, given] of rows.entries()) {
+        const row = withDefaults(table, given, byCode(ctx))
         const { vals, prov } = this.prepare(
           table,
           row.values,
@@ -531,6 +532,27 @@ export class Records {
   }
   describeStored(table: Table, vals: Record<string, unknown>): string {
     return describeStored(this, table, vals)
+  }
+}
+
+// A new row that gives no value for a choice with a default (★) takes the default, computed from
+// it rather than said by whoever added the row.
+function withDefaults(table: Table, row: RowInput, byKey: boolean): RowInput {
+  const given = new Set(Object.keys(row.values).map((k) => findField(table, k, byKey).id))
+  const unset = table.fields.filter((f) => f.default !== null && !given.has(f.id))
+  if (!unset.length) return row
+  return {
+    ...row,
+    values: { ...row.values, ...Object.fromEntries(unset.map((f) => [f.id, f.default])) },
+    per_field: {
+      ...row.per_field,
+      ...Object.fromEntries(
+        unset.map((f): [string, ProvenanceInput] => [
+          f.id,
+          { kind: 'computed', source: { formula: `the default of ${f.name}` } },
+        ]),
+      ),
+    },
   }
 }
 

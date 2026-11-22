@@ -13,6 +13,7 @@ export function keptField(name: string, kind: string, tones: FieldView['tones'] 
     kind,
     choices: Object.keys(tones),
     tones,
+    default: null,
     many: false,
     relatesTo: null,
     summary: null,

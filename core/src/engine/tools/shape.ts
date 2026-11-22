@@ -22,6 +22,7 @@ const SHAPE_INPUT = {
     'add_fields',
     'rename',
     'set_choices',
+    'set_default',
     'remove_table',
     'save_view',
     'remove_view',
@@ -72,6 +73,10 @@ export function describeShape(a: ShapeAction): string {
       return `rename ${a.field ? `${a.field} in ${a.table}` : `the table ${a.table}`} to ${a.to}`
     case 'set_choices':
       return `give ${a.field} in ${a.table} the choices ${(a.choices ?? []).join(', ')}`
+    case 'set_default':
+      return a.to
+        ? `start new rows of ${a.table} with ${a.field} ${a.to}`
+        : `start new rows of ${a.table} with no ${a.field}`
     case 'remove_table':
       return `remove the table ${a.table}`
     case 'describe':
@@ -172,6 +177,16 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
       if (!a.field || !a.choices) throw new Refused('set_choices needs field and choices.')
       world.shape.setChoices(tableOf(world, table).id, a.field, a.choices, c)
       return say(`${a.field} now offers ${a.choices.join(', ')}.`)
+    }
+    case 'set_default': {
+      if (!a.field)
+        throw new Refused('set_default needs field, and to: the choice (none clears it).')
+      world.shape.setDefault(tableOf(world, table).id, a.field, a.to || null, c)
+      return say(
+        a.to
+          ? `New rows of ${table} now start with ${a.field} ${a.to}.`
+          : `New rows of ${table} no longer start with a ${a.field}.`,
+      )
     }
     case 'remove_table': {
       const t = tableOf(world, table)
@@ -302,6 +317,7 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'describe: give table and about for the table; table, field and about for a field; table, field (the view’s name), what: view and about for a view.',
         'rename: give table, and field if it is a field, and to.',
         'set_choices: give table, field and choices.',
+        'set_default: give table, field and to, the choice a new row takes when it gives none (★, for everyone); no to clears it.',
         'remove_table: give table; if it holds the person’s own entries and they asked for it, asked_in quotes their words asking.',
         'save_view: a saved view of a table, shared by everyone, shown as a tab over it; give table, field (the view’s name; to renames it), view and default (true to open the table on it). Read the view grammar with guide (about: views) before you save one.',
         'remove_view: give table and field (the view’s name).',

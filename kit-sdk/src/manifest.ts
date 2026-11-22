@@ -34,6 +34,7 @@ const Field = z.object({
   kind: z.enum(FIELD_KINDS),
   choices: z.array(z.string()).optional(),
   tones: z.record(z.string(), z.enum(TONES)).optional(),
+  default: z.string().optional(), // a choice a new row takes when it gives none (★), one of its choices
   relates_to: z.string().optional(),
   many: z.boolean().optional(), // a relation holding a list of rows, a choice holding several
   summary: Summary.optional(), // a summary field's: what it sums up

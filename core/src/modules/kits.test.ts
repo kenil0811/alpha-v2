@@ -127,6 +127,34 @@ describe('updating a kit', () => {
     expect(field('Grade')).toEqual({ A: 'bad', B: 'good' })
   })
 
+  it('installs a choice’s default (★), and a newer version’s, keeping the one someone else starred since', async () => {
+    const withDefault = (dir: string, version: string, kind: string, grade: string) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace(
+            '      - { name: Email, kind: email }',
+            `      - { name: Email, kind: email }\n      - { name: Kind, kind: choice, choices: [Flour, Milk], default: ${kind} }\n      - { name: Grade, kind: choice, choices: [A, B], default: ${grade} }`,
+          ),
+      )
+    const first = join(home, 'kit-default-1')
+    cpSync(KIT, first, { recursive: true })
+    withDefault(first, '0.1.0', 'Flour', 'A')
+    await install(world, first, ctx)
+    const suppliers = world.shape.table('Suppliers')?.id as string
+    const field = (name: string) =>
+      world.shape.table(suppliers)?.fields.find((f) => f.name === name)?.default
+    expect([field('Kind'), field('Grade')]).toEqual(['Flour', 'A'])
+    // the person stars Milk on Kind; Grade they leave as the kit has it
+    world.shape.setDefault(suppliers, 'Kind', 'Milk', ctx)
+    const next = join(home, 'kit-default-2')
+    cpSync(KIT, next, { recursive: true })
+    withDefault(next, '0.2.0', 'Flour', 'B')
+    await update(world, 'Bakery', next, ctx)
+    expect([field('Kind'), field('Grade')]).toEqual(['Milk', 'B'])
+  })
+
   it('keeps a renamed schedule whole: its id, its state and its last run (matched by its file)', async () => {
     const m = await install(world, KIT, ctx)
     const before = schedules(world, m.id).find((a) => a.name === 'Counter')

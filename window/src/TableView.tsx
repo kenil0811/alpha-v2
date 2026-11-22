@@ -268,7 +268,7 @@ export function TableView({
   const count = loading || totalsRow ? null : rowCount(rows.length, data.rows.length)
 
   return (
-    <TableName.Provider value={data.name}>
+    <TableName.Provider value={{ name: data.name, id: own ? null : data.id }}>
       <ShapeFixed.Provider value={managedWhy(data.managed)}>
         <div className="flex h-full min-h-0">
           <div className="mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">

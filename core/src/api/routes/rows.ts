@@ -22,6 +22,7 @@ export const fieldViews =
     kind: f.kind,
     choices: f.choices,
     tones: f.tones,
+    default: f.default,
     ...(f.summary ? summaryShows(shape, f.summary) : {}),
     many: f.many || f.tags,
     relatesTo: f.kind === 'relation' ? (f.relatesTo ?? null) : null,

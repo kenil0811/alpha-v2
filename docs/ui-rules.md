@@ -61,7 +61,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
 | T8 | Rows come 25, 50, 100 or 250 a page (50 until the person picks, kept per person), in the table, list and gallery views, the pages as numbers at the foot's right, ‹ 1 2 … 21 › | 25 Oct, 20 Nov | — |
 | T9 | Ticked rows show "n selected"; Escape lets them go after any menu closes | 26 Oct | — |
-| T10 | Every dropdown is one of ours: ✓ on the current pick, search past six (a filter's fields and its values too), Add new at the foot where a choice can grow, ★ on a line to make it the default where a default is kept (one shared part, the tags picker too, with its search); a related row or a person is picked from one on a double-click, in the grid and an opened row (a relation holding several ticks rows, as tags do, T15), never with Add new (a new related row is made on its own table); pasting, filling down and many rows at once leave them to Alpha | 26 Oct, 1 Nov, 2 Nov, 20 Nov | test (picks) |
+| T10 | Every dropdown is one of ours: ✓ on the current pick, search past six (a filter's fields and its values too), Add new at the foot where a choice can grow, ★ on a line to make it the default where a default is kept (a choice field's ★ is its default for everyone, which a new row given none takes, computed from it) (one shared part, the tags picker too, with its search); a related row or a person is picked from one on a double-click, in the grid and an opened row (a relation holding several ticks rows, as tags do, T15), never with Add new (a new related row is made on its own table); pasting, filling down and many rows at once leave them to Alpha | 26 Oct, 1 Nov, 2 Nov, 20 Nov | test (picks) |
 | T11 | No bare `<select>` where a person picks, the cell editor included: a choice cell opens our dropdown at once, saved on a pick, Escape leaves it | 25 Oct, 2 Nov | test |
 | T12 | Freezing and wrapping columns are kept with the saved list, like widths | 26 Oct | — |
 | T13 | A cell's History (old → new, who, when) is on its right-click menu; ⇧↓ and ⌘D fill down, after a yes | 26 Oct | — |
@@ -162,5 +162,5 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, and choosing its icon (needs the core).
-- A choice column's default for everyone, and flagging a cell as wrong (needs the core).
+- Flagging a cell as wrong (needs the core).
 - On a phone, a bottom tab bar with modules and chat as drawers.

@@ -140,6 +140,14 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
       problems.push(...summaryProblems(m, t.name, f))
       if (f.per && f.kind !== 'person')
         problems.push(`${t.name}'s ${f.name}: only a person field holds one row per person (per).`)
+      // a default (★) is one of the choice's own, on a choice holding one
+      if (
+        f.default !== undefined &&
+        (f.kind !== 'choice' || f.many || !f.choices?.includes(f.default))
+      )
+        problems.push(
+          `${t.name}'s ${f.name}: a default is one of the choices of a choice holding one (${f.default}).`,
+        )
       // a part belongs to one row of a table, never to a list or to itself
       if (f.part_of && (f.kind !== 'relation' || f.many || f.relates_to === t.name))
         problems.push(
