@@ -11,8 +11,8 @@ const DIR = join(import.meta.dirname, '..', 'config')
 // models listed, so a small decision can run on a small model.
 const Models = z
   .object({
-  desk: z.string().min(1),
-  agents: z.array(z.string().min(1)).min(1),
+    desk: z.string().min(1),
+    agents: z.array(z.string().min(1)).min(1),
     asks: z.object({
       reading: z.string().min(1),
       judging: z.string().min(1),

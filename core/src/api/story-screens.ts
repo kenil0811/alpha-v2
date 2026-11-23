@@ -164,7 +164,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         'Install Claude Code on your computer, then run this in Terminal:',
         'Sign in with the Claude account whose plan I should use.',
         'It prints a code starting sk-ant-: paste it here. I keep it sealed.',
-          ],
+      ],
       command: 'claude setup-token',
       without:
         'You can skip this. Until I can reach Claude I can’t read what you connect, learn about you or answer you; connect me any time in Settings.',
