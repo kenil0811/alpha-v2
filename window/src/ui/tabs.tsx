@@ -12,6 +12,7 @@ import { cn } from './cn.ts'
 import { Fit } from './fit.tsx'
 import { PillSwitch } from './pill-switch.tsx'
 import { Renamable } from './rename.tsx'
+import { Roll } from './roll.tsx'
 import type { TabKeeping } from './tab-order.ts'
 
 export type Tab = {
@@ -95,7 +96,7 @@ export function Tabs({
               {t.icon && <span className="text-ink-3">{t.icon}</span>}
               <Fit>{t.label}</Fit>
               {t.count !== undefined && (
-                <span className="font-normal text-ink-3 text-xs tabular-nums">{t.count}</span>
+                <Roll value={t.count} className="font-normal text-ink-3 text-xs" />
               )}
             </button>
           )}

@@ -46,6 +46,7 @@ import { blankFor, drawnAs, useCoreView, useKept, useWorkingList, viewOf } from 
 import { Select } from './ui/field.tsx'
 import { FRAME } from './ui/frame.tsx'
 import { grow, shrink } from './ui/motion.ts'
+import { Roll } from './ui/roll.tsx'
 
 export function TableView({
   data,
@@ -573,7 +574,7 @@ export function TableView({
               onSaveAs={saveAs}
             >
               {readByWords(data.readBy) && <span className="mr-3">{readByWords(data.readBy)}</span>}
-              {count && <span className="tabular-nums">{count}</span>}
+              {count && <Roll value={count} />}
               {rows.length > Math.min(size, ...SIZES) && grid && (
                 <>
                   <Select

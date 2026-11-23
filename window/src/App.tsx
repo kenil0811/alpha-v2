@@ -49,7 +49,7 @@ import { titleOf } from './table/values.ts'
 import { useTableLoad } from './table-load.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
 import { inside } from './tree.ts'
-import { crossFade } from './ui/motion.ts'
+import { celebrate, crossFade, justPressed } from './ui/motion.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { useWorkspaceHere, WorkspaceContext } from './Workspace.tsx'
@@ -151,6 +151,13 @@ export function App() {
       : lastLine === 'error' || lastLine === 'refused'
         ? 'failed'
         : 'quiet'
+  // the last thing waiting on the person, answered by them: one small burst (motion, 23 Nov)
+  const waitingNow = stream?.cards.length ?? 0
+  const waitedBefore = useRef(waitingNow)
+  useEffect(() => {
+    if (waitedBefore.current > 0 && waitingNow === 0 && justPressed()) celebrate()
+    waitedBefore.current = waitingNow
+  }, [waitingNow])
   // the agent the assistant shows, kept per person; the Chief of staff when it has gone
   const agents = useAgents(version)
   // the workspace tile: one name and picture for the Alpha
