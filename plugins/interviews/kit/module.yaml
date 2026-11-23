@@ -4,7 +4,7 @@
 name: Your work
 # off the rail: the Interviewer's report opens from its link and ⌘K (Vikas, 22 Nov)
 hidden: true
-version: 0.5.0
+version: 0.5.1
 api: 3
 business_case:
   for: Each person here, about their own work
@@ -75,6 +75,6 @@ tables:
     fields:
       - { name: Source, kind: text, about: "What it reads: Mail, Calendar, Contacts, A folder, Browsing, Apps, AI work, What you have in Alpha." }
       - { name: Person, kind: text, about: "Whose it is: their name in Alpha." }
-      - { name: State, kind: choice, choices: [Asked, Allowed, Skipped], tones: { Asked: warn, Allowed: good, Skipped: bad }, about: "Allowed or switched off in Set up Alpha's Get to know you (Asked while a card waits, in a chat); a skipped source is never read." }
+      - { name: State, kind: choice, choices: [Asked, Allowed, Skipped], tones: { Asked: warn, Allowed: good, Skipped: bad }, about: "Allowed once connected and read in Set up Alpha (Asked while a card waits, in a chat); Skipped is one the person turned off, never read." }
       - { name: Found, kind: text, about: "What was found when it was last read: the counts and the top few." }
       - { name: Card, kind: text, about: "The card it was asked on." }

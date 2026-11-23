@@ -1,0 +1,23 @@
+name: everything-skipped-ends-on-something-to-do
+title: An owner who skips every step of Set up Alpha still ends on something to do, and no step is ticked done that was not
+why: >
+  Set up Alpha on one page (proposed, Vikas 23 Nov): nothing is compulsory, every step can be
+  skipped and the flow is kept; a step with nothing on it is hidden or says plainly why, and is
+  never ticked done when nothing happened. An owner who skips everything after Hello lands on Done,
+  which says nothing is connected yet and offers one box for something they repeat, for the Module
+  builder. A made-up shop; interviews off, a model set.
+steps:
+  - story: { chapter: welcome }
+  - story: { skip_to: done }
+    checks:
+      - story:
+          chapters: [welcome, workspace, computer, connect, people, done]
+          at: done
+          row: 'Carry on setting up: 5 of 6 done'
+      # said plainly, and something to do
+      - story_says: { chapter: done, matches: '"repeat":true', never: 'start with what you connect' }
+      - story_says: { chapter: done, matches: 'Nothing is connected yet' }
+  - story: { chapter: done }
+    checks:
+      - story: { done: true, row: null }
+      - errors: 0

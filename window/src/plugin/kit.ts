@@ -8,13 +8,14 @@ import { useLayout } from '../layout.ts'
 import { openLink } from '../opened.ts'
 import type { Next } from '../story/next.ts'
 
-export { Check, ChevronRight, LoaderCircle, Sparkles, X } from 'lucide-react'
+export { Check, ChevronRight, LoaderCircle, Pencil, Sparkles, X } from 'lucide-react'
 export { wordsOf } from '../api.ts'
 
 export { startAsk } from '../ask.ts'
 // a module built from what the person asked, by the Module builder, as New module does
 export { askFor, giveBuilder as startBuild } from '../NewModule.tsx'
 export type { Next } from '../story/next.ts'
+export { Repeat } from '../story/repeat.tsx'
 export { Refusal, useAct } from '../ui/act.tsx'
 export { Button, IconButton } from '../ui/button.tsx'
 export { Actions, Card } from '../ui/card.tsx'
@@ -27,6 +28,7 @@ export { Answer, Question } from '../ui/question.tsx'
 export { Empty, Section } from '../ui/section.tsx'
 export { Switch } from '../ui/switch.tsx'
 export { Words } from '../ui/words.tsx'
+export { type Answer as YesNoAnswer, YesNo } from '../ui/yes-no.tsx'
 
 // A chapter of the plugin's in Set up Alpha, drawn in the story's own frame: its screen as its
 // chapter's screen() said it, a way to read it again, the act at the story's foot it sets, and

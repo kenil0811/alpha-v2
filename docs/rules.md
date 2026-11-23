@@ -101,7 +101,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 |---|---|---|---|
 | I1 | Every line, workflow, step, question and proposal the Interviewer proposes, in its chat or in Set up Alpha's draft, cites what it rests on (a row read, the person's answer, a page, a file, a line of what they did in Alpha), and only that: one that cites nothing, cites what nothing read holds, names a site or file nothing read holds, or says "you said" of words not in the answers it cites is refused | 19 Nov | test |
 | I2 | The report's numbers come from code: how often from the rows that are each one time, counted over the days read; how long from the person's answer; hours a month from the two. Where one is not to hand it may be estimated, and is kept as estimated with what it rests on, as are the hours it makes | 19 Nov | test |
-| I3 | A source the person switched off in Set up Alpha's Get to know you is never read and never cited; sources are switched on there alone, never asked for on a card in a chat | 19 Nov, 22 Nov | test |
+| I3 | A source is read only once the person connected it, never one they turned off (Skipped in Your work's Interview sources), and nothing unread is cited; a source is never asked for on a card in a chat (proposed, Vikas 23 Nov: connecting is the permission) | 19 Nov, 22 Nov, 23 Nov | test |
 | I4 | A line the person dropped, or a proposal they declined (by its name or what it does), is never proposed again, in a chat or in Set up Alpha's What I learned | 19 Nov, 22 Nov | test |
 
 ## Plugins

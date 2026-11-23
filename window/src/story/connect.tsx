@@ -10,7 +10,7 @@ import type {
   SiteView,
   TileConnection,
 } from '@alpha/core/api'
-import { CalendarDays, Check, ExternalLink, FileUp, Laptop, LayoutGrid, X } from 'lucide-react'
+import { CalendarDays, Check, ExternalLink, FileUp, Laptop, LayoutGrid } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
 import { Install, lendsWords, mine, Pairing } from '../Computers.tsx'
@@ -20,7 +20,7 @@ import { AppSetup, signInWith } from '../SignInApps.tsx'
 import { useSiteSignIn } from '../Sites.tsx'
 import { dayWords } from '../time.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
-import { Button, IconButton } from '../ui/button.tsx'
+import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { cutTip } from '../ui/cut-tip.ts'
 import { carriesFiles, dropped } from '../ui/drop-zone.tsx'
@@ -369,6 +369,7 @@ function AppsTile({
   const { busy, problem, act } = useAct(again)
   const site = useSiteSignIn(loadSites)
   const [connecting, setConnecting] = useState<string | null>(null)
+  const [manual, setManual] = useState<string | null>(null) // the app whose steps by hand are open
   const signedIn = (s: string) => sites.some((x) => x.site === s || s.endsWith(`.${x.site}`))
   const open = connecting ? view?.connectors.find((c) => c.name === connecting) : undefined
   const app = open
@@ -402,8 +403,9 @@ function AppsTile({
           {t.apps.map((a) => (
             <li
               key={a.name}
-              className="group flex items-center gap-2 border-hair border-t py-1.5 text-md first:border-t-0"
+              className="flex flex-col border-hair border-t py-1.5 text-md first:border-t-0"
             >
+              <div className="flex items-center gap-2">
               <span className="min-w-0 flex-1 truncate text-ink">{a.name}</span>
               <span className="text-ink-3 text-sm">
                 {[
@@ -418,28 +420,47 @@ function AppsTile({
                 <Pill tone="good">
                   <Check className="size-3" /> {a.connected ? 'Connected' : 'Signed in'}
                 </Pill>
-              ) : a.connector ? (
-                <Button size="sm" onClick={() => setConnecting(a.connector)}>
-                  Connect
-                </Button>
-              ) : a.site ? (
+                ) : (
+                  // one Connect for every app: a connector's form, its site's sign-in, or, where
+                  // Alpha has no way in, the steps by hand opening under the row
                 <Button
                   size="sm"
                   disabled={busy}
-                  onClick={() => void act(() => site.signIn(`https://${a.site}`))}
+                    aria-expanded={a.connector || a.site ? undefined : manual === a.name}
+                    onClick={() =>
+                      a.connector
+                        ? setConnecting(a.connector)
+                        : a.site
+                          ? void act(() => site.signIn(`https://${a.site}`))
+                          : setManual((m) => (m === a.name ? null : a.name))
+                    }
                 >
-                  Sign in
+                    Connect
                 </Button>
-              ) : null}
-              {/* left out of the list for good, as a short list's ✕ (ui-rules R8) */}
-              <IconButton
-                label={`Leave ${a.name} out`}
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
                 disabled={busy}
-                className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
-                onClick={() => void act(() => api.post('/api/story/apps/remove', { name: a.name }))}
+                  onClick={() =>
+                    void act(() => api.post('/api/story/apps/remove', { name: a.name }))
+                  }
               >
-                <X className="size-3.5" />
-              </IconButton>
+                  Exclude
+                </Button>
+              </div>
+              {manual === a.name && (
+                <ol
+                  aria-label={`How to connect ${a.name}`}
+                  className="mt-1.5 flex list-decimal flex-col gap-1 pl-5 text-ink-2 text-sm"
+                >
+                  {(
+                    a.how ?? ['There is no way in to it yet: Exclude it, or leave it for later.']
+                  ).map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              )}
             </li>
           ))}
         </ul>

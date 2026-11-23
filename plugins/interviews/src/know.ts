@@ -1,13 +1,15 @@
-// Set up Alpha's Get to know you (the redesign of 22 Nov, calls 15 and 16): one screen of every
-// source this person has, what each reads and how much there is, all on, each with a switch;
-// "Read these" is the allow. Code reads every allowed source together, saying what it found as it
-// comes, and a source switched off is never read or cited (rules I3). Then one draft is written in
-// the background (draft.ts) while the person goes on.
+// What the Interviewer reads (the redesign of 22 Nov, calls 15 and 16; on one page, proposed, Vikas
+// 23 Nov): connecting a source is the permission to read it, so there is no second list of
+// switches. Every connected source is read together in the background as soon as What I learned
+// opens, again when another is connected, never one the person turned off in Your work's Interview
+// sources (rules I3); then one draft is written in the background (draft.ts) and What I learned
+// fills in place. The person never waits on it.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Input, PluginHost } from '@alpha/plugin-sdk'
 import { z } from 'zod'
 import { config } from './config.ts'
+import { think } from './draft.ts'
 import { readSite } from './site.ts'
 import { connected, SOURCES } from './sources.ts'
 
@@ -54,9 +56,9 @@ export function settleStories(host: PluginHost): void {
         ...st,
         reading: false,
         drafting: false,
-        problem: st.reading
-          ? 'Alpha restarted while it was reading: go back to Get to know you and press Read these again.'
-          : 'Alpha restarted while it was writing: press Try again.',
+        // a reading cut off is read again when What I learned next opens
+        ...(st.reading ? { read: null } : {}),
+        problem: st.reading ? null : 'Alpha restarted while it was writing: press Try again.',
       }
       changed = true
     }
@@ -114,7 +116,7 @@ export function shownOf(words: string): string[] {
 // The person as the Interviewer's rows name them.
 export type Who = Input['person']
 
-// What the person may switch: every source, and the workspace's site for the owner.
+// Every source the person has, and the workspace's site for the owner.
 export function sourcesFor(host: PluginHost, who: Who) {
   const site = who.owner ? host.workspace().site : null
   const days = config.lookback_days
@@ -123,8 +125,8 @@ export function sourcesFor(host: PluginHost, who: Who) {
     // the computer's readers read only on the allow; the others say what they hold now
     const has = s.atInterview
       ? ready
-        ? 'Read from your computer when you press Read these'
-        : 'Turn it on in Alpha Bridge on your computer'
+        ? 'Read from your computer'
+        : 'Turned on in Alpha Bridge on your computer'
       : (s.read(host, who.id, days).words.split('\n')[0] ?? '')
     const there = s.atInterview ? ready : !/^No |^Nothing /.test(has)
     return { key: s.key, name: s.name, reads: s.reads, has, available: there }
@@ -144,25 +146,51 @@ export function sourcesFor(host: PluginHost, who: Who) {
     : list
 }
 
-export const knowScreen = (host: PluginHost, who: Who) => {
-  const st = storyOf(host, who.id)
-  return {
-    says: 'Let me look around. I’ll show you everything I find.',
-    sources: sourcesFor(host, who),
-    reading: st.reading,
-    found: st.found,
-  }
+// The sources the person turned off, by key: Skipped in Your work's Interview sources.
+function turnedOff(host: PluginHost, who: Who): string[] {
+  const off = new Set(
+    host.own
+      .rows('Interview sources')
+      .filter((r) => r.values.Person === who.name && r.values.State === 'Skipped')
+      .map((r) => String(r.values.Source)),
+  )
+  return sourcesFor(host, who)
+    .filter((s) => off.has(s.name))
+    .map((s) => s.key)
 }
 
-// Every source read together, switched off ones never; what was found kept as it comes.
-export async function readAll(host: PluginHost, who: Who, off: string[]): Promise<void> {
+// Read in the background when What I learned is drawn: the first time, and again once a source
+// was connected since; then the draft. Nothing waits on it.
+// ponytail: a source's new rows after it was read are not re-read; the monthly check finds them
+export function startReading(host: PluginHost, who: Who): void {
+  const st = storyOf(host, who.id)
+  if (st.reading || st.drafting) return
+  const off = turnedOff(host, who)
+  const ready = sourcesFor(host, who).filter((s) => s.available && !off.includes(s.key))
+  const read = new Set(st.found.filter((f) => f.on).map((f) => f.key))
+  if (st.read && ready.every((s) => read.has(s.key))) return
+  if (!ready.length) {
+    if (!st.read) keepStory(host, who.id, { read: new Date().toISOString() })
+    return
+  }
+  void readThenDraft(host, who, off)
+}
+
+// Every connected source read, then the draft, when anything was read.
+export async function readThenDraft(host: PluginHost, who: Who, off: string[]): Promise<void> {
+  await readAll(host, who, [...new Set([...off, ...turnedOff(host, who)])])
+  if (storyOf(host, who.id).found.some((f) => f.on)) await think(host, who)
+}
+
+// Every source read together, turned-off ones never; what was found kept as it comes.
+async function readAll(host: PluginHost, who: Who, off: string[]): Promise<void> {
   keepStory(host, who.id, { reading: true, found: [], site: [], problem: null })
   const found: Story['found'] = []
   const mine = host.own.rows('Interview sources').filter((r) => r.values.Person === who.name)
   const mark = (name: string, state: 'Allowed' | 'Skipped', words: string) => {
     const row = mine.find((r) => r.values.Source === name)
     const values = { State: state, Found: words }
-    const why = state === 'Allowed' ? 'allowed in Get to know you' : 'switched off there'
+    const why = state === 'Allowed' ? 'connected, so read' : 'turned off by them'
     if (row) host.own.change('Interview sources', row.id, values, why)
     else
       host.own.add('Interview sources', [
@@ -173,7 +201,8 @@ export async function readAll(host: PluginHost, who: Who, off: string[]): Promis
     for (const s of sourcesFor(host, who)) {
       const on = s.available && !off.includes(s.key)
       if (!on) {
-        if (s.key !== 'site') mark(s.name, 'Skipped', '')
+        // only what the person turned off is marked so; one not connected is simply not read
+        if (s.key !== 'site' && s.available) mark(s.name, 'Skipped', '')
         found.push({ key: s.key, name: s.name, on: false, words: 'Not read.' })
         keepStory(host, who.id, { found })
         continue
@@ -216,4 +245,5 @@ export async function readAll(host: PluginHost, who: Who, off: string[]): Promis
   )
 }
 
-export const KnowBody = z.object({ off: z.array(z.string()).default([]) })
+// Read again now, leaving out these sources (marked turned off in Interview sources).
+export const ReadBody = z.object({ off: z.array(z.string()).default([]) })

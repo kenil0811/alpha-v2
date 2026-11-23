@@ -107,12 +107,12 @@ function toolsOf(w: RuleWorld, plugins: Awaited<ReturnType<typeof switchOn>>['pl
     w.world.cards.answer(card.id, said, person)
     return card.id
   }
-  // Set up Alpha's Get to know you, as the person leaves sources on or off
+  // Set up Alpha reading what is connected, these sources turned off
   const know = (off: string[]) => {
-    const c = plugins.chapters.find((x) => x.key === 'know')
-    if (!c) throw new Error('No Get to know you.')
+    const c = plugins.chapters.find((x) => x.key === 'learned')
+    if (!c) throw new Error('No What I learned.')
     const who = { id: w.user.id, name: w.user.name, owner: true }
-    return c.act({ params: {}, query: {}, body: { off }, person: who })
+    return c.act({ params: {}, query: {}, body: { read: { off } }, person: who })
   }
   const OTHERS = ['calendar', 'contacts', 'folder', 'browsing', 'apps', 'ai', 'alpha']
   const allowMail = async () => {
@@ -168,7 +168,7 @@ async function storied(
     }
     throw new Error('The draft never came.')
   }
-  const read = (off: string[]) => chapter('know').act(input({ off }))
+  const read = (off: string[]) => chapter('learned').act(input({ read: { off } }))
   return { ...i, chapter, input, learned, read }
 }
 
@@ -286,14 +286,14 @@ rule('I2', 'the report’s numbers come from code, or are marked estimated with 
   },
 })
 
-rule('I3', 'a source the person skipped is never read or cited', {
+rule('I3', 'a source the person has not connected, or turned off, is never read or cited', {
   cases: {
     'switched off, it is not read in a chat either': async (w) => {
       const i = await interviewing(w)
       await i.skipMail()
       const out = await i.call('source', { source: 'mail' })
       return (
-        /switched off Mail: it is never read/.test(out.text) && !/mails in the last/.test(out.text)
+        /turned off Mail: it is never read/.test(out.text) && !/mails in the last/.test(out.text)
       )
     },
     'switched off, nothing may cite it': async (w) => {
@@ -302,7 +302,7 @@ rule('I3', 'a source the person skipped is never read or cited', {
       const out = await i.call('propose', quoting(i.mail))
       return out.refused && /skipped/.test(out.text)
     },
-    'switched off in Get to know you, it is not read, and a draft citing it is left out': async (
+    'turned off, it is not read when Set up Alpha reads, and a draft citing it is left out': async (
       w,
     ) => {
       let given = ''
@@ -328,7 +328,7 @@ rule('I3', 'a source the person skipped is never read or cited', {
       const out = await i.call('source', { source: 'mail' })
       return (
         out.refused &&
-        /Get to know you/.test(out.text) &&
+        /Set up Alpha/.test(out.text) &&
         w.world.cards.waiting(w.user.id).length === 0
       )
     },

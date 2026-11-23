@@ -5,7 +5,8 @@
 export type ChapterState = 'done' | 'skipped' | 'now' | 'ahead'
 
 export interface StoryView {
-  chapters: { key: string; title: string; state: ChapterState }[]
+  // summary: a step gone through, in a few words ("Harbor Renovations · Business", "2 accounts")
+  chapters: { key: string; title: string; state: ChapterState; summary: string | null }[]
   at: string | null // the chapter the person is on; none once they finished
   done: boolean
   declined: boolean
@@ -32,20 +33,24 @@ export interface ClaudeScreen extends Screen {
   how: 'token' | 'signin' // a server takes a token; a Mac signs in in the browser
   set: boolean // Alpha reaches Claude now
   steps: string[] // what to do, in order
+  command: string | null // what to run in Terminal, on a server, shown to copy
+  without: string // what won't work until Claude is connected, said beside its Skip
 }
 
 export interface WorkspaceScreen extends Screen {
   key: 'workspace'
   name: string | null
+  suggested: string | null // the name guessed from the owner's own mail domain
   picture: boolean
-  for: string | null // who the work is for, in the owner's own words
-  kinds: string[] // the words offered for it, with a box for any other
+  for: string | null // who the work is for, in the owner's own words (not asked on the first run)
+  use: 'business' | 'personal' | null // a business may need its admin's approval later
   site: string | null // the site given
   guess: string | null // the site guessed from the email's domain, never a mail provider's
 }
 
+// Your accounts, and Your computer: the same tiles, the computer's on a step of its own
 export interface ConnectScreen extends Screen {
-  key: 'connect'
+  key: 'connect' | 'computer'
   tiles: ConnectTile[]
 }
 
@@ -91,6 +96,8 @@ export interface AppFound {
   site: string | null
   connector: string | null
   connected: boolean
+  // where Alpha has no way in (no connector, no site): what to do by hand, step by step
+  how?: string[]
 }
 
 export interface PeopleScreen extends Screen {
@@ -112,12 +119,14 @@ export interface DoneScreen extends Screen {
   key: 'done'
   connected: string[]
   people: string[] // who the owner added
-  none: string // what to say where nothing is there yet: the owner's and a member's differ
+  none: string // what to say where nothing is connected: the owner's and a member's differ
+  repeat: boolean // a box for something they repeat, where no plugin offers what to build
 }
 
 // A chapter a plugin adds: its own screen's fields beside these, drawn by its own window part.
 export interface PluginScreen extends Screen {
   plugin: string
+  nothing?: boolean // nothing to show: the window skips the step rather than draw it empty
   [field: string]: unknown
 }
 

@@ -1,7 +1,7 @@
 // Set up Alpha's routes, each about whoever is asking: where their story stands, a chapter's
 // screen, its act and its Skip, Decline (Home's row goes) and Reopen (from the workspace tile's
-// menu). A chapter is acted on only once the ones before it are gone through or skipped, and
-// Claude cannot be skipped while no model is set (call 5).
+// menu). A chapter is acted on only once the ones before it are gone through or skipped; every one
+// but Hello and Done can be skipped, Claude too (proposed, Vikas 23 Nov).
 import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import {
@@ -52,6 +52,7 @@ export function registerStory(ctx: Ctx): void {
   const room = (req: { protocol: string; headers: { host?: string | undefined } }) => ({
     modelSet,
     onServer,
+    plugins: (options.chapters ?? []).some((c) => c.who === 'everyone' || user.role === 'owner'),
     linkFor: (link: string) =>
       `${options.publicAddress ?? `${req.protocol}://${req.headers.host}`}/?link=${encodeURIComponent(link)}`,
   })
@@ -65,7 +66,11 @@ export function registerStory(ctx: Ctx): void {
       progress: progressOf(world.db, user.id),
     })
   const view = async (): Promise<StoryView> =>
-    storyView(await chapters(), progressOf(world.db, user.id))
+    storyView(
+      await chapters(),
+      progressOf(world.db, user.id),
+      storyScreens(ctx, room({ protocol: 'http', headers: {} })).summary,
+    )
   // a chapter of the person's story, which they may act on: one gone through, or the one they are on
   const reachable = async (key: string): Promise<Chapter> => {
     // the workspace and who may sign in are the owner's alone (rules A6)
@@ -139,23 +144,23 @@ export function registerStory(ctx: Ctx): void {
     const { chapter: key } = z.object({ chapter: z.string().max(60) }).parse(req.params)
     const chapter = await reachable(key)
     if (chapter.plugin) {
-      const out = await chapter.plugin.act(input(req))
-      if (out.on) through(key, 'done')
+      const { nothing, ...out } = await chapter.plugin.act(input(req))
+      if (out.on) through(key, nothing ? 'skipped' : 'done')
       return { ...out, story: await view() }
     }
     const { acts } = storyScreens(ctx, room(req))
-    const out = (await acts[key]?.(req.body)) ?? {}
-    through(key, 'done')
+    // a step on which nothing happened is skipped, never ticked done
+    const { nothing, ...out } = (await acts[key]?.(req.body)) ?? {}
+    through(key, nothing ? 'skipped' : 'done')
     return { ...out, story: await view() }
   })
 
   app.post('/api/story/:chapter/skip', async (req) => {
     const { chapter: key } = z.object({ chapter: z.string().max(60) }).parse(req.params)
     await reachable(key)
-    if (key === 'welcome') throw new Refused('Welcome has nothing to skip: press Start.')
-    // nothing else works without a model (call 5)
-    if (key === 'claude' && !(await modelSet()))
-      throw new Refused('Claude can’t be skipped: nothing else works until Alpha can reach it.')
+    if (key === 'welcome') throw new Refused('Hello has nothing to skip: press Start.')
+    // nothing is compulsory, Claude included: its step says what waits on it (proposed, Vikas
+    // 23 Nov, reversing call 5)
     through(key, 'skipped')
     return { story: await view() }
   })

@@ -22,10 +22,11 @@ steps:
         site: '{site}'
     checks:
       - errors: 0
+  - story: { chapter: computer, skip: true }
   - story: { chapter: connect }
-  # every source switched off: only the site is read
-  - story: { chapter: know, body: { off: [mail, calendar, contacts, alpha] } }
   - story: { chapter: people }
+  # every source but the site turned off, so only the site is read
+  - story: { chapter: learned, body: { read: { off: [mail, calendar, contacts, alpha] } } }
   - story:
       chapter: learned
       answers:
