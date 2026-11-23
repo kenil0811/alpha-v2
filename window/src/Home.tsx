@@ -7,6 +7,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
 import { shownScreens } from './plugin/screens.ts'
+import { ReadLine } from './ReadReport.tsx'
 import { signInWith } from './SignInApps.tsx'
 import { StoryRow } from './story/StoryRow.tsx'
 import { TaskList } from './Tasks.tsx'
@@ -110,6 +111,9 @@ export function Home({
             Setting up {stream.settingUp}
           </p>
         )}
+
+        {/* see what Alpha read: the live line while a read runs (proposed, 23 Nov) */}
+        {!!stream?.reading.length && <ReadLine version={last} />}
 
         {/* Set up Alpha, until the person finishes it or declines */}
         <StoryRow version={last} />

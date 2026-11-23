@@ -8,6 +8,7 @@ import { Check, Minus } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from '../api.ts'
 import { Face } from '../Face.tsx'
+import { ReadLine } from '../ReadReport.tsx'
 import { Refusal, useAct } from '../ui/act.tsx'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
@@ -130,6 +131,8 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
               {screen?.says ?? ''}
             </h1>
           </header>
+          {/* see what Alpha read: the live line, opening the report (proposed, 23 Nov) */}
+          <ReadLine onOpen={onClose} />
           <section key={at} className="story-rise min-h-90 flex-1">
             {screen && (
               <ChapterBody

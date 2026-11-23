@@ -11,6 +11,7 @@ import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
 import { Modules, when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
+import { ReadReport } from './ReadReport.tsx'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
@@ -49,6 +50,7 @@ const TABS = [
   ['appearance', 'Appearance'],
   ['permissions', 'Permissions'],
   ['activity', 'Activity'],
+  ['read', 'What Alpha read'], // see what Alpha read (proposed, 23 Nov)
   ['people', 'People'],
   ['connections', 'Connections'],
   ['files', 'Files'],
@@ -103,6 +105,7 @@ export function Settings({
       </>
     ),
     activity: <Activity version={version} cards={cards} />,
+    read: <ReadReport version={version} />,
     people: <AccountsSection />,
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
