@@ -2,6 +2,7 @@ import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { importRows, sheetHeaders } from '../../files/documents.ts'
+import { checkedOff } from '../../modules/reviews.ts'
 import { now, run, tx } from '../../world/db.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { managedBy } from '../../world/maintained.ts'
@@ -238,6 +239,8 @@ export function registerTables(ctx: Ctx): void {
         [{ id: row, values: { [field]: value }, provenance: { kind: 'stated' } }],
         { actor: { kind: 'person', id: user.id }, user: user.id, byHand: { words } },
       )
+      // the last of Alpha's guesses kept or changed, here or on its card, answers the card
+      checkedOff(world, t.id, { kind: 'person', id: user.id })
     })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }

@@ -57,13 +57,13 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true })
 })
 
-async function grey(how: 'accept' | 'reject') {
+async function grey(how: 'accept' | 'reject', field = 'Bags') {
   const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
   const res = await a.inject({
     method: 'POST',
     url: `/api/tables/${table.id}/rows/${row}`,
     headers,
-    payload: { field: 'Bags', grey: how },
+    payload: { field, grey: how },
   })
   await a.close()
   return res
@@ -136,6 +136,19 @@ describe('a To check card', () => {
     expect(guesses(world, table)).toContainEqual(
       expect.objectContaining({ name: 'Sugar', field: 'Bags', value: 42, why: guess.basis }),
     )
+  })
+
+  it('is answered when the last guess is kept, each a change of the person’s that wakes a schedule', async () => {
+    world.records.change(table.id, [{ id: row, values: { Bags: 42 }, provenance: guess }], turn)
+    raiseToCheck(world, { turn: 't1' }, { actor: alpha, user: null })
+    await grey('accept')
+    expect(waiting()).toHaveLength(1) // its Name is still a guess
+    await grey('accept', 'Name')
+    expect(waiting()).toHaveLength(0)
+    // the line a schedule on changes to Orders reads (runs/due.ts)
+    const last = world.lines({ kinds: ['changed'] }).at(-1)
+    expect(last?.actor.kind).toBe('person')
+    expect(last?.data).toMatchObject({ table: table.id })
   })
 
   it('is not raised by a turn that wrote nothing', () => {
