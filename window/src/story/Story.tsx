@@ -6,12 +6,13 @@
 // (ui-rules U1 to U4).
 import type { ChapterScreen, StoryView } from '@alpha/core/api'
 import { Check, Minus } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from '../api.ts'
 import { Face } from '../Face.tsx'
 import { Refusal, useAct } from '../ui/act.tsx'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
+import { Typing } from '../ui/typing.tsx'
 import { SET_UP } from './address.ts'
 import { ChapterBody, type Next } from './chapters.tsx'
 
@@ -68,41 +69,29 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
   // end, every step
   const at = story.at ? list.findIndex((c) => c.key === story.at) : list.length - 1
   const open = list.slice(0, at + 1)
-  const done = list.filter(through).length
   const moved = (s: StoryView) => {
     setStory(s)
     if (s.done) onClose()
   }
   return (
-    <div className="fixed inset-0 z-(--z-overlay) overflow-y-auto bg-canvas text-base text-ink">
-      <header className="sticky top-0 z-10 border-line border-b bg-canvas/95 backdrop-blur">
+    <div className="fixed inset-0 z-(--z-overlay) snap-y snap-mandatory overflow-y-auto bg-canvas text-base text-ink">
+      <header className="sticky top-0 z-10 bg-canvas/95 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-[760px] items-center gap-4 px-4 md:px-8">
-          <p className="shrink-0 font-semibold text-ink-2 text-sm">Set up Alpha</p>
-          <div
-            role="progressbar"
-            aria-label="How far along"
-            aria-valuemin={0}
-            aria-valuemax={list.length}
-            aria-valuenow={done}
-            className="h-1 flex-1 overflow-hidden rounded-full bg-sunk"
-          >
-            <div
-              className="h-full rounded-full bg-accent transition-[width] duration-300"
-              style={{ width: `${(done / Math.max(1, list.length)) * 100}%` }}
-            />
-          </div>
+          <p className="flex-1 font-semibold text-ink-2 text-sm">Set up Alpha</p>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Later
           </Button>
         </div>
       </header>
-      <main className="mx-auto flex max-w-[760px] flex-col px-4 pb-24 md:px-8">
+      <Dots list={list} at={story.at} />
+      <main className="mx-auto flex max-w-[760px] flex-col px-4 pr-8 md:px-8">
         {open.map((c, i) => (
           <StepPart
             key={c.key}
             step={c}
             n={i + 1}
             here={c.key === story.at}
+            fresh={first.fresh}
             moved={moved}
             leave={onClose}
           />
@@ -112,67 +101,87 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
   )
 }
 
-// One step on the page. Only the step the person is on is open (Vikas, 23 Nov: "let it appear
-// layer by layer"); each one gone through folds to one line, its mark, title and what happened,
-// with Change to open it again in place.
-function StepPart(p: {
-  step: Step
-  n: number
-  here: boolean
-  moved: (s: StoryView) => void
-  leave: () => void
-}) {
-  const [opened, setOpened] = useState(false)
-  if (p.here || opened) return <OpenStep {...p} fold={() => setOpened(false)} />
+const scrollTo = (key: string) => {
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  document
+    .getElementById(`step-${key}`)
+    ?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
+}
+
+// The steps as vertical dots at the right edge, like a slideshow's: the one the person is on
+// filled and a little larger; one gone through goes there, named in its tip with what happened;
+// those ahead are faint, unnamed and can't be pressed, so nothing ahead is told.
+function Dots({ list, at }: { list: Step[]; at: string | null }) {
   return (
-    <section
-      aria-label={p.step.title}
-      className="flex min-h-11 items-center gap-3 border-line border-b py-2"
+    <nav
+      aria-label="Steps"
+      className="fixed top-1/2 right-[max(env(safe-area-inset-right),6px)] z-10 flex -translate-y-1/2 flex-col items-center gap-2 md:right-4 md:gap-3"
     >
-      <Mark state={p.step.state} here={false} />
-      <span className="shrink-0 text-ink-2">{p.step.title}</span>
-      <span className="min-w-0 flex-1 truncate text-ink-3 text-sm">
-        {p.step.summary ?? (p.step.state === 'done' ? 'Done' : '')}
-      </span>
-      <Button variant="ghost" size="sm" onClick={() => setOpened(true)}>
-        Change
-      </Button>
-    </section>
+      {list.map((c) => {
+        const here = c.key === at
+        const gone = through(c)
+        const tip = [c.title, c.summary].filter(Boolean).join(' · ')
+        return (
+          <button
+            key={c.key}
+            type="button"
+            disabled={!gone && !here}
+            aria-label={gone || here ? tip : 'A step ahead'}
+            aria-current={here ? 'step' : undefined}
+            data-tip={gone || here ? tip : undefined}
+            onClick={() => scrollTo(c.key)}
+            className="grid size-4 place-items-center disabled:cursor-default"
+          >
+            <span
+              className={cn(
+                'rounded-full transition-[width,height,background-color]',
+                here
+                  ? 'size-2.5 bg-accent md:size-3'
+                  : gone
+                    ? 'size-1.5 bg-ink-3 hover:bg-ink-2 md:size-2'
+                    : 'size-1.5 bg-line md:size-2',
+              )}
+            />
+          </button>
+        )
+      })}
+    </nav>
   )
 }
 
-// A step open: Alpha's line, the step's own part, and its foot: on the step the person is on,
-// Skip and its act; on one opened again with Change, Close and its act, which folds it again.
-function OpenStep({
+// One step on the page, filling the screen under the top bar: scrolling moves a whole step at a
+// time, and a step taller than the screen still scrolls. Alpha's line, the step's own part, and
+// its foot: Skip and its act on the step the person is on; its act alone on one gone through,
+// scrolled back to and changed in place.
+function StepPart({
   step,
   n,
   here,
+  fresh,
   moved,
   leave,
-  fold,
 }: {
   step: Step
   n: number
   here: boolean
+  fresh: boolean
   moved: (s: StoryView) => void
   leave: () => void
-  fold: () => void
 }) {
   const key = step.key
   const [screen, setScreen] = useState<ChapterScreen | null>(null)
   const [next, setNext] = useState<Next>({ label: 'Continue', ready: true })
+  // Hello types its line out on a person's first time, then its promises come in
+  const [said, setSaid] = useState(!(key === 'welcome' && fresh))
   const { busy, problem, act } = useAct()
   const load = useCallback(() => {
     api.get<ChapterScreen>(`/api/story/${key}`).then(setScreen, () => undefined)
   }, [key])
   useEffect(load, [load])
   // the step that opens comes into view, gently unless motion is reduced
-  const part = useRef<HTMLElement>(null)
   useEffect(() => {
-    if (n === 1) return
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    part.current?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
-  }, [n])
+    if (n > 1) scrollTo(key)
+  }, [n, key])
   const go = (skip: boolean) =>
     void act(async () => {
       const out = await api.post<{ story: StoryView }>(
@@ -180,7 +189,6 @@ function OpenStep({
         skip ? {} : (next.body?.() ?? {}),
       )
       moved(out.story)
-      if (!here) fold()
     })
   // a step's own act from its part (an answer, an approval): on when it says, else read again,
   // so an answer on a step gone through keeps the person where they are
@@ -189,6 +197,7 @@ function OpenStep({
     moved(out.story)
     if (!out.on) load()
   }
+  const doneSaying = useCallback(() => setSaid(true), [])
   // Hello has nothing to skip, Claude can't be skipped while no model is set, and Done is the
   // way out
   const skippable =
@@ -198,9 +207,9 @@ function OpenStep({
     !(key === 'claude' && screen?.key === 'claude' && !screen.set)
   return (
     <section
-      ref={part}
+      id={`step-${key}`}
       aria-label={step.title}
-      className="story-rise flex scroll-mt-16 flex-col gap-6 border-line border-b pt-8 pb-6"
+      className="story-rise flex min-h-[calc(100dvh-3rem)] snap-start scroll-mt-12 flex-col justify-center gap-6 py-10"
     >
       <header className="flex min-h-12 items-start gap-4">
         <div className="size-10 shrink-0">
@@ -211,23 +220,31 @@ function OpenStep({
             <Mark state={step.state} here={here} />
             {step.title}
           </p>
-          {/* Alpha's line is the step's title */}
-          <h2 className="text-xl">{screen?.says ?? ''}</h2>
+          {/* Alpha's line is the step's title; Hello's types itself out the first time */}
+          <h2 className="text-xl">
+            {screen && key === 'welcome' ? (
+              <Typing text={screen.says} now={said} onDone={doneSaying} />
+            ) : (
+              (screen?.says ?? '')
+            )}
+          </h2>
         </div>
       </header>
       {/* its place kept while it is read, so nothing below jumps */}
       <div className="min-h-24">
         {screen && (
-          <ChapterBody screen={screen} reload={load} next={setNext} leave={leave} act={actHere} />
+          <ChapterBody
+            screen={screen}
+            reload={load}
+            next={setNext}
+            leave={leave}
+            act={actHere}
+            said={said}
+          />
         )}
       </div>
-      {(here || screen) && (
+      {screen && (
         <footer className="flex flex-wrap items-center gap-2">
-          {!here && (
-            <Button variant="ghost" disabled={busy} onClick={fold}>
-              Close
-            </Button>
-          )}
           {skippable && (
             <Button variant="ghost" disabled={busy} onClick={() => go(true)}>
               Skip
@@ -237,7 +254,7 @@ function OpenStep({
           <Refusal words={problem} />
           <Button
             variant="primary"
-            disabled={busy || !next.ready || !screen}
+            disabled={busy || !next.ready || !said}
             onClick={() => go(false)}
           >
             {busy && next.busy ? next.busy : next.label}

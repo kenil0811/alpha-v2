@@ -29,3 +29,10 @@ it again in place. Your computer only installs and pairs Alpha Bridge, and Your 
 accounts and, once a computer is paired, Found on your computer: the apps Alpha Bridge found, each
 with Connect, or How to connect by hand (a browser's history exported), and Exclude. Files to work
 from and the Bridge's other readers are no longer offered in Set up Alpha.
+
+Then, on "make this flow same as it was earlier… each section fits the entire screen… dots… like a
+slideshow, but vertical": each step fills the screen and the page snaps a step at a time (CSS
+scroll-snap); vertical dots at the right replace the progress bar and the folded lines, a step
+gone through named with what happened in its dot's tip, nothing ahead named. On a first visit
+Hello's line types itself out (`window/src/ui/typing.tsx`) and the promises fade in after it. Not
+looked at in the app.

@@ -50,6 +50,7 @@ interface Props {
   next: (n: Next) => void
   leave: () => void // out of the story, which waits on Home
   act: (body: unknown) => Promise<void> // the chapter's act, the story moving on when it says
+  said?: boolean // Alpha's line is all there (Hello's types itself out first)
 }
 
 export function ChapterBody(p: Props) {
@@ -111,13 +112,25 @@ function Item({
 
 const PROMISE_ICONS = [ShieldCheck, EyeOff, Lock]
 
-function Welcome({ screen, next }: Props & { screen: WelcomeScreen }) {
+// Hello's promises, coming in one after another once Alpha's line is typed; their place is kept
+// from the first frame (ui-rules U3).
+function Welcome({ screen, next, said = true }: Props & { screen: WelcomeScreen }) {
   useEffect(() => next({ label: 'Start', ready: true }), [next])
   return (
     <ul className="flex flex-col">
       {screen.promises.map((words, i) => {
         const Icon = PROMISE_ICONS[i] ?? ShieldCheck
-        return <Item key={words} icon={<Icon className="size-4" />} head={words} />
+        return (
+          <li
+            key={words}
+            className="transition-opacity duration-500 motion-reduce:transition-none"
+            style={{ opacity: said ? 1 : 0, transitionDelay: said ? `${i * 350}ms` : '0ms' }}
+          >
+            <ul>
+              <Item icon={<Icon className="size-4" />} head={words} />
+            </ul>
+          </li>
+        )
       })}
     </ul>
   )
