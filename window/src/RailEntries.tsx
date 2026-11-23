@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { api } from './api.ts'
 import { type Hiding, ModuleMenu, shownTops } from './ModuleMenu.tsx'
 import { ModuleIcon } from './moduleIcon.tsx'
+import { openLink } from './opened.ts'
 import type { Place } from './place.ts'
 import { landingOf } from './tree.ts'
 import { cn } from './ui/cn.ts'
@@ -32,12 +33,14 @@ export function Nav({
   onDoubleClick?: (() => void) | undefined
 }) {
   return (
-    <a
-      href={href}
+    <button
+      type="button"
+      data-href={href}
+      onClick={(e) => openLink(href, e)}
       onDoubleClick={onDoubleClick}
       aria-current={current ? 'page' : undefined}
       className={cn(
-        'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+        'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-left text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
         small ? 'h-7' : 'h-7.5',
         current && 'bg-rail-sel font-medium text-rail-ink',
       )}
@@ -45,7 +48,7 @@ export function Nav({
       <span className={cn('shrink-0 text-rail-ink-3', current && 'text-rail-ink')}>{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {extra}
-    </a>
+    </button>
   )
 }
 
@@ -139,15 +142,17 @@ export function PinnedTile({
       >
         {(start) => (
           <>
-            <a
-              href={e.href}
+            <button
+              type="button"
+              data-href={e.href}
+              onClick={(ev) => openLink(e.href, ev)}
               aria-label={e.label}
               data-tip={e.label}
               aria-current={on ? 'page' : undefined}
               className="grid size-8 place-items-center rounded-md bg-rail-hover/60 text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink aria-[current=page]:bg-rail-sel aria-[current=page]:text-rail-ink"
             >
               {e.icon}
-            </a>
+            </button>
             {/* its ⋮ is the row's; a tile opens the menu by a right-click only */}
             <span className="hidden">
               <ModuleMenu

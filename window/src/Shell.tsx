@@ -11,6 +11,7 @@ import { api } from './api.ts'
 import { HiddenMenu, type Hiding, ModuleMenu } from './ModuleMenu.tsx'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
+import { openLink } from './opened.ts'
 import { inSettings, type Place } from './place.ts'
 import { type Entry, entriesOf, FixedItem, Nav, PinnedTile } from './RailEntries.tsx'
 import { MOD } from './time.ts'
@@ -315,9 +316,11 @@ function Strip({
     child: ReactNode,
     extra?: ReactNode,
   ) => (
-    <a
+    <button
+      type="button"
       key={href}
-      href={href}
+      data-href={href}
+      onClick={(e) => openLink(href, e)}
       aria-label={label}
       data-tip={label}
       aria-current={current ? 'page' : undefined}
@@ -325,7 +328,7 @@ function Strip({
     >
       {child}
       {extra}
-    </a>
+    </button>
   )
   return (
     <nav
