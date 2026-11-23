@@ -348,7 +348,6 @@ export function Grid({
                 tableId={tableId}
                 field={f}
                 left={stick(i)}
-                edge={i === layout.frozen - 1}
                 index={i}
                 layout={layout}
                 config={config}
@@ -622,7 +621,6 @@ function Header({
   tableId,
   field: f,
   left,
-  edge,
   index,
   layout,
   config,
@@ -635,7 +633,6 @@ function Header({
   tableId: string
   field: FieldView
   left: number | undefined // where it stays when frozen
-  edge: boolean // the last frozen column, with a line at its right
   index: number
   layout: LayoutNow
   config: ViewConfig
@@ -717,10 +714,10 @@ function Header({
         if (moved && moved !== f.id) place(moved, side(e))
       }}
       {...ctx.on}
+      // a line after every column's head, as in a spreadsheet (Vikas, 23 Nov)
       className={cn(
-        'group/head sticky top-0 z-2 h-9 border-line border-b bg-surface p-0 font-medium text-ink-3 text-sm',
+        'group/head sticky top-0 z-2 h-9 border-line border-b bg-surface p-0 font-medium text-ink-3 text-sm shadow-[inset_-1px_0_0_var(--hair)]',
         left !== undefined && 'z-3',
-        edge && 'shadow-[inset_-1px_0_0_var(--hair)]',
         over === 'left' && 'shadow-[inset_2px_0_0_var(--accent)]',
         over === 'right' && 'shadow-[inset_-2px_0_0_var(--accent)]',
       )}
