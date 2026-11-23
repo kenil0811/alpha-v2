@@ -14,7 +14,7 @@ import { all, run as exec, json, newId, now, one, parse } from '../../world/db.t
 import { Refused } from '../../world/kinds.ts'
 import type { World } from '../../world/world.ts'
 import type { Drafts } from '../drafts.ts'
-import { Reviews } from '../reviews.ts'
+import { Reviews, raiseToCheck } from '../reviews.ts'
 import { type Runs, type Schedule, type ScheduleFile, schedules } from '../schedules.ts'
 import * as apiOf from './api.ts'
 import * as dueOf from './due.ts'
@@ -309,6 +309,11 @@ export class ScheduleRunner {
       run: runId,
       module: module.id,
     })
+    raiseToCheck(
+      this.world,
+      { run: runId },
+      { actor: { kind: 'schedule', id: label }, user: this.owner },
+    )
     this.notify()
     return { id: runId, state, words, result: out.result }
   }

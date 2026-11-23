@@ -6,11 +6,82 @@
 // a row the person keeps is written there as theirs, and nothing is written without their Keep.
 import type { Card } from '../world/cards.ts'
 import { keepLine } from '../world/how-to-work.ts'
+import type { Actor } from '../world/journal.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
+import { CHANGE_KINDS } from './runs/types.ts'
 
 export const REVIEW = 'rows_review'
+
+// Alpha's guesses put to the person (Vikas, 23 Nov): after a run or a turn writes to a table that
+// holds values Alpha assumed or estimated, one To check card for that table, never a second. Its
+// lines are read from the table each time it shows, so it is never stale; the person keeps or
+// changes each value where it is (the same write as a grey value's ✓ in the table), and the card
+// closes when none is left. Worked out from the world, never asked of the model.
+export const TO_CHECK = 'rows_to_check'
+
+export interface Guess {
+  row: string
+  name: string
+  field: string
+  value: unknown
+  kind: 'assumed' | 'estimated'
+  why: string // the words it rests on
+}
+
+export function guesses(world: World, t: Table): Guess[] {
+  return world.records.list(t.id).flatMap((r) =>
+    t.fields.flatMap((f) => {
+      const p = r.provenance[f.slug]
+      if ((p?.kind !== 'assumed' && p?.kind !== 'estimated') || r.values[f.slug] == null) return []
+      const name = world.rowName(t, r.values) || 'A row'
+      return [
+        {
+          row: r.id,
+          name,
+          field: f.name,
+          value: r.values[f.slug],
+          kind: p.kind,
+          why: p.basis ?? '',
+        },
+      ]
+    }),
+  )
+}
+
+export function raiseToCheck(
+  world: World,
+  where: { run: string } | { turn: string },
+  by: { actor: Actor; user: string | null },
+): void {
+  const touched = new Set(
+    world.lines({ ...where, kinds: CHANGE_KINDS }).map((l) => (l.data as { table?: string }).table),
+  )
+  for (const id of touched) {
+    const t = id ? world.shape.table(id) : undefined
+    if (!t || world.cards.waitingFor(TO_CHECK, { table: t.id }) || !guesses(world, t).length)
+      continue
+    world.cards.open({
+      kind: 'review',
+      gate: 'to_check',
+      words: `Alpha's guesses in ${t.name} to check`,
+      help: 'Keep makes a value yours; Change puts yours in its place. Either updates the row, and whatever runs on its changes runs again.',
+      call: { tool: TO_CHECK, input: { table: t.id } },
+      actor: by.actor,
+      user: by.user,
+      module: t.module.id,
+      ...where,
+    })
+  }
+}
+
+// A table's To check card, answered once it has nothing left to check.
+export function checkedOff(world: World, tableId: string, by: Actor): void {
+  const card = world.cards.waitingFor(TO_CHECK, { table: tableId })
+  const t = world.shape.table(tableId)
+  if (card && t && !guesses(world, t).length) world.cards.answer(card.id, 'Checked', by)
+}
 
 export interface ReviewInput {
   words: string
