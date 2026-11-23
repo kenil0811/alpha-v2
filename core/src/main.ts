@@ -216,7 +216,8 @@ const providers = [
   },
   { route: 'key' as const, title: 'Claude Code with an API key', provider: claudeCode },
 ]
-const ask: Ask = (prompt, schema) => claudeCode.ask(config.reading(), prompt, schema)
+const ask: Ask = (prompt, schema) =>
+  claudeCode.ask(config.reading(), prompt, schema, config.models().asks.reading)
 // The browser starts on first use: its own copy is set up in Alpha's folder then.
 let browser: BrowserEngine | null = null
 const browserEngine = () => {
@@ -241,7 +242,8 @@ let started: Engine | null = null
 const runner = new ScheduleRunner(world, browserEngine, {
   owner: user.id,
   ask,
-  judge: (prompt, schema) => claudeCode.ask(config.judging(), prompt, schema),
+  judge: (prompt, schema) =>
+    claudeCode.ask(config.judging(), prompt, schema, config.models().asks.judging),
   notify: () => started?.events.emit('event', { type: 'lines', user: user.id }),
 })
 // Files that come by mail, proposed for filing on a card each.
@@ -281,7 +283,8 @@ const { plugins, problems: pluginProblems } = await switchOn(install.plugins, {
   user,
   home,
   region: () => platform.region(),
-  ask: (system, prompt, schema) => claudeCode.ask(system, prompt, schema),
+  ask: (system, prompt, schema) =>
+    claudeCode.ask(system, prompt, schema, config.models().asks.plugins),
   connectors,
   // as a reminder is: Alpha's Mac app shows its own while it runs; else the computer's notifications
   notify: (title, words) => {

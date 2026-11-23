@@ -1,8 +1,14 @@
-# The model for every desk turn and run, and the small one for eyes or a yes-or-no.
+# The model for every desk turn and run.
 desk: claude-opus-5-5
-eyes: claude-haiku-5-5
 # The models an agent can be set to; none chosen is the desk's.
 agents:
   - claude-opus-5-5
   - claude-sonnet-5-5
   - claude-haiku-5-5
+# The model each one-question use runs on, one of the models above: reading a document, sorting
+# items into the person's groups, checking a new token answers, and a plugin's own question.
+asks:
+  reading: claude-opus-5-5
+  judging: claude-opus-5-5
+  checking: claude-haiku-5-5
+  plugins: claude-opus-5-5
