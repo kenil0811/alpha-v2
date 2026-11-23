@@ -20,6 +20,7 @@ import { DateField } from './ui/date-field.tsx'
 import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { More } from './ui/more.tsx'
+import { fold, pause, unfold } from './ui/motion.ts'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { PageTitle } from './ui/rename.tsx'
@@ -191,14 +192,27 @@ export function NewTask({
 
 // A task's state as a circle; a click opens its five states, so a click never closes it
 // by itself.
-function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
+function Tick({
+  t,
+  onChange,
+  onFinish,
+  finishing,
+}: {
+  t: TaskLineView
+  onChange: () => void
+  onFinish?: (() => void) | undefined // finishing it shows the tick and the line struck first
+  finishing?: boolean | undefined
+}) {
   const anchor = useRef<HTMLButtonElement>(null)
   const [choosing, setChoosing] = useState(false)
   const label = STATES.find((x) => x.value === t.state)?.label ?? t.state
   const choose = (state: TaskLineView['state']) => {
     setChoosing(false)
-    if (state !== t.state) setState(t.id, state).then(onChange, onChange)
+    if (state === t.state) return
+    if (state === 'done' && onFinish) return onFinish()
+    setState(t.id, state).then(onChange, onChange)
   }
+  const done = finishing || t.state === 'done'
   return (
     <>
       <button
@@ -209,8 +223,8 @@ function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
         aria-haspopup="menu"
         onClick={() => setChoosing((c) => !c)}
         className={cn(
-          'grid size-4.5 shrink-0 place-items-center rounded-full border transition-colors hover:border-accent',
-          t.state === 'done'
+          'grid size-4.5 shrink-0 place-items-center rounded-full border transition-colors duration-200 hover:border-accent',
+          done
             ? 'border-good bg-good text-surface'
             : t.state === 'doing'
               ? 'border-accent text-accent'
@@ -221,8 +235,8 @@ function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
                   : 'border-line',
         )}
       >
-        {t.state === 'done' && <Check className="size-3" />}
-        {t.state === 'doing' && <span className="size-2 rounded-full bg-accent" />}
+        {done && <Check className={cn('size-3', finishing && 'tick-draw')} />}
+        {!done && t.state === 'doing' && <span className="size-2 rounded-full bg-accent" />}
         {t.state === 'waiting' && <Clock className="size-2.75" />}
         {t.state === 'dropped' && <X className="size-2.75" />}
       </button>
@@ -277,18 +291,37 @@ function TaskLine({
   onChange: () => void
   place?: boolean
 }) {
+  // Finishing a task (Vikas, 23 Nov): its tick draws and its line is struck through, a beat to
+  // see it, then it folds away and the list closes up; a list that keeps finished ones shows it again
+  const row = useRef<HTMLDivElement>(null)
+  const [finishing, setFinishing] = useState(false)
+  const finish = async () => {
+    setFinishing(true)
+    // it is saved once seen: saved first, the live update would take the line away mid-beat
+    await pause(550)
+    await fold(row.current)
+    await setState(t.id, 'done').catch(() => undefined)
+    onChange()
+  }
+  useEffect(() => {
+    if (t.state === 'done') unfold(row.current)
+    setFinishing(false)
+  }, [t.state])
   return (
-    <div className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover">
-      <Tick t={t} onChange={onChange} />
+    <div
+      ref={row}
+      className="flex animate-rise items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+    >
+      <Tick t={t} onChange={onChange} onFinish={finish} finishing={finishing} />
       <a href={`#/tasks/${t.id}`} className="min-w-0 flex-1">
         <span
           className={cn(
             'block truncate text-base',
-            open(t) ? 'text-ink' : 'text-ink-3 line-through',
+            open(t) && !finishing ? 'text-ink' : 'text-ink-3',
           )}
         >
           {t.priority === 'high' && <span className="mr-1.5 text-warn">●</span>}
-          {t.title}
+          <span className={cn('strike', (finishing || !open(t)) && 'strike-on')}>{t.title}</span>
         </span>
         <Meta t={t} place={place ?? true} />
       </a>

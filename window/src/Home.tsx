@@ -2,7 +2,7 @@
 // answered right here), and today's tasks. The modules are in the rail; the conversation has its
 // own place in the rail and on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
-import { ArrowUp, KeyRound, LoaderCircle } from 'lucide-react'
+import { ArrowUp, KeyRound } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
@@ -10,6 +10,7 @@ import { shownScreens } from './plugin/screens.ts'
 import { signInWith } from './SignInApps.tsx'
 import { StoryRow } from './story/StoryRow.tsx'
 import { TaskList } from './Tasks.tsx'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { Group, Line } from './ui/groups.tsx'
 import { Segmented } from './ui/segmented.tsx'
@@ -105,9 +106,8 @@ export function Home({
         </div>
 
         {stream?.settingUp && (
-          <p className="flex items-center gap-2 text-ink-2 text-md">
-            <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
-            Setting up {stream.settingUp}
+          <p className="text-md">
+            <Busy>Setting up {stream.settingUp}</Busy>
           </p>
         )}
 

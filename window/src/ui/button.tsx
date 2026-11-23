@@ -5,7 +5,8 @@ import type { ComponentProps } from 'react'
 import { cn } from './cn.ts'
 
 const button = cva(
-  'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+  // a press dips the button to 97% and lets it spring back (motion, 23 Nov)
+  'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border font-medium transition-[color,background-color,border-color,filter,transform] duration-120 ease-soft active:scale-97 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -52,7 +53,7 @@ export function IconButton({
       aria-label={label}
       data-tip={label}
       className={cn(
-        'grid size-7 shrink-0 place-items-center rounded-sm text-ink-3 transition-colors hover:bg-hover hover:text-ink disabled:opacity-50',
+        'grid size-7 shrink-0 place-items-center rounded-sm text-ink-3 transition-[color,background-color,transform] duration-120 ease-soft hover:bg-hover hover:text-ink active:scale-92 disabled:opacity-50',
         className,
       )}
       {...props}

@@ -166,6 +166,8 @@
   --elev-pop: 0 1px 2px rgb(20 20 19 / 0.06), 0 8px 22px rgb(20 20 19 / 0.09);
   --scrim: rgb(20 20 19 / 0.28);
   --elev-btn: 0 1px 2px rgb(20 20 19 / 0.1);
+  /* a card picked up to drag */
+  --elev-lift: 0 2px 4px rgb(20 20 19 / 0.08), 0 18px 36px rgb(20 20 19 / 0.18);
 
   color-scheme: light;
 }
@@ -219,6 +221,7 @@
     --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
     --scrim: rgb(0 0 0 / 0.5);
     --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
+    --elev-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 18px 36px rgb(0 0 0 / 0.55);
     color-scheme: dark;
     --map-icon: invert(1) brightness(0.85);
   }
@@ -272,6 +275,7 @@
   --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
   --scrim: rgb(0 0 0 / 0.5);
   --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
+  --elev-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 18px 36px rgb(0 0 0 / 0.55);
   color-scheme: dark;
   --map-icon: invert(1) brightness(0.85);
 }
@@ -380,6 +384,19 @@
 
   --shadow-pop: var(--elev-pop);
   --shadow-btn: var(--elev-btn);
+  --shadow-lift: var(--elev-lift);
+
+  /*
+    Motion (Vikas, 23 Nov): motion says what just changed, and play is earned. Three speeds, used
+    as duration-120 (a press), duration-200 (something appearing or going) and duration-320 (a page,
+    a milestone), and one springy curve that overshoots a hair and settles (ease-spring); ease-soft
+    is the same without the overshoot, for what fades or folds.
+  */
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  --ease-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-rise: rise 200ms var(--ease-spring) both;
+  --animate-shimmer: shimmer 1.8s linear infinite;
+  --animate-word: word-in 360ms var(--ease-soft) both;
 }
 
 /* a table's frame shows its thumb always, so a table wider than its frame shows it goes on; its
@@ -454,6 +471,51 @@
     animation: story-rise 220ms ease-out both;
   }
 
+  /* What the agent is doing, said in words with a soft light running across them (ui/busy.tsx) */
+  .shimmer {
+    background:
+      linear-gradient(
+        90deg,
+        var(--ink-3) 0%,
+        var(--ink-3) 40%,
+        var(--ink) 50%,
+        var(--ink-3) 60%,
+        var(--ink-3) 100%
+      )
+      0 0 / 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: var(--animate-shimmer);
+  }
+  /* A tick draws itself in: any icon inside .tick-draw (a lucide Check) */
+  .tick-draw :is(path, polyline) {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: tick-draw 200ms var(--ease-soft) 40ms forwards;
+  }
+  /* A line struck through as it is finished, drawn left to right (.strike, then .strike-on) */
+  .strike {
+    background: linear-gradient(currentColor, currentColor) 0 58% / 0 1px no-repeat;
+    transition:
+      background-size 320ms var(--ease-soft),
+      color 200ms;
+  }
+  .strike-on {
+    background-size: 100% 1px;
+    color: var(--ink-3);
+  }
+  /* A native tick box pops a hair as it is ticked */
+  input[type="checkbox"] {
+    transition: transform 120ms var(--ease-soft);
+  }
+  input[type="checkbox"]:active {
+    transform: scale(0.9);
+  }
+  input[type="checkbox"]:checked {
+    animation: pop 200ms var(--ease-spring);
+  }
+
   /* Source Serif 4 is for page titles and big numbers only */
   h1 {
     font-family: var(--font-serif);
@@ -490,6 +552,38 @@
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+}
+
+/* Motion's moves (the tokens are in @theme above) */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.99);
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@keyframes word-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+}
+@keyframes tick-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pop {
+  50% {
+    transform: scale(1.15);
   }
 }
 

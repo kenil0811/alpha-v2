@@ -22,6 +22,7 @@ import {
   type Part,
   type Step,
 } from './stream.ts'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { CopyButton } from './ui/copy.tsx'
@@ -178,9 +179,8 @@ export function Conversation({
               </div>
             )}
             {stream?.serving && (
-              <div className="flex items-center gap-1.5 text-ink-3 text-sm">
-                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                Working for {stream.serving}
+              <div className="text-sm">
+                <Busy>Working for {stream.serving}</Busy>
               </div>
             )}
           </div>
@@ -430,12 +430,13 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][numb
   if (!said)
     return (
       <div className="flex items-center gap-1.5 text-ink-3">
-        {waiting ? (
-          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-        ) : null}
         <span className="min-w-0">
           {head}
-          {waiting?.doing && <span className="block text-ink-3">{waiting.doing}</span>}
+          {waiting?.doing ? (
+            <Busy className="block">{waiting.doing}</Busy>
+          ) : (
+            waiting && <Busy className="block">Thinking</Busy>
+          )}
         </span>
         {mark}
         {waiting && (

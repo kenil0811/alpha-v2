@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, listen } from './api.ts'
 import { Conversation } from './Conversation.tsx'
 import { dayWords, toLocalInput } from './time.ts'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
@@ -49,11 +50,16 @@ export function TaskWorkLine({ task }: { task: TaskView }) {
         href={`#/tasks/${task.id}/work`}
         className="flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-md hover:bg-hover"
       >
-        {task.state === 'doing' && (
-          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-ink-3" />
-        )}
         <span className="min-w-0 flex-1 truncate text-ink">
-          {task.agent.name} {later ?? HOW[task.state]}
+          {task.state === 'doing' ? (
+            <Busy>
+              {task.agent.name} {later ?? HOW[task.state]}
+            </Busy>
+          ) : (
+            <>
+              {task.agent.name} {later ?? HOW[task.state]}
+            </>
+          )}
         </span>
         <span className="shrink-0 text-ink-3">See what it did</span>
         <ChevronRight className="size-3.5 shrink-0 text-ink-3" />

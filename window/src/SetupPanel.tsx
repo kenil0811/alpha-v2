@@ -2,9 +2,10 @@
 // PDF reader downloaded, Gmail, Calendar and Contacts connected, Chrome there for sites the
 // person signs in to. On Home while something essential is not ready; always in Settings.
 import type { SetupView } from '@alpha/core/api'
-import { Check, ChevronRight, LoaderCircle } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Info } from './ui/info.tsx'
@@ -111,11 +112,11 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
               )}
             >
               {s.done && <Check className="size-3" />}
-              {s.busy && <LoaderCircle className="size-3 animate-spin text-ink-3" />}
+              {s.busy && <span className="size-1.5 rounded-full bg-accent face-pulse" />}
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5 font-medium text-ink">
-                {s.words}
+                {s.busy ? <Busy>{s.words}</Busy> : s.words}
                 {s.about && <Info help={s.about} />}
               </span>
               {s.sub && <span className="block text-ink-3 text-sm">{s.sub}</span>}
