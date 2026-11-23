@@ -24,8 +24,8 @@ import {
   type Screen,
   Section,
   startBuild,
-  useAct,
   TickCross,
+  useAct,
 } from '@alpha/window/kit'
 import { useEffect, useState } from 'react'
 

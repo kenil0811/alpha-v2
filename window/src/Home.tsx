@@ -9,6 +9,7 @@ import { api, Problem } from './api.ts'
 import { CardGrid, type GridCard } from './CardGrid.tsx'
 import { fromWhom, mainOf, NeedsYou } from './NeedsYou.tsx'
 import { shownScreens } from './plugin/screens.ts'
+import { ReadLine } from './ReadReport.tsx'
 import { StoryCard, stepsDone, useStory } from './story/StoryCard.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
@@ -174,6 +175,9 @@ export function Home({
             Setting up {stream.settingUp}
           </p>
         )}
+
+        {/* see what Alpha read: the live line while a read runs (proposed, 23 Nov) */}
+        {!!stream?.reading.length && <ReadLine version={last} />}
 
         {/* a plugin's row, while something of its waits for the person */}
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}

@@ -28,7 +28,7 @@ export { Answer, Question } from '../ui/question.tsx'
 export { Empty, Section } from '../ui/section.tsx'
 export { Switch } from '../ui/switch.tsx'
 export { Words } from '../ui/words.tsx'
-export { type Answer as YesNoAnswer, YesNo } from '../ui/yes-no.tsx'
+export { type Answer as YesNoAnswer, TickCross, YesNo } from '../ui/yes-no.tsx'
 
 // A chapter of the plugin's in Set up Alpha, drawn in the story's own frame: its screen as its
 // chapter's screen() said it, a way to read it again, the act at the story's foot it sets, and

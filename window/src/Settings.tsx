@@ -19,6 +19,7 @@ import { KeptFiles } from './KeptFiles.tsx'
 import { Logs } from './Logs.tsx'
 import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
+import { ReadReport } from './ReadReport.tsx'
 import { Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { useSetup, useSignIn } from './SetupPanel.tsx'
@@ -78,6 +79,7 @@ const PAGES: { name: string; parts: [string, string][] }[] = [
     name: 'Data',
     parts: [
       ['logs', 'Logs'],
+      ['read', 'What Alpha read'], // see what Alpha read (proposed, 23 Nov)
       ['backup', 'Backup and restore'],
       ['files', 'Files'],
     ],
@@ -196,6 +198,7 @@ export function Settings({
     ),
     rules: <RulesPart version={version} owner={!member} />,
     logs: <Logs version={version} />,
+    read: <ReadReport version={version} />,
     backup: <DataSection />,
     files: <KeptFiles version={version} module={open} />,
   }

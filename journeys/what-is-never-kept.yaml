@@ -3,7 +3,7 @@ title: A mail on the never-use list is left out as it is read, and its connectio
 why: >
   The never-use list (Kenil's plan, 18 Nov, calls 38 to 40; rules N1): every connection applies it
   as it reads, so a matching mail never lands in Alpha, and the connection says how many it left
-  out, never which. A made-up inbox on recorded answers: a bank's statement and a sign-in code
+  out, never which; What Alpha read counts the same per source (Vikas, 23 Nov). A made-up inbox on recorded answers: a bank's statement and a sign-in code
   among a renovation firm's mail.
 fixtures: what-is-never-kept
 steps:
@@ -11,4 +11,6 @@ steps:
     checks:
       - rows_in: { table: Mail, count: 3 }
       - connection: { connector: gmail, state: connected, left_out: 2 }
+      # What Alpha read says the same: five read, three kept, two left out (Vikas, 23 Nov)
+      - read_report: { table: Mail, read: 5, kept: 3, left_out: 2 }
       - errors: 0

@@ -2,6 +2,8 @@
 // and says what it saw. The runner (run.ts) judges every step's checks here.
 import { join } from 'node:path'
 import { z } from 'zod'
+import type { BaseCtx } from '../api/ctx.ts'
+import { readReport } from '../api/read-report.ts'
 import { schedules } from '../modules/schedules.ts'
 import { printPage } from '../pages/pages.ts'
 import { businessCase } from '../world/shape/manifest.ts'
@@ -106,6 +108,15 @@ export const Check = z.union([
       health: z.string().optional(),
       owner: z.string().optional(),
       left_out: z.number().optional(), // what its last read left out on the never-use list (N1)
+    }),
+  }),
+  // What Alpha read's counts for one table, summed over its sources (api/read-report.ts)
+  z.object({
+    read_report: z.object({
+      table: z.string(),
+      read: z.number(),
+      kept: z.number(),
+      left_out: z.number(),
     }),
   }),
   // what the newest revert said, in part (a take-back outside Alpha)
@@ -462,6 +473,19 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
     return {
       check: `the ${c.connector} connection ${said.filter(Boolean).join(', ')}`,
       ok,
+      saw,
+    }
+  }
+  if ('read_report' in check) {
+    const c = check.read_report
+    const ts = readReport({ world, engine: {}, user } as unknown as BaseCtx).sources.flatMap((s) =>
+      s.tables.filter((t) => t.name === c.table),
+    )
+    const sum = (k: 'read' | 'kept' | 'leftOut') => ts.reduce((a, t) => a + t[k], 0)
+    const saw = `read ${sum('read')}, kept ${sum('kept')}, left out ${sum('leftOut')}`
+    return {
+      check: `What Alpha read says ${c.table}: read ${c.read}, kept ${c.kept}, left out ${c.left_out}`,
+      ok: sum('read') === c.read && sum('kept') === c.kept && sum('leftOut') === c.left_out,
       saw,
     }
   }
