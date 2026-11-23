@@ -50,7 +50,8 @@ export function AskSites() {
 
 // Whether Alpha may watch the person's own work (the front app and its window's title, never a
 // screenshot), their yes kept with when, taken back here. It runs only where Alpha Bridge stays
-// connected on their computer; the switch says when that is not so (proposed, 23 Nov).
+// connected on their computer; the switch says when that is not so. It shows only once they said
+// yes on Home's offer, to take it back (proposed, 23 Nov).
 interface Watch {
   leave: { by: string; at: string } | null
   problem: string | null
@@ -61,7 +62,8 @@ export function WatchWork() {
   useEffect(() => {
     api.get<Watch>('/api/observe').then(setW, () => setW(null))
   }, [])
-  if (!w) return null
+  // given only on Home's offer, once its prerequisite is met: here it is only taken back
+  if (!w?.leave) return null
   const name = 'Let Alpha watch my work'
   return (
     <List>
@@ -83,11 +85,7 @@ export function WatchWork() {
             named
             onChange={(v) =>
               act(async () => {
-                setW(
-                  await (v
-                    ? api.post<Watch>('/api/observe', {})
-                    : api.delete<Watch>('/api/observe')),
-                )
+                if (!v) setW(await api.delete<Watch>('/api/observe'))
               })
             }
           />

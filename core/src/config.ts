@@ -88,6 +88,23 @@ const Sites = z.object({
 })
 
 // The never-use list Alpha ships, by kind (rules N1).
+const Offers = z.object({
+  declined_wait_days: z.number().min(0),
+  offers: z.array(
+    z.object({
+      key: z.string(),
+      after: z.object({
+        app: z.string().optional(),
+        bridge: z.boolean().optional(),
+        bridge_days: z.number().min(0).optional(),
+      }),
+      title: z.string(),
+      says: z.string(),
+    }),
+  ),
+})
+export type OffersConfig = z.infer<typeof Offers>
+
 const Never = z.object({
   kinds: z
     .array(
@@ -141,6 +158,7 @@ export const config = {
   words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
   sites: (dir?: string) => load('sites.yaml', yamlOf(Sites, 'sites.yaml'), dir),
   apps: (dir?: string) => load('apps.yaml', yamlOf(Apps, 'apps.yaml'), dir),
+  offers: (dir?: string) => load('offers.yaml', yamlOf(Offers, 'offers.yaml'), dir),
   never: (dir?: string) => load('never.yaml', yamlOf(Never, 'never.yaml'), dir).kinds,
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),

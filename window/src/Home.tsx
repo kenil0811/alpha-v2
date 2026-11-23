@@ -6,6 +6,7 @@ import { ArrowUp, KeyRound, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
+import { OfferCard } from './OfferCard.tsx'
 import { shownScreens } from './plugin/screens.ts'
 import { signInWith } from './SignInApps.tsx'
 import { StoryRow } from './story/StoryRow.tsx'
@@ -113,6 +114,9 @@ export function Home({
 
         {/* Set up Alpha, until the person finishes it or declines */}
         <StoryRow version={last} />
+
+        {/* one extra permission, once its prerequisite is met (offers.yaml) */}
+        <OfferCard version={last} />
 
         {/* a plugin's row, while something of its waits for the person */}
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}

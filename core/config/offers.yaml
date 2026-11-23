@@ -1,0 +1,20 @@
+# The extra permissions Alpha offers after Set up Alpha (Vikas, 23 Nov; proposed for Kenil's
+# review): each only once its prerequisite is met, one at a time, never in setup. A new ask is a
+# new entry here and its prerequisite in core/src/offers.ts, never a screen of its own.
+
+# Days a declined offer waits before it is offered again: long enough not to nag.
+declined_wait_days: 30
+
+offers:
+  # Safari's history, through Full Disk Access for Alpha Bridge: only once Safari is among the apps
+  # Alpha Bridge's Apps reader found, and Alpha Bridge is connected.
+  - key: safari
+    after: { app: Safari, bridge: true }
+    title: Read Safari too?
+    says: "You use Safari. Alpha reads your other browsers' history; Safari's needs Full Disk Access for Alpha Bridge, which macOS asks you for."
+  # Watching your work (the front app and its window's title, never a picture): only once Alpha
+  # Bridge has stayed connected this many days since setup, so it is known to stay on.
+  - key: watch
+    after: { bridge_days: 7 }
+    title: Let Alpha watch your work?
+    says: "Which app is in front and its window's title, every few seconds, never a picture of your screen. Only while Alpha Bridge stays connected; you can take it back in Settings › Permissions."

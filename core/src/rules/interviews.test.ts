@@ -1,15 +1,17 @@
-// Interviews (docs/rules.md, I1 to I6): what the Interviewer proposes cites what it rests on, its
+// Interviews (docs/rules.md, I1 to I7): what the Interviewer proposes cites what it rests on, its
 // numbers come from code or are marked estimated with their basis, a source the person skipped is
 // never read or cited, and what they dropped or declined never comes back. Tried through its own
 // tools, as its desk is given them, on the rule world with the interviews plugin switched on and a
 // made-up mailbox; the person's answers are given on the cards themselves. Never the model.
 import { join } from 'node:path'
 import type { Connector } from '@alpha/connector-sdk'
-import { watchAfterSetup } from '../api/routes/observe.ts'
+import { offerFor, watchAfterSetup } from '../api/routes/observe.ts'
+import { config } from '../config.ts'
 import { landIn, tableOf } from '../connectors/places.ts'
 import type { ToolEntry } from '../engine/registry.ts'
 import type { Here } from '../engine/tools/common.ts'
 import { Reviews } from '../modules/reviews.ts'
+import { nextOffer } from '../offers.ts'
 import { switchOn } from '../plugins/plugins.ts'
 import { giveLeave } from '../world/observe.ts'
 import { declineStory, finishStory } from '../world/story.ts'
@@ -442,6 +444,30 @@ rule(
         giveLeave(w.world.db, w.user.id)
         const noComputer = watchAfterSetup(w.world, w.user, start)
         return /not said yes/.test(noYes) && /Alpha Bridge/.test(noComputer) && started === 0
+      },
+    },
+  },
+)
+
+rule(
+  'I7',
+  'an extra permission is offered only once its prerequisite is met, one at a time, never in setup',
+  {
+    cases: {
+      'none in setup or before its prerequisite, then one at a time': async (w) => {
+        const inSetup = offerFor(w.world, w.user.id)
+        finishStory(w.world.db, w.user.id)
+        // finished, but no Alpha Bridge and no Safari: still none
+        const unmet = offerFor(w.world, w.user.id)
+        const cfg = config.offers()
+        const met = nextOffer(cfg, {
+          setUpAt: '2026-11-01T00:00:00Z',
+          apps: ['Safari'],
+          bridgeSince: '2026-11-01T00:00:00Z',
+          decided: {},
+          now: Date.parse('2026-12-01T00:00:00Z'),
+        })
+        return inSetup === null && unmet === null && met?.key === 'safari'
       },
     },
   },
