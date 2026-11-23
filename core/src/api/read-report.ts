@@ -88,6 +88,11 @@ export function readReport(ctx: BaseCtx): ReadReportView {
           t.kept += c.read - c.leftOut - c.skipped
           t.leftOut += c.leftOut
           t.skipped += c.skipped
+          // files have no landed line: what is new among them is the read's own count
+          if (id === 'files') {
+            t.added += c.added
+            t.changed += c.changed
+          }
         }
       // what was made: the rows each of its landed lines names, newest first
       for (const l of all

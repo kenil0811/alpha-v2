@@ -89,7 +89,7 @@ describe('What Alpha read', () => {
     expect(m?.rows).toEqual([row?.id])
     expect(m?.table).toBe(mail?.id)
     const f = s?.tables.find((t) => t.name === 'Files')
-    expect(f).toMatchObject({ table: null, read: 4, leftOut: 2, kept: 2 })
+    expect(f).toMatchObject({ table: null, read: 4, leftOut: 2, kept: 2, added: 1 })
   })
 
   it('shows a member only their own sources, and the owner every one', async () => {

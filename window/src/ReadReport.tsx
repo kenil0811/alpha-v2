@@ -110,7 +110,7 @@ function sourceSub(s: ReadSourceView): string {
     s.reading
       ? 'Reading now'
       : s.lastReadAt
-        ? `read ${n(s.reads)} time${s.reads === 1 ? '' : 's'}, last ${dayWords(s.lastReadAt)}`
+        ? `read ${n(s.reads)} time${s.reads === 1 ? '' : 's'}, last ${dayWords(s.lastReadAt).replace(/^now$/, 'just now')}`
         : 'not read yet',
     s.failed ? `${n(s.failed)} failed` : '',
     s.off ?? '',
