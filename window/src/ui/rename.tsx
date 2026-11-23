@@ -1,12 +1,13 @@
 // A name changed where it shows: a table's in the bar, a module's in the rail. A double-click
-// edits it in place, Enter keeping the change and Escape putting it back, as a short list's entry
-// is (editStep, R8). A name the core refuses (one another has, one naming a period) stays in the
-// box with the core's words under it; leaving the box then puts the name back.
-import { type ReactNode, useState } from 'react'
+// edits it in place, with Save and Cancel under it (Vikas, 23 Nov); Enter and Escape do the same,
+// as a short list's entry does (editStep, R8). A name the core refuses (one another has, one naming
+// a period) stays in the box with the core's words under it.
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react'
 import { wordsOf } from '../api.ts'
 import { cn } from './cn.ts'
 import { Field } from './field.tsx'
 import { type Edit, editStep } from './shortlist.tsx'
+import { YesNo } from './yes-no.tsx'
 
 export const RENAME_TIP = 'Double-click to rename'
 
@@ -25,6 +26,14 @@ export function Renamable({
 }) {
   const [edit, setEdit] = useState<Edit>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  // Save and Cancel hang under the box, held to the window so a row of tabs that scrolls
+  // sideways does not cut them off
+  const box = useRef<HTMLSpanElement>(null)
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null)
+  useLayoutEffect(() => {
+    const r = edit ? box.current?.getBoundingClientRect() : undefined
+    setAt(r ? { top: r.bottom + 4, right: window.innerWidth - r.right } : null)
+  }, [edit])
   const step = (s: Step) => {
     const out = editStep(edit, s)
     setEdit(out.edit)
@@ -45,7 +54,7 @@ export function Renamable({
       <>{children(rename ? () => step({ type: 'start', key: 'name', words: name }) : undefined)}</>
     )
   return (
-    <span className="relative block min-w-0 flex-1">
+    <span ref={box} className="relative block min-w-0 flex-1">
       <Field
         autoFocus
         aria-label={`Rename ${name}`}
@@ -56,16 +65,24 @@ export function Renamable({
           if (e.key === 'Enter') step({ type: 'keep' })
           if (e.key === 'Escape') step({ type: 'cancel' })
         }}
-        onBlur={() => step({ type: problem ? 'cancel' : 'keep' })}
       />
-      {problem && (
-        <span
-          role="alert"
-          className="absolute top-full left-0 z-(--z-pop) mt-1 w-full min-w-48 whitespace-normal rounded-md border border-line bg-surface px-2.5 py-1.5 font-sans text-sm text-warn shadow-pop"
-        >
-          {problem}
+      <span
+        style={at ?? undefined}
+        className="fixed z-(--z-pop) flex w-max max-w-72 flex-col items-end gap-1 font-sans"
+      >
+        <span className="flex gap-1">
+          <YesNo yes={false} words="Cancel" onClick={() => step({ type: 'cancel' })} />
+          <YesNo yes words="Save" onClick={() => step({ type: 'keep' })} />
         </span>
-      )}
+        {problem && (
+          <span
+            role="alert"
+            className="min-w-48 whitespace-normal rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-warn shadow-pop"
+          >
+            {problem}
+          </span>
+        )}
+      </span>
     </span>
   )
 }
