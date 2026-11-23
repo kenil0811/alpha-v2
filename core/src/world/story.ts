@@ -5,6 +5,8 @@
 import { type Db, one, run } from './db.ts'
 
 const LEFT_OUT = 'story:apps_left_out'
+// a chapter a plugin opened again after its look (a review after setup): Home asks, not "carry on"
+const AGAIN = 'story:asks_again'
 
 export type ChapterState = 'done' | 'skipped'
 
@@ -15,9 +17,12 @@ export interface Progress {
   chapters: Record<string, ChapterState>
   doneAt: string | null
   declinedAt: string | null
+  again?: boolean // opened again by a plugin with a few more questions, until finished
 }
 
 const NONE: Progress = { chapters: {}, doneAt: null, declinedAt: null }
+const asksAgain = (db: Db, user: string) =>
+  !!one(db, 'SELECT 1 AS y FROM preferences WHERE user_id = ? AND key = ?', user, AGAIN)
 
 export function progressOf(db: Db, user: string): Progress {
   const r = one<{ chapters: string; done_at: string | null; declined_at: string | null }>(
@@ -32,7 +37,12 @@ export function progressOf(db: Db, user: string): Progress {
   } catch {
     // a value that does not read is as good as none
   }
-  return { chapters, doneAt: r.done_at, declinedAt: r.declined_at }
+  return {
+    chapters,
+    doneAt: r.done_at,
+    declinedAt: r.declined_at,
+    ...(asksAgain(db, user) ? { again: true } : {}),
+  }
 }
 
 function save(db: Db, user: string, p: Progress): void {
@@ -60,11 +70,19 @@ export function unmarkChapter(db: Db, user: string, chapter: string): void {
   const p = progressOf(db, user)
   const { [chapter]: _gone, ...rest } = p.chapters
   save(db, user, { chapters: rest, doneAt: null, declinedAt: null })
+  run(
+    db,
+    'INSERT INTO preferences (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO NOTHING',
+    user,
+    AGAIN,
+    '1',
+  )
 }
 
 // The story finished: Home's row goes.
 export function finishStory(db: Db, user: string): void {
   save(db, user, { ...progressOf(db, user), doneAt: new Date().toISOString() })
+  run(db, 'DELETE FROM preferences WHERE user_id = ? AND key = ?', user, AGAIN)
 }
 
 // Not now: Home's row goes, and the story waits until the person opens it again.

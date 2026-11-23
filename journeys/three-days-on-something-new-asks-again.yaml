@@ -1,0 +1,33 @@
+name: three-days-on-something-new-asks-again
+title: Three days after the owner finishes Set up Alpha, a new site in their browsing brings one card with a few more questions
+why: >
+  Vikas, 23 Nov: after setup Alpha keeps reading what the person switched on, and "after 3 days,
+  the onboarding flow can come up with a notification telling few more things, or setup can again
+  come in as a card in the Home page with additional questions". The review's check only looks;
+  a read since setup that brought something new wakes the Interviewer, whose short interview opens
+  What I learned again, and Home shows one card. A made-up owner whose browsing goes on with a
+  permits site after setup.
+plugins: [interviews]
+fixtures: three-days-on-something-new
+steps:
+  - bridge: { lend: '{tmp}/Office' }
+  - bridge: { browsing: true }
+  - story: { chapter: welcome }
+  - story: { chapter: workspace, body: { for: 'Just me, renovating kitchens.' } }
+  - story: { chapter: connect }
+  - story: { chapter: know, body: { off: [alpha, folder] } }
+  - story: { chapter: people, skip: true }
+  - story: { chapter: learned, answers: [] }
+  - story: { chapter: done }
+    checks:
+      - story: { done: true, row: null }
+  # the days after: the daily reading finds a site not seen at setup
+  - bridge: { later: later }
+    checks:
+      - rows_in: { table: Sites, count: 2 }
+  - due: { days: 3 }
+    checks:
+      - task: { title: A review after setup, count: 1 }
+      - story: { row: 'A few more questions from Alpha' }
+      - needs_you: { count: 0 }
+      - errors: 0

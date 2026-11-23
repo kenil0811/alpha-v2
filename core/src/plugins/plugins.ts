@@ -36,7 +36,7 @@ import { type ProvenanceInput, Refused } from '../world/kinds.ts'
 import { actorName, type Table, type WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
-import { CORE_CHAPTERS, unmarkChapter } from '../world/story.ts'
+import { CORE_CHAPTERS, progressOf, unmarkChapter } from '../world/story.ts'
 import { workspaceFor, workspaceName, workspaceSite } from '../world/workspace.ts'
 import type { User, World } from '../world/world.ts'
 
@@ -120,6 +120,8 @@ export interface PluginDeps {
     schema: Record<string, unknown>,
   ) => Promise<{ answer: unknown; uses?: Use[] }>
   connectors: ConnectorService | null
+  // a notice on the person's computer (a Mac notification where the companion can send one)
+  notify?: (title: string, words: string) => void
 }
 
 // A chapter a plugin added to Set up Alpha, with the plugin that added it.
@@ -158,6 +160,7 @@ export class Plugins {
   readonly routes: PluginRoute[] = []
   readonly chapters: PluginChapter[] = []
   private starts: (() => string | null)[] = []
+  private reading: ((person: string) => string[])[] = []
   private given: Given[] = []
   // the engine, once it is made (after the plugins, which add to its conversations)
   engine: Engine | null = null
@@ -199,6 +202,16 @@ export class Plugins {
           )
       }
     return said
+  }
+
+  // Whether a computer's reader is read on the clock for its person (keeps learning after setup):
+  // only once they finished Set up Alpha (one declined before finishing never starts; a few more
+  // questions opened since keep it going), and only a reader a plugin named for them as switched
+  // on. A wall in code: the plugin says which, the story says when.
+  keepsReading(person: string, connector: string): boolean {
+    const p = progressOf(this.deps.world.db, person)
+    if (!p.doneAt && !p.again) return false
+    return this.reading.some((f) => f(person).includes(connector))
   }
 
   // The plugins on here, by name.
@@ -462,7 +475,12 @@ export class Plugins {
       reopen: (person, chapter) => {
         if (!this.chapters.some((c) => c.plugin === name && c.key === chapter))
           throw new Refused(`${l.plugin.title} has no chapter ${chapter} in Set up Alpha.`)
-        if (world.user(person)) unmarkChapter(world.db, person, chapter)
+        if (!world.user(person)) return
+        unmarkChapter(world.db, person, chapter)
+        this.deps.notify?.('A few more questions from Alpha', 'Open Alpha to answer them.')
+      },
+      keepsReading: (allowed) => {
+        this.reading.push(allowed)
       },
       startBlock: (words) => {
         this.starts.push(words)

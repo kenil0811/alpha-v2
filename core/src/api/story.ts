@@ -69,10 +69,12 @@ export function storyView(chapters: Chapter[], p: Progress): StoryView {
     row:
       done || declined
         ? null
-        : through >= chapters.length
-          ? 'Finish setting up'
-          : through
-            ? `Carry on setting up: ${through} of ${chapters.length} done`
-            : 'Carry on setting up',
+        : p.again
+          ? 'A few more questions from Alpha'
+          : through >= chapters.length
+            ? 'Finish setting up'
+            : through
+              ? `Carry on setting up: ${through} of ${chapters.length} done`
+              : 'Carry on setting up',
   }
 }

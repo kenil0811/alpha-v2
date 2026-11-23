@@ -169,6 +169,12 @@ const connectors = new ConnectorService(world, {
         !['system', 'path', 'browser'].includes(c.manifest.auth)),
   ),
   server: platform.name === 'linux',
+  // a computer's reader read every day once its person finished Set up Alpha, for what they
+  // switched on (the plugin says which; plugins.keepsReading holds the wall)
+  keepsReading: (conn) => {
+    const pc = conn.computer ? world.computers.get(conn.computer) : undefined
+    return !!pc && !pc.removedAt && plugins.keepsReading(pc.user, conn.connector)
+  },
   // signing in as the person: the provider sends them back to this core
   signIn: new SignIn(world, {
     secrets,
@@ -276,6 +282,10 @@ const { plugins, problems: pluginProblems } = await switchOn(install.plugins, {
   region: () => platform.region(),
   ask: (system, prompt, schema) => claudeCode.ask(system, prompt, schema),
   connectors,
+  // as a reminder is: Alpha's Mac app shows its own while it runs; else the computer's notifications
+  notify: (title, words) => {
+    if (Date.now() - shell.seen >= 30_000) platform.notify(title, words)
+  },
 })
 for (const p of pluginProblems) console.error(p)
 const engine = new Engine(world, {

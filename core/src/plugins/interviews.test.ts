@@ -5,10 +5,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Connector } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, expect, it } from 'vitest'
+import { storyView } from '../api/story.ts'
 import { landIn } from '../connectors/places.ts'
 import { ScheduleRunner } from '../modules/runs/runner.ts'
 import { schedules } from '../modules/schedules.ts'
 import { one } from '../world/db.ts'
+import { declineStory, finishStory, progressOf } from '../world/story.ts'
 import { World } from '../world/world.ts'
 import { switchOn } from './plugins.ts'
 
@@ -58,12 +60,15 @@ it('loads where alpha.yaml names it, and its kit makes Your work with the Interv
   const interviewer = world.agents.list().find((a) => a.name === 'Interviewer')
   expect(interviewer?.title).toBe('Learns how you work and what would help')
   expect(interviewer?.source).toBe(m?.id)
-  // its regular check, on: it wakes the Interviewer only when something changed
+  // its regular checks, on: each wakes the Interviewer only when something changed
   expect(
     schedules(world)
       .filter((x) => x.agent === interviewer?.id)
       .map((x) => [x.name, x.state]),
-  ).toEqual([['A short interview', 'on']])
+  ).toEqual([
+    ['A review after setup', 'on'],
+    ['A short interview', 'on'],
+  ])
 })
 
 const MAIL = {
@@ -317,6 +322,134 @@ it('runs its regular check a month on and, with nothing new, wakes no one', asyn
     { owner: user.id },
   )
   await runner.runDue(Date.now() + 31 * 86_400_000)
-  expect(runner.runs(5).map((r) => r.words)).toEqual(['Nothing new.'])
+  // the monthly check, and the review after setup with no one set up: neither wakes anyone
+  expect(runner.runs(5).map((r) => r.words)).toEqual(['Nothing new.', 'Nothing new.'])
   expect(world.tasks.list().filter((t) => t.title === 'A short interview')).toEqual([])
+})
+
+const KIT = join(import.meta.dirname, '..', '..', '..', 'plugins', 'interviews')
+
+// 23 Nov: Edge was read and nothing on Get to know you said so; "most used" was the alphabet.
+it('says which browsers the sites came from, and the most used first', async () => {
+  const { SOURCES } = await import(join(KIT, 'src', 'sources.ts'))
+  const { shownOf } = await import(join(KIT, 'src', 'know.ts'))
+  const site = (id: string, s: string, days: number, browsers: string) => ({
+    id,
+    values: { Site: s, 'Days used': days, Browsers: browsers },
+  })
+  const rows = [
+    site('r_1', 'a.example', 2, 'Arc'),
+    site('r_2', 'b.example', 40, 'Arc, Edge'),
+    site('r_3', 'c.example', 9, 'Edge'),
+  ]
+  const host = { rows: () => rows }
+  const browsing = SOURCES.find((x: { key: string }) => x.key === 'browsing')
+  const words = browsing.read(host, 'u_1', 90).words as string
+  expect(shownOf(words, true)).toEqual([
+    '3 sites from Arc (2) and Edge (2).',
+    'Most used: b.example (40 days), c.example (9 days), a.example (2 days).',
+  ])
+})
+
+it('keeps reading after setup only what the person switched on, and only once they finished', async () => {
+  const user = world.owner('Kenil')
+  const notices: string[] = []
+  const { plugins } = await switchOn(['interviews'], {
+    world,
+    user,
+    home,
+    region: () => null,
+    ask: async () => ({ answer: null }),
+    connectors: null,
+    notify: (title) => notices.push(title),
+  })
+  const { keepStory } = await import(join(KIT, 'src', 'know.ts'))
+  const host = { dir: join(home, 'plugins', 'interviews') }
+  const found = (key: string, on: boolean) => ({ key, name: key, on, words: '' })
+  keepStory(host, user.id, {
+    found: [found('browsing', true), found('apps', false), found('ai', true)],
+  })
+  // not finished yet, or declined before finishing: nothing reads on the clock
+  expect(plugins.keepsReading(user.id, 'browsing')).toBe(false)
+  declineStory(world.db, user.id)
+  expect(plugins.keepsReading(user.id, 'browsing')).toBe(false)
+  finishStory(world.db, user.id)
+  expect(plugins.keepsReading(user.id, 'browsing')).toBe(true)
+  // switched off, or not one that keeps reading: never
+  expect(plugins.keepsReading(user.id, 'apps')).toBe(false)
+  expect(plugins.keepsReading(user.id, 'ai-work')).toBe(false)
+  // a person who never went through Get to know you: nothing
+  expect(plugins.keepsReading('u_nobody', 'browsing')).toBe(false)
+})
+
+it('looks three days after setup, once, and wakes the Interviewer only when a read brought something new', async () => {
+  const check = (
+    await import(
+      join(KIT, 'kit', 'agents', 'interviewer', 'checks', 'a-review-after-setup', 'check.js')
+    )
+  ).default as (alpha: unknown) => Promise<{ wake: boolean; found?: { sites: string[] } }>
+  const DAY = 86_400_000
+  const setUp = Date.parse('2026-11-20T10:00:00Z')
+  const look = (at: number, lastRun: number, newRead: boolean) => ({
+    input: { now: new Date(at).toISOString(), lastRun: new Date(lastRun).toISOString() },
+    rows: {
+      list: async (table: string) =>
+        table === 'Interview sources'
+          ? [{ values: { Person: 'Kenil' }, updatedAt: new Date(setUp).toISOString() }]
+          : table === 'Sites'
+            ? [{ values: { Site: 'new.example' }, updatedAt: new Date(setUp + DAY).toISOString() }]
+            : [],
+    },
+    journal: {
+      list: async () => [
+        {
+          who: 'connector browsing',
+          kind: 'connection_read',
+          words: newRead ? 'Read the Mac: something new.' : 'Read the Mac: nothing new.',
+        },
+      ],
+    },
+  })
+  // the days before the third: quiet
+  expect(await check(look(setUp + 2 * DAY, setUp + DAY, true))).toEqual({ wake: false })
+  // the first look after the third day: wakes, with what is new
+  const woke = await check(look(setUp + 3.5 * DAY, setUp + 2.5 * DAY, true))
+  expect(woke.wake).toBe(true)
+  expect(woke.found?.sites).toEqual(['new.example'])
+  // the look after that: never again for the same setup
+  expect(await check(look(setUp + 4.5 * DAY, setUp + 3.5 * DAY, true))).toEqual({ wake: false })
+  // nothing new on the third day: no one woken
+  expect(await check(look(setUp + 3.5 * DAY, setUp + 2.5 * DAY, false))).toEqual({ wake: false })
+})
+
+it('opens a few more questions as one Home card, with a notice on the computer', async () => {
+  const user = world.owner('Kenil')
+  const notices: string[] = []
+  const { plugins } = await switchOn(['interviews'], {
+    world,
+    user,
+    home,
+    region: () => null,
+    ask: async () => ({ answer: null }),
+    connectors: null,
+    notify: (title) => notices.push(title),
+  })
+  finishStory(world.db, user.id)
+  const chapters = [
+    { key: 'know', title: 'Get to know you' },
+    { key: 'learned', title: 'What I learned' },
+  ] as Parameters<typeof storyView>[0]
+  expect(storyView(chapters, progressOf(world.db, user.id)).row).toBeNull()
+  // the host's reopen, as short_interview calls it
+  const host = (
+    plugins as unknown as { host(l: unknown): { reopen(p: string, c: string): void } }
+  ).host(plugins.loaded[0])
+  host.reopen(user.id, 'learned')
+  expect(storyView(chapters, progressOf(world.db, user.id)).row).toBe(
+    'A few more questions from Alpha',
+  )
+  expect(notices).toEqual(['A few more questions from Alpha'])
+  // gone through again: the card goes
+  finishStory(world.db, user.id)
+  expect(storyView(chapters, progressOf(world.db, user.id)).row).toBeNull()
 })

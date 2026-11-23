@@ -17,7 +17,7 @@ steps:
   - story: { chapter: done }
     checks:
       - story: { done: true, row: null }
-      - schedule: { agent: Interviewer, count: 1, check: true }
+      - schedule: { agent: Interviewer, count: 2, check: true }
       - errors: 0
   - due: { days: 31 }
     checks:

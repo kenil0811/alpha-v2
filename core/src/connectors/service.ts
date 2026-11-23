@@ -44,6 +44,9 @@ export interface ServiceOptions {
   // this core is a server: a connector that runs on a person's computer (runs: computer or
   // either) runs only there, through the Bridge, never on the server itself
   server?: boolean
+  // whether a computer's reader that comes with a plugin is read on the clock for its connection's
+  // person (they keep learning after setup); none: never on the clock (proposed, 23 Nov)
+  keepsReading?: (conn: Connection) => boolean
 }
 
 import { gateKey, mcpName, splitMcpName } from './names.ts'
@@ -470,8 +473,16 @@ export class ConnectorService {
   private tried = new Map<string, number>()
   async syncDue(now = Date.now()): Promise<void> {
     for (const conn of this.world.connections.list()) {
-      const every = this.find(conn.connector)?.manifest.syncEveryMinutes
+      const c = this.find(conn.connector)
+      const every = c?.manifest.syncEveryMinutes
       if (!every || ['paused', 'needs_sign_in', 'waiting'].includes(conn.state)) continue
+      // a computer's reader that comes with a plugin: only while its person keeps learning
+      if (
+        c?.manifest.plugin &&
+        c.manifest.runs === 'computer' &&
+        !this.options.keepsReading?.(conn)
+      )
+        continue
       const last = conn.lastSyncAt ? Date.parse(conn.lastSyncAt) : 0
       const tried = this.tried.get(conn.id) ?? 0
       const again = Math.min(every, 30) * 60_000
