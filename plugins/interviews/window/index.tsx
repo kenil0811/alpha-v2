@@ -13,9 +13,11 @@ import {
   ChevronRight,
   Field,
   go,
+  IconButton,
   Info,
   LoaderCircle,
   openModule,
+  Pencil,
   Pill,
   Refusal,
   Repeat,
@@ -106,12 +108,19 @@ function Writing({ found }: { found: Found[] }) {
   )
 }
 
-// What I learned: one block of lines, each approved or declined; only an approved one is saved.
+// What I learned: one block of lines, each approved, declined or put in the person's own words
+// with the pencil (saved as approved); only an approved one is saved.
 function Learned(p: ChapterProps) {
   const { drafting, empty, problem } = useLearned(p)
   const about = (p.screen.about ?? []) as AboutLine[]
   const doing = useAct()
   const send = (body: unknown) => void doing.act(() => p.act(body))
+  const [editing, setEditing] = useState<{ id: string; words: string } | null>(null)
+  const save = () => {
+    if (!editing?.words.trim()) return
+    send({ about: { keep: [editing.id], edit: { [editing.id]: editing.words.trim() } } })
+    setEditing(null)
+  }
   if (empty) return <p className="text-ink-2">{empty}</p>
   if (drafting && !about.length) return <Writing found={(p.screen.found ?? []) as Found[]} />
   return (
@@ -128,17 +137,56 @@ function Learned(p: ChapterProps) {
         {about.map((a) => (
           <li key={a.id} className="flex items-start gap-3 py-1">
             <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-ink-3" />
-            <span className="flex min-w-0 flex-1 items-start gap-1.5 pt-0.5 text-ink">
-              {a.line}
-              <Info
-                help={`${a.for === 'everyone' ? 'For everyone here. ' : ''}${restsWords(a.rests)}`}
+            {editing?.id === a.id ? (
+              <Field
+                className="min-w-0 flex-1"
+                aria-label="Your own words"
+                autoFocus
+                value={editing.words}
+                onChange={(e) => setEditing({ id: a.id, words: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') save()
+                  if (e.key === 'Escape') setEditing(null)
+                }}
               />
-            </span>
-            <YesNo
-              value={a.state === 'Kept' ? 'yes' : a.state === 'Dropped' ? 'no' : null}
-              disabled={doing.busy || a.decided}
-              onChange={(v) => send({ about: v === 'yes' ? { keep: [a.id] } : { drop: [a.id] } })}
-            />
+            ) : (
+              <span className="flex min-w-0 flex-1 items-start gap-1.5 pt-0.5 text-ink">
+                {a.line}
+                <Info
+                  help={`${a.for === 'everyone' ? 'For everyone here. ' : ''}${restsWords(a.rests)}`}
+                />
+              </span>
+            )}
+            {editing?.id === a.id ? (
+              <span className="flex shrink-0 gap-1">
+                <Button size="sm" disabled={doing.busy || !editing.words.trim()} onClick={save}>
+                  Save
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+              </span>
+            ) : (
+              <span className="flex shrink-0 items-center gap-1">
+                <YesNo
+                  value={a.state === 'Kept' ? 'yes' : a.state === 'Dropped' ? 'no' : null}
+                  disabled={doing.busy || a.decided}
+                  onChange={(v) =>
+                    send({ about: v === 'yes' ? { keep: [a.id] } : { drop: [a.id] } })
+                  }
+                />
+                {!a.decided && (
+                  <IconButton
+                    label="Edit"
+                    disabled={doing.busy}
+                    className="press swell"
+                    onClick={() => setEditing({ id: a.id, words: a.line })}
+                  >
+                    <Pencil className="size-3.5" />
+                  </IconButton>
+                )}
+              </span>
+            )}
           </li>
         ))}
       </ul>

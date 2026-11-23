@@ -8,7 +8,7 @@ import { useLayout } from '../layout.ts'
 import { openLink } from '../opened.ts'
 import type { Next } from '../story/next.ts'
 
-export { Check, ChevronRight, LoaderCircle, Sparkles, X } from 'lucide-react'
+export { Check, ChevronRight, LoaderCircle, Pencil, Sparkles, X } from 'lucide-react'
 export { wordsOf } from '../api.ts'
 
 export { startAsk } from '../ask.ts'
