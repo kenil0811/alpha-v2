@@ -24,7 +24,11 @@
         el('div', { ...opener(i.open), class: `ak-pair${i.open ? ' ak-open' : ''}` }, [
           el('span', { class: 'ak-pair__label', text: String(i.label ?? '') }),
           el('span', { class: 'ak-pair__right' }, [
-            el('span', { class: `ak-pair__value${tone(i.tone)}`, text: fmt(i.value, i.unit) }),
+            el('span', {
+              class: `ak-pair__value${tone(i.tone)}`,
+              'data-value': true,
+              text: fmt(i.value, i.unit),
+            }),
             ...changes(i.change),
             i.note ? el('span', { class: 'ak-pair__note', text: String(i.note) }) : null,
           ]),
@@ -49,7 +53,7 @@
           el('div', { class: 'ak-bar__track' }, [
             el('div', { class: 'ak-bar__fill', style: `height: ${h}%` }),
           ]),
-          el('div', { class: 'ak-bar__value', text: fmt(i.value, i.unit) }),
+          el('div', { class: 'ak-bar__value', 'data-value': true, text: fmt(i.value, i.unit) }),
           i.note ? el('div', { class: 'ak-bar__note', text: String(i.note) }) : null,
           ...changes(i.change),
         ])
@@ -67,7 +71,11 @@
       steps.map((s, i) =>
         el('li', { ...opener(s.open), class: `ak-step${s.open ? ' ak-open' : ''}` }, [
           el('span', { class: 'ak-step__n', text: String(i + 1) }),
-          el('span', { class: `ak-step__label${tone(s.tone)}`, text: String(s.label ?? '') }),
+          el('span', {
+            class: `ak-step__label${tone(s.tone)}`,
+            'data-value': true,
+            text: String(s.label ?? ''),
+          }),
           s.note ? el('span', { class: 'ak-step__note', text: String(s.note) }) : null,
         ]),
       ),
