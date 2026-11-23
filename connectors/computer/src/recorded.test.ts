@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { visitsIn } from './history.ts'
-import { claudeDir, historyFiles } from './paths.ts'
+import { browserName, claudeDir, historyFiles } from './paths.ts'
 import { claudeRequests, webConversations } from './read.ts'
 import { recordedHome } from './recorded.ts'
 
@@ -63,4 +63,38 @@ it('leaves nothing to read where nothing was recorded', () => {
   const home = recordedHome(answers({}), join(dir, 'home'), NOW)
   expect(existsSync(chrome(home))).toBe(false)
   expect(claudeRequests(claudeDir(home), 90, NOW)).toEqual([])
+})
+
+// 23 Nov: Edge seemed unread and Dia was never read. Each browser's history is read and named by the
+// folder it sits in, Dia's among them, and a person's folder named like a browser names nothing.
+it('reads Edge’s and Dia’s history beside Chrome’s, each by its own name', () => {
+  const visit = (url: string, at: string) => ({ url, title: 'Page', at })
+  const home = recordedHome(
+    answers({
+      'browsing/history-edge.json': {
+        browser: 'Edge',
+        visits: [visit('https://edge.example/', '2026-01-11T10:00:00Z')],
+      },
+      'browsing/history-dia.json': {
+        browser: 'Dia',
+        visits: [visit('https://dia.example/', '2026-01-12T10:00:00Z')],
+      },
+    }),
+    join(dir, 'marcia'), // "arc" is in the name: it must not make Edge's history Arc's
+    NOW,
+  )
+  const support = join(home, 'Library', 'Application Support')
+  const files = [join(support, 'Microsoft Edge'), join(support, 'Dia', 'User Data')].flatMap((r) =>
+    historyFiles(r),
+  )
+  expect(visitsIn(files, 90, NOW).map((v) => [v.browser, v.url])).toEqual([
+    ['Edge', 'https://edge.example/'],
+    ['Dia', 'https://dia.example/'],
+  ])
+})
+
+it('names each browser by where its profiles sit', () => {
+  expect(browserName('/Users/marcia/Library/Application Support/Google/Chrome')).toBe('Chrome')
+  expect(browserName('/Users/sam/Library/Application Support/Dia/User Data')).toBe('Dia')
+  expect(browserName('/Users/sam/Library/Application Support/Microsoft Edge')).toBe('Edge')
 })

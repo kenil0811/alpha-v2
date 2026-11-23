@@ -89,6 +89,9 @@ export const Journey = z.object({
           ai: z.boolean().optional(), // its AI work lent, read from the history's titles
           // its browsing history lent, through the Bridge's browsing reader on recorded answers
           browsing: z.boolean().optional(),
+          // days on, its browsing went on: its home made up again from the recorded answers in
+          // this folder of the journey's, then browsing read again
+          later: z.string().optional(),
         })
         .optional(),
       // the scheduler's tick: schedules whose time or change has come run now, or so many days on
