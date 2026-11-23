@@ -1,8 +1,10 @@
 // Set up Alpha, the first run told as a story (the 22 Nov onboarding redesign): which chapters a
 // person's story has, from who they are and what this Alpha has, and where they stand in it. The
-// core owns Welcome, Claude, Your workspace, Connect, Your people and Done (a member's Welcome,
-// What's here, Connect your own and Done); a plugin adds its own after Connect or after Your
-// people. Code paces it: every screen is drawn from state at once.
+// window shows it as one page, each step opening as the one before is done or skipped (proposed,
+// Vikas 23 Nov). The core owns Hello, About you, Connect my thinking, Your computer, Your
+// accounts, Invite team and Done (a member's Hello, What's here, Your computer, Your accounts and
+// Done); a plugin adds its own after Your accounts or after Invite team. Code paces it: every
+// screen is drawn from state at once.
 import type { PluginChapter } from '../plugins/plugins.ts'
 import type { Progress } from '../world/story.ts'
 import type { ChapterState, StoryView } from './story-types.ts'
@@ -31,21 +33,24 @@ export function chaptersOf(h: StoryHere): Chapter[] {
       .map((c): Chapter => ({ key: c.key, title: c.title, plugin: c }))
   if (!h.owner)
     return [
-      core('welcome', 'Welcome'),
+      core('welcome', 'Hello'),
       core('here', 'What’s here'),
-      core('connect', 'Connect your own'),
+      core('computer', 'Your computer'),
+      core('connect', 'Your accounts'),
       ...after('connect'),
       ...after('people'),
       core('done', 'Done'),
     ]
   return [
-    core('welcome', 'Welcome'),
-    // nothing else works without a model, so Claude comes second while none is set (call 7)
-    ...(!h.modelSet || h.progress.chapters.claude ? [core('claude', 'Claude')] : []),
-    core('workspace', 'Your workspace'),
-    core('connect', 'Connect'),
+    core('welcome', 'Hello'),
+    core('workspace', 'About you'),
+    // Claude while no model is set, kept on the path once gone through (call 7)
+    ...(!h.modelSet || h.progress.chapters.claude ? [core('claude', 'Connect my thinking')] : []),
+    // the computer first, so the apps Alpha Bridge finds are offered with the accounts next
+    core('computer', 'Your computer'),
+    core('connect', 'Your accounts'),
     ...after('connect'),
-    ...(h.people ? [core('people', 'Your people')] : []),
+    ...(h.people ? [core('people', 'Invite team')] : []),
     ...after('people'),
     core('done', 'Done'),
   ]

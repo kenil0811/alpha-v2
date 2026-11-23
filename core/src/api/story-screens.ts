@@ -147,11 +147,19 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       site: workspaceSite(world.db),
       guess: guess(),
     }),
+    // the computer's tile on a step of its own before the accounts, so the apps Alpha Bridge
+    // finds on it are there to offer next
+    computer: async (): Promise<ConnectScreen> => ({
+      key: 'computer',
+      title: 'Your computer',
+      says: 'Shall I look at your computer too?',
+      tiles: connectTiles(ctx, room.onServer).filter((t) => t.kind === 'computer'),
+    }),
     connect: async (): Promise<ConnectScreen> => ({
       key: 'connect',
-      title: user.role === 'owner' ? 'Connect' : 'Connect your own',
+      title: 'Your accounts',
       says: 'Show me where your work happens.',
-      tiles: connectTiles(ctx, room.onServer),
+      tiles: connectTiles(ctx, room.onServer).filter((t) => t.kind !== 'computer'),
     }),
     people: async (): Promise<PeopleScreen> => ({
       key: 'people',

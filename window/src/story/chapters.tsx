@@ -59,6 +59,7 @@ export function ChapterBody(p: Props) {
     case 'workspace':
       return <Workspace {...p} screen={s as WorkspaceScreen} />
     case 'connect':
+    case 'computer':
       return <Connect screen={s as ConnectScreen} reload={p.reload} next={p.next} />
     case 'people':
       return <People {...p} screen={s as PeopleScreen} />

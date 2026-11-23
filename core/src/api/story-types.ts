@@ -44,8 +44,9 @@ export interface WorkspaceScreen extends Screen {
   guess: string | null // the site guessed from the email's domain, never a mail provider's
 }
 
+// Your accounts, and Your computer: the same tiles, the computer's on a step of its own
 export interface ConnectScreen extends Screen {
-  key: 'connect'
+  key: 'connect' | 'computer'
   tiles: ConnectTile[]
 }
 

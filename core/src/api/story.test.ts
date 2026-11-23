@@ -54,7 +54,15 @@ describe('Set up Alpha', () => {
 
   it('gives the owner of a fresh server its whole story, Claude second while no model is set', async () => {
     const s = await story(as())
-    expect(keys(s)).toEqual(['welcome', 'claude', 'workspace', 'connect', 'people', 'done'])
+    expect(keys(s)).toEqual([
+      'welcome',
+      'workspace',
+      'claude',
+      'computer',
+      'connect',
+      'people',
+      'done',
+    ])
     expect(s).toMatchObject({ at: 'welcome', done: false, fresh: true, row: 'Carry on setting up' })
   })
 
@@ -68,12 +76,13 @@ describe('Set up Alpha', () => {
     })
     expect((await post(app, '/api/story/welcome/skip')).json().problem).toMatch(/nothing to skip/)
     await post(app, '/api/story/welcome')
+    await post(app, '/api/story/workspace', { name: 'X' })
     const skip = await post(app, '/api/story/claude/skip')
     expect(skip.statusCode).toBe(409)
     expect(skip.json().problem).toMatch(/can’t be skipped/)
     // no going round it either
-    expect((await post(app, '/api/story/workspace', { name: 'X' })).json().problem).toMatch(
-      /Go through Claude first/,
+    expect((await post(app, '/api/story/computer')).json().problem).toMatch(
+      /Go through Connect my thinking first/,
     )
     const wrong = await post(app, '/api/story/claude', { token: `sk-ant-oat01-${'b'.repeat(40)}` })
     expect(wrong.json().problem).toMatch(/did not answer.*Invalid bearer token/)
@@ -88,16 +97,23 @@ describe('Set up Alpha', () => {
     // Claude stays on the path it was gone through on
     const s = await story(app)
     expect(keys(s)).toContain('claude')
-    expect(s.at).toBe('workspace')
-    expect(s.row).toBe('Carry on setting up: 2 of 6 done')
+    expect(s.at).toBe('computer')
+    expect(s.row).toBe('Carry on setting up: 3 of 7 done')
   })
 
   it('has no Claude chapter once a model is set, and no Your people where no one signs in', async () => {
     await route.setToken(TOKEN, owner.id)
-    expect(keys(await story(as()))).toEqual(['welcome', 'workspace', 'connect', 'people', 'done'])
+    expect(keys(await story(as()))).toEqual([
+      'welcome',
+      'workspace',
+      'computer',
+      'connect',
+      'people',
+      'done',
+    ])
     const mac = buildServer({ engine, user: owner, token: 't', ports: [4700] })
     const s = (await mac.inject({ url: '/api/story', headers: AS })).json() as StoryView
-    expect(keys(s)).toEqual(['welcome', 'workspace', 'connect', 'done'])
+    expect(keys(s)).toEqual(['welcome', 'workspace', 'computer', 'connect', 'done'])
   })
 
   it('keeps the workspace, who it is for and its site, guessing the site from the owner’s own mail', async () => {
@@ -117,13 +133,14 @@ describe('Set up Alpha', () => {
     expect(workspaceName(world.db)).toBe('Harbor Books')
     expect(workspaceFor(world.db)).toBe('Our bookshop: me and two staff.')
     expect(workspaceSite(world.db)).toBe('https://harborbooks.example/')
-    expect((await story(app)).at).toBe('connect')
+    expect((await story(app)).at).toBe('computer')
   })
 
   it('adds the owner’s people with one-time links, sending nothing, and a member’s story is their own', async () => {
     await route.setToken(TOKEN, owner.id)
     const app = as()
-    for (const c of ['welcome', 'workspace', 'connect']) await post(app, `/api/story/${c}`)
+    for (const c of ['welcome', 'workspace', 'computer', 'connect'])
+      await post(app, `/api/story/${c}`)
     const added = await post(app, '/api/story/people', {
       add: [{ name: 'Priya', email: 'priya@harborbooks.example' }],
     })
@@ -137,7 +154,7 @@ describe('Set up Alpha', () => {
     const priya = world.users().find((u) => u.name === 'Priya') as User
     const hers = as(priya)
     const s = await story(hers)
-    expect(keys(s)).toEqual(['welcome', 'here', 'connect', 'done'])
+    expect(keys(s)).toEqual(['welcome', 'here', 'computer', 'connect', 'done'])
     expect(s).toMatchObject({ at: 'welcome', done: false, fresh: true })
     const here = JSON.stringify((await hers.inject({ url: '/api/story/here', headers: AS })).json())
     expect(here).toMatch(/everyone/)
@@ -154,11 +171,13 @@ describe('Set up Alpha', () => {
     const screen = async (app: ReturnType<typeof as>) =>
       (await app.inject({ url: '/api/story/connect', headers: AS })).json() as ConnectScreen
     const mine = await screen(as())
-    expect(mine.tiles.map((t) => t.key)).toEqual(['calendar', 'computer', 'apps', 'file'])
+    expect(mine.tiles.map((t) => t.key)).toEqual(['calendar', 'apps', 'file'])
     // without interviews, no Alpha Bridge Apps reader (rules P1): Apps you use reads mail alone
     expect(mine.tiles.find((t) => t.key === 'apps')?.reader).toBeNull()
-    // on a server, a computer pairs through Alpha Bridge; every tile says what it reads first
-    expect(mine.tiles.find((t) => t.key === 'computer')).toMatchObject({
+    // on a server, a computer pairs through Alpha Bridge, on its own step before the accounts
+    const computer = (await as().inject({ url: '/api/story/computer', headers: AS })).json()
+    expect(computer.tiles.map((t: { key: string }) => t.key)).toEqual(['computer'])
+    expect(computer.tiles[0]).toMatchObject({
       server: true,
       title: 'Your computer',
     })
@@ -168,8 +187,8 @@ describe('Set up Alpha', () => {
       user: owner.id,
     })
     const hers = await screen(as(world.user(priya.id) as User))
-    expect(hers.title).toBe('Connect your own')
-    expect(hers.tiles.map((t) => t.key)).toEqual(['calendar', 'computer'])
+    expect(hers.title).toBe('Your accounts')
+    expect(hers.tiles.map((t) => t.key)).toEqual(['calendar'])
   })
 
   it('has a member’s mail tile wait on the owner while the sign-in app is not set up', async () => {
@@ -249,7 +268,7 @@ describe('Set up Alpha', () => {
     })
     // opened again, what was gone through stays so
     const again = (await post(app, '/api/story/reopen')).json() as StoryView
-    expect(again).toMatchObject({ declined: false, done: false, fresh: false, at: 'claude' })
+    expect(again).toMatchObject({ declined: false, done: false, fresh: false, at: 'workspace' })
     expect(again.chapters[0]).toMatchObject({ key: 'welcome', state: 'done' })
   })
 })
@@ -273,6 +292,7 @@ describe('a plugin’s chapters', () => {
     expect(owner.map((c) => c.key)).toEqual([
       'welcome',
       'workspace',
+      'computer',
       'connect',
       'know',
       'people',
@@ -286,7 +306,14 @@ describe('a plugin’s chapters', () => {
       plugins,
       progress: none,
     })
-    expect(member.map((c) => c.key)).toEqual(['welcome', 'here', 'connect', 'know', 'done'])
+    expect(member.map((c) => c.key)).toEqual([
+      'welcome',
+      'here',
+      'computer',
+      'connect',
+      'know',
+      'done',
+    ])
   })
 
   it('count toward how far the person got, skipped ones too', () => {
@@ -296,9 +323,9 @@ describe('a plugin’s chapters', () => {
       doneAt: null,
       declinedAt: null,
     })
-    expect(v.at).toBe('connect')
+    expect(v.at).toBe('computer')
     expect(v.chapters.find((c) => c.key === 'workspace')?.state).toBe('skipped')
-    expect(v.row).toBe('Carry on setting up: 2 of 7 done')
+    expect(v.row).toBe('Carry on setting up: 2 of 8 done')
   })
 })
 

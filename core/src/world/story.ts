@@ -9,7 +9,16 @@ const LEFT_OUT = 'story:apps_left_out'
 export type ChapterState = 'done' | 'skipped'
 
 // The core's own chapters, by key: a plugin's chapter takes another.
-export const CORE_CHAPTERS = ['welcome', 'claude', 'workspace', 'connect', 'people', 'here', 'done']
+export const CORE_CHAPTERS = [
+  'welcome',
+  'claude',
+  'workspace',
+  'computer',
+  'connect',
+  'people',
+  'here',
+  'done',
+]
 
 export interface Progress {
   chapters: Record<string, ChapterState>
