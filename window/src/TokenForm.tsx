@@ -16,7 +16,7 @@ export function TokenForm({ has, onSaved }: { has: boolean; onSaved: (m: ModelVi
   const { busy, problem, act } = useAct()
   return (
     <form
-      className="flex flex-wrap items-center gap-2 px-4 pb-3 pl-15"
+      className="flex flex-wrap items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault()
         void act(async () => {
@@ -28,7 +28,7 @@ export function TokenForm({ has, onSaved }: { has: boolean; onSaved: (m: ModelVi
       {/* what to run on the person's own computer, to copy */}
       <CodeLine className="w-fit" text="claude setup-token" />
       <SecretField
-        className="w-72"
+        className="min-w-0 flex-1"
         aria-label="Claude token"
         placeholder={has ? 'A token is saved. Paste a new one to replace it' : 'Paste the token'}
         value={token}

@@ -1,5 +1,5 @@
 // The window's one way of drawing a chart: bars, columns over time, a donut, the key under them and
-// the same numbers as a table. A table's Chart view and the spend card on Settings › LLM both draw
+// the same numbers as a table. A table's Chart view and the spend card on Settings › Usage both draw
 // with these, so the two never drift apart. Each part has one colour, kept across the looks: the
 // page's option colours, which a choice wears by its place too (ui-rules T17) and which hold in
 // dark mode.

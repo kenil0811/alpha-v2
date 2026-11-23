@@ -1,6 +1,6 @@
 // Settings, a page of sections. Connections and Schedules are in their own files.
 import type { CardView, ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
-import { Check, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { SlidersHorizontal } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { AccountsSection, Foot } from './Accounts.tsx'
 import { Activity } from './Activity.tsx'
@@ -26,16 +26,14 @@ import {
 import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { pastedKey, SecretField } from './ui/field.tsx'
-import { Info } from './ui/info.tsx'
-import { List, Row, Tile } from './ui/list.tsx'
+import { List, Row } from './ui/list.tsx'
 import { notify } from './ui/notice.tsx'
-import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { SideItem, SideList } from './ui/side-list.tsx'
+import { STATE_CARDS, StateCard } from './ui/state-card.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Tabs } from './ui/tabs.tsx'
 import { Waiting } from './ui/waiting.tsx'
@@ -56,7 +54,8 @@ const PAGES: { name: string; parts: [string, string][] }[] = [
   {
     name: 'Intelligence',
     parts: [
-      ['model', 'LLM'],
+      ['usage', 'Usage'],
+      ['model', 'Models'],
       ['schedules', 'Automations'],
       ['connections', 'Connections'],
     ],
@@ -75,7 +74,6 @@ const PAGES: { name: string; parts: [string, string][] }[] = [
 // Old addresses (bookmarks, links in cards) and the part they mean now.
 const MOVED: Record<string, string> = {
   llm: 'model',
-  usage: 'model',
   permissions: 'rules',
   work: 'rules',
   data: 'backup',
@@ -176,12 +174,8 @@ export function Settings({
   const body: Record<string, ReactNode> = {
     appearance: <Appearance view={view} onChange={load} />,
     people: <AccountsSection />,
-    model: (
-      <>
-        <UsageSection />
-        <ModelSection />
-      </>
-    ),
+    usage: <UsageSection />,
+    model: <ModelSection />,
     schedules: <Schedules version={version} />,
     connections: (
       <Connections view={view} open={open} version={version} owner={!member} onChange={load} />
@@ -401,9 +395,9 @@ function DataSection() {
   )
 }
 
-// The route: the person's own Claude subscription, signed in with Claude's own sign-in
-// on this Mac, or the firm's API key, kept in the Keychain. The choice is this install's. Each way
-// says its state and acts on its own row.
+// The ways to the model (Vikas, 23 Nov: a small card each): the person's own Claude subscription,
+// signed in with Claude's own sign-in on this Mac, or the firm's API key, kept in the Keychain. The
+// choice is this install's. Each card's dot says whether it is the one in use and ready.
 function ModelSection() {
   const [model, setModel] = useState<ModelView | null>(null)
   const [setup, loadSetup] = useSetup()
@@ -419,63 +413,37 @@ function ModelSection() {
       route,
     )
   const onServer = model?.token !== null && model?.token !== undefined
-  const kept = model?.hasKey
-    ? onServer
-      ? 'Key saved on this server'
-      : "Key saved in this Mac's Keychain"
-    : 'No key yet'
   return (
     <Section
-      title="Model"
+      title="Models"
       about={`Alpha thinks with ${model ? (MODEL_NAMES[model.desk] ?? model.desk) : '…'}.`}
     >
       {model && (
-        <List>
+        <div className={STATE_CARDS}>
           {model.providers.map((p) => {
             const subscription = p.route === 'subscription'
-            const state = subscription
-              ? setup &&
-                (setup.claude.signedIn
-                  ? `Signed in${setup.claude.email ? ` as ${setup.claude.email}` : ''}`
-                  : 'Not signed in')
-              : kept
+            const signedIn = !!setup?.claude.signedIn
+            const ready = subscription ? signedIn || !!model.token : model.hasKey
             return (
-              <Row
+              <StateCard
                 key={p.route}
-                className={cn(
-                  p.chosen && 'bg-accent-soft/40 shadow-[inset_3px_0_0_var(--color-accent)]',
-                )}
-                lead={
-                  <Tile>
-                    {p.chosen ? (
-                      <Check className="size-4 text-accent" />
-                    ) : (
-                      <Sparkles className="size-4" />
-                    )}
-                  </Tile>
-                }
-                title={
-                  <span className="flex items-center gap-2">
-                    {p.title}
-                    <Info
-                      help={[modelHelp(p.route, onServer), `It reaches ${p.can}.`, p.cannot]
-                        .filter(Boolean)
-                        .join('\n\n')}
-                    />
-                    {p.chosen && <Pill tone="accent">In use</Pill>}
-                  </span>
-                }
+                state={!p.chosen ? 'off' : ready ? 'good' : 'warn'}
+                says={!p.chosen ? 'Not in use' : ready ? 'In use' : 'In use, not ready'}
+                title={p.title}
+                about={[modelHelp(p.route, onServer), `It reaches ${p.can}.`, p.cannot]
+                  .filter(Boolean)
+                  .join('\n\n')}
                 sub={
-                  <>
-                    <div className="text-ink-2">{state}</div>
-                    {on === p.route && <Refusal words={problem} />}
-                  </>
+                  subscription
+                    ? signedIn && setup?.claude.email
+                    : model.hasKey &&
+                      (onServer ? 'Key saved on this server' : "Key saved in this Mac's Keychain")
                 }
-                actions={
+                act={
                   <>
-                    {subscription && setup && !setup.claude.signedIn && model.token === null && (
+                    {subscription && setup && !signedIn && model.token === null && (
                       <Button size="sm" variant="primary" disabled={waiting} onClick={signIn}>
-                        {waiting ? 'Waiting for the browser…' : 'Sign in'}
+                        {waiting ? 'Waiting…' : 'Sign in'}
                       </Button>
                     )}
                     {!p.chosen && (subscription || model.hasKey) && (
@@ -486,6 +454,7 @@ function ModelSection() {
                   </>
                 }
               >
+                {on === p.route && <Refusal words={problem} />}
                 {subscription && model.token !== null && (
                   <TokenForm has={model.token} onSaved={setModel} />
                 )}
@@ -496,10 +465,10 @@ function ModelSection() {
                     onSave={(key) => choose(p.route, key)}
                   />
                 )}
-              </Row>
+              </StateCard>
             )
           })}
-        </List>
+        </div>
       )}
     </Section>
   )
@@ -518,14 +487,14 @@ function KeyForm({
   const [key, setKey] = useState('')
   return (
     <form
-      className="flex items-center gap-2 px-4 pb-3 pl-15"
+      className="flex items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault()
         void onSave(key.trim()).then((ok) => ok && setKey(''))
       }}
     >
       <SecretField
-        className="w-72"
+        className="min-w-0 flex-1"
         aria-label="API key"
         placeholder="Paste the key"
         value={key}

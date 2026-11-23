@@ -1,4 +1,4 @@
-// How each way to reach Claude is set up, for the ⓘ beside it in Settings › LLM: a server takes
+// How each way to reach Claude is set up, for the ⓘ beside it in Settings › Models: a server takes
 // a subscription as a token made on the person's own computer, a Mac signs in in the browser.
 import type { ModelView } from '@alpha/core/api'
 
