@@ -4,6 +4,7 @@ import { api } from '../api.ts'
 import { askForNew } from '../ask.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
 import { cn } from '../ui/cn.ts'
+import { lift, settle } from '../ui/motion.ts'
 import { Choice } from '../ui/pill.tsx'
 import { ChoiceSelect } from './ChoiceSelect.tsx'
 import { show } from './values.ts'
@@ -109,8 +110,8 @@ export function Board({
                 if (row && from !== choice) move(row, choice)
               }}
               className={cn(
-                'flex w-56 shrink-0 flex-col gap-2 rounded-lg p-1',
-                over === choice && 'bg-accent-soft',
+                'flex w-56 shrink-0 flex-col gap-2 rounded-lg p-1 outline-2 outline-transparent outline-dashed -outline-offset-2 transition-[background-color,outline-color] duration-120',
+                over === choice && 'bg-accent-soft outline-accent-line',
               )}
             >
               <div className="flex justify-between px-1 text-sm text-ink-2">
@@ -130,13 +131,15 @@ export function Board({
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/x-alpha-row', `${r.id}\n${choice}`)
                     e.dataTransfer.effectAllowed = 'move'
+                    lift(e.currentTarget)
                   }}
-                  onDragEnd={() => {
+                  onDragEnd={(e) => {
+                    settle(e.currentTarget)
                     setOver(null)
                     stop()
                   }}
                   data-tip={`Drag to another ${by.name.toLowerCase()}`}
-                  className="flex cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base active:cursor-grabbing"
+                  className="flex animate-rise cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base active:cursor-grabbing"
                 >
                   <button
                     type="button"

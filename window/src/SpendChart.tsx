@@ -7,6 +7,7 @@ import { forecast, stack } from './spend-words.ts'
 import { money } from './table/values.ts'
 import { ChartCard } from './ui/chart-card.tsx'
 import { Select } from './ui/field.tsx'
+import { Roll } from './ui/roll.tsx'
 
 const SPLITS: [UsageSplit, string][] = [
   ['model', 'Model'],
@@ -39,7 +40,7 @@ export function Figures({ u }: { u: UsageView }) {
           data-tip={tip}
         >
           <div className="text-ink-3 text-sm">{label}</div>
-          <div className="font-medium text-ink text-lg tabular-nums">{value}</div>
+          <Roll value={value} className="font-medium text-ink text-lg" />
         </div>
       ))}
     </div>

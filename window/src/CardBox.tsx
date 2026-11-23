@@ -15,6 +15,7 @@ import { Button } from './ui/button.tsx'
 import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { CorePicture } from './ui/core-file.tsx'
+import { Decided, useDecide } from './ui/decided.tsx'
 import { Answer, Question } from './ui/question.tsx'
 import { answerWords } from './vocabulary.ts'
 import { WatchPage } from './WatchPage.tsx'
@@ -106,6 +107,7 @@ function CardBody({
   const [live, setLive] = useState(false)
   const [always, setAlways] = useState(false)
   const [watching, setWatching] = useState(false)
+  const { box, shown, decide } = useDecide()
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
@@ -125,7 +127,10 @@ function CardBody({
         setBusy(false)
         return
       }
-      await api.post(`/api/cards/${id}`, andAlways ? { answer: a, always: true } : { answer: a })
+      // the first option is the yes: it stamps a tick; any other slides the card out
+      await decide(a === (card.options[0] ?? 'Yes'), () =>
+        api.post(`/api/cards/${id}`, andAlways ? { answer: a, always: true } : { answer: a }),
+      )
       if (card.connects != null && a === card.options[0])
         window.location.hash = `#/intelligence/connections${card.connects ? `?connect=${card.connects}` : ''}`
       if (card.gate === 'sign_in' && a === card.options[0])
@@ -147,103 +152,107 @@ function CardBody({
   // a question is the one shared piece (its detail is words, in Markdown)
   if (card.kind === 'question' && !card.gate)
     return (
-      <Question
-        words={card.words}
-        detail={card.detail}
-        help={card.help}
-        options={card.options}
-        busy={busy}
-        problem={problem}
-        onAnswer={(a) => void answer(a)}
-      >
-        {restsOn}
-        {cannotUndo}
-      </Question>
+      <Decided box={box} shown={shown}>
+        <Question
+          words={card.words}
+          detail={card.detail}
+          help={card.help}
+          options={card.options}
+          busy={busy}
+          problem={problem}
+          onAnswer={(a) => void answer(a)}
+        >
+          {restsOn}
+          {cannotUndo}
+        </Question>
+      </Decided>
     )
   return (
-    <Card
-      label={card.gate ? (GATE[card.gate] ?? 'Waits for you') : 'A question'}
-      waits="Waits for you"
-    >
-      <div className="font-medium text-ink text-lg">{card.words}</div>
-      {/* a step in the browser: the page as it is, the element it is about outlined */}
-      {card.acting?.picture && (
-        <CorePicture
-          path={`/api/pictures/${card.acting.picture}`}
-          alt="The page the step is on"
-          boxClassName="w-fit"
-          className="max-h-72 w-auto rounded-md border border-line"
-        />
-      )}
-      {/* a gate's detail is what would go, as it would go */}
-      {card.detail && <Preview detail={card.detail} />}
-      {restsOn}
-      {cannotUndo}
-      {always && card.acting?.always && (
-        <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
-          <div className="text-ink text-md">{card.acting.always}?</div>
-          <div className="text-ink-3 text-sm">
-            This step goes now, and the next ones without asking you, each in the record with its
-            picture. A step that cannot be taken back still asks. Revoke it any time in Settings ›
-            Permissions.
+    <Decided box={box} shown={shown}>
+      <Card
+        label={card.gate ? (GATE[card.gate] ?? 'Waits for you') : 'A question'}
+        waits="Waits for you"
+      >
+        <div className="font-medium text-ink text-lg">{card.words}</div>
+        {/* a step in the browser: the page as it is, the element it is about outlined */}
+        {card.acting?.picture && (
+          <CorePicture
+            path={`/api/pictures/${card.acting.picture}`}
+            alt="The page the step is on"
+            boxClassName="w-fit"
+            className="max-h-72 w-auto rounded-md border border-line"
+          />
+        )}
+        {/* a gate's detail is what would go, as it would go */}
+        {card.detail && <Preview detail={card.detail} />}
+        {restsOn}
+        {cannotUndo}
+        {always && card.acting?.always && (
+          <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
+            <div className="text-ink text-md">{card.acting.always}?</div>
+            <div className="text-ink-3 text-sm">
+              This step goes now, and the next ones without asking you, each in the record with its
+              picture. A step that cannot be taken back still asks. Revoke it any time in Settings ›
+              Permissions.
+            </div>
+            <Actions>
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={() => answer(card.options[0] ?? 'Yes', true)}
+              >
+                {optionWords(card.options[0] ?? 'Yes')}, and always
+              </Button>
+              <Button variant="ghost" onClick={() => setAlways(false)}>
+                Back
+              </Button>
+            </Actions>
           </div>
-          <Actions>
+        )}
+        <Actions>
+          {card.options.map((o, i) => (
             <Button
-              variant="primary"
+              key={o}
+              variant={i === 0 ? 'primary' : 'default'}
               disabled={busy}
-              onClick={() => answer(card.options[0] ?? 'Yes', true)}
+              onClick={() => answer(o)}
             >
-              {optionWords(card.options[0] ?? 'Yes')}, and always
+              {optionWords(o)}
             </Button>
-            <Button variant="ghost" onClick={() => setAlways(false)}>
-              Back
+          ))}
+          {card.kind === 'permission' && (
+            <Button variant="ghost" disabled={busy} onClick={() => onChange(card)}>
+              Change something
             </Button>
-          </Actions>
-        </div>
-      )}
-      <Actions>
-        {card.options.map((o, i) => (
-          <Button
-            key={o}
-            variant={i === 0 ? 'primary' : 'default'}
-            disabled={busy}
-            onClick={() => answer(o)}
-          >
-            {optionWords(o)}
-          </Button>
-        ))}
-        {card.kind === 'permission' && (
-          <Button variant="ghost" disabled={busy} onClick={() => onChange(card)}>
-            Change something
-          </Button>
+          )}
+          {card.acting?.always && !always && (
+            <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
+              Always
+            </Button>
+          )}
+          {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}
+        </Actions>
+        {watching && card.acting?.watch && (
+          <WatchPage
+            tab={card.acting.watch}
+            site={card.words.split(' on ').at(-1) ?? ''}
+            name={card.words.split(' needs you ')[0] ?? 'The agent'}
+            take
+            onClose={() => setWatching(false)}
+          />
         )}
-        {card.acting?.always && !always && (
-          <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
-            Always
-          </Button>
+        {live && card.site && (
+          <LiveSignIn card={id} site={card.site} onClose={() => setLive(false)} />
         )}
-        {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}
-      </Actions>
-      {watching && card.acting?.watch && (
-        <WatchPage
-          tab={card.acting.watch}
-          site={card.words.split(' on ').at(-1) ?? ''}
-          name={card.words.split(' needs you ')[0] ?? 'The agent'}
-          take
-          onClose={() => setWatching(false)}
-        />
-      )}
-      {live && card.site && (
-        <LiveSignIn card={id} site={card.site} onClose={() => setLive(false)} />
-      )}
-      {opened && (
-        <div className="text-ink-2 text-sm">
-          {typeof opened === 'string'
-            ? `${card.site} is open in its own Chrome window on ${opened}. Sign in there, then quit that Chrome (⌘Q on a Mac; on Windows, close its window); Alpha then reads it again.`
-            : `${card.site} is open in Google Chrome on this computer. Sign in there, then quit that Chrome with ⌘Q; Alpha then reads it again.`}
-        </div>
-      )}
-      {problem && <div className="text-bad text-sm">{problem}</div>}
-    </Card>
+        {opened && (
+          <div className="text-ink-2 text-sm">
+            {typeof opened === 'string'
+              ? `${card.site} is open in its own Chrome window on ${opened}. Sign in there, then quit that Chrome (⌘Q on a Mac; on Windows, close its window); Alpha then reads it again.`
+              : `${card.site} is open in Google Chrome on this computer. Sign in there, then quit that Chrome with ⌘Q; Alpha then reads it again.`}
+          </div>
+        )}
+        {problem && <div className="text-bad text-sm">{problem}</div>}
+      </Card>
+    </Decided>
   )
 }
