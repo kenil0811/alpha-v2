@@ -2,7 +2,7 @@
 // blocks (frame/kit.js) and look (frame/kit.css). A page reads its own module's tables, never
 // writes, and reaches nothing outside its frame but the window. The core prints the same page,
 // with the same data, to a PDF, or to a picture for a look.
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { renderPage } from '@alpha/connector-sdk'
@@ -29,12 +29,28 @@ const FRAME = join(import.meta.dirname, 'frame')
 const asset = (name: string) => readFileSync(join(FRAME, name), 'utf8')
 
 const NAME = /^[A-Za-z0-9_-]+$/
+const TITLE = /<title>([^<]*)<\/title>/i
 
 function fileOf(module: Module, name: string): string {
   const file = join(module.dir, 'pages', `${name}.html`)
   if (!NAME.test(name) || !existsSync(file))
     throw new Refused(`${module.name} has no page called ${name}.`)
   return readFileSync(file, 'utf8')
+}
+
+// A page renamed where its tab shows it: its <title>, put in its <head> (or first) when it has
+// none (Vikas, 23 Nov).
+export function retitlePage(module: Module, name: string, title: string): void {
+  const html = fileOf(module, name)
+  const t = title.replace(/[<>&]/g, '').trim()
+  if (!t) throw new Refused('A page needs a name.')
+  const tag = `<title>${t}</title>`
+  const out = TITLE.test(html)
+    ? html.replace(TITLE, tag)
+    : /<head[^>]*>/i.test(html)
+      ? html.replace(/<head[^>]*>/i, (h) => h + tag)
+      : html.replace(/^(\s*<!doctype[^>]*>)?/i, (d) => d + tag)
+  writeFileSync(join(module.dir, 'pages', `${name}.html`), out)
 }
 
 export function pagesOf(module: Module): PageInfo[] {
@@ -48,7 +64,7 @@ export function pagesOf(module: Module): PageInfo[] {
       const name = f.slice(0, -5)
       return {
         name,
-        title: /<title>([^<]*)<\/title>/i.exec(html)?.[1]?.trim() || name,
+        title: TITLE.exec(html)?.[1]?.trim() || name,
         front: /<meta\s+name=["']alpha-front["']/i.test(html),
         record:
           /<meta\s+name=["']alpha-record["']\s+content=["']([^"']+)["']/i.exec(html)?.[1] ?? null,

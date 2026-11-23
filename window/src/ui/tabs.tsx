@@ -10,6 +10,7 @@ import { useBarSlot } from './bar-slot.tsx'
 import { cn } from './cn.ts'
 import { Fit } from './fit.tsx'
 import { PillSwitch } from './pill-switch.tsx'
+import { Renamable } from './rename.tsx'
 import { Roll } from './roll.tsx'
 import type { TabKeeping } from './tab-order.ts'
 
@@ -25,6 +26,7 @@ export type Tab = {
   onPick?: (() => void) | undefined // a tab kept on the page, not in the address
   onMenu?: ((at: { x: number; y: number }) => void) | undefined // its right-click: Pin, Unpin
   drag?: boolean // dragged to a new place among the others that drag (onMove)
+  rename?: ((to: string) => Promise<unknown>) | undefined // a page's tab: a double-click renames it
 }
 
 export function Tabs({
@@ -109,7 +111,8 @@ export function Tabs({
   )
 }
 
-// A tab that is a table takes its menu and rename; any other is its link as it was.
+// A tab that is a table takes its menu and rename; a page's renames by a double-click, as a
+// table's does (Vikas, 23 Nov); any other is its link as it was.
 export function Maybe({
   tab,
   extra,
@@ -120,11 +123,18 @@ export function Maybe({
   children: (on: object) => ReactNode
 }) {
   // a fixed tab (People, Setup, a page, Settings' parts) has no menu; the browser's is not offered
-  return tab.table ? (
-    <TableTab table={tab.table} module={tab.module ?? ''} extra={extra}>
-      {children}
-    </TableTab>
-  ) : (
-    children({ onContextMenu: (e: MouseEvent) => e.preventDefault() })
-  )
+  const none = (e: MouseEvent) => e.preventDefault()
+  if (tab.table)
+    return (
+      <TableTab table={tab.table} module={tab.module ?? ''} extra={extra}>
+        {children}
+      </TableTab>
+    )
+  if (tab.rename)
+    return (
+      <Renamable name={tab.label} rename={tab.rename}>
+        {(start) => children({ onContextMenu: none, onDoubleClick: () => start?.() })}
+      </Renamable>
+    )
+  return children({ onContextMenu: none })
 }
