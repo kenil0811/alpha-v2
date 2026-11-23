@@ -193,11 +193,18 @@ export function AgentRail({
   )
 }
 
-// An agent's one mark in the list (ui-rules A11): the cards from it waiting on the person, else
+// An agent's one mark in the list (ui-rules A11): how many of its cards wait on the person, a plain
+// number (Vikas, 23 Nov), else
 // Failed when something of its failed since they last opened its chat; nothing otherwise.
 function AgentMark({ id, stream }: { id: string; stream: Stream | null }) {
   const waiting = stream?.cards.filter((c) => c.agent === id).length ?? 0
-  if (waiting) return <Pill tone="warn">{waiting} waiting</Pill>
+  if (waiting)
+    return (
+      <Pill tone="warn">
+        {waiting}
+        <span className="sr-only"> waiting for you</span>
+      </Pill>
+    )
   if (stream?.failed.includes(id)) return <Pill tone="bad">Failed</Pill>
   return null
 }
