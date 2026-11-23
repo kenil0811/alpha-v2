@@ -7,7 +7,8 @@
     "./paths": "./src/paths.ts",
     "./observe": "./src/observe.ts",
     "./read": "./src/read.ts",
-    "./recorded": "./src/recorded.ts"
+    "./recorded": "./src/recorded.ts",
+    "./safari": "./src/safari.ts"
   },
   "dependencies": {
     "@alpha/connector-sdk": "workspace:*",

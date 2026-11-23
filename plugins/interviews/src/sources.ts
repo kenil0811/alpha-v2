@@ -107,7 +107,7 @@ function rowsSource(
   name: string,
   asks: string,
   reads: string,
-  where: { module: string; table: string; at?: string; keep?: (r: Row) => boolean },
+  where: Where,
   say: (rows: Row[], days: number) => string,
   none: string,
   connectors: string[],
@@ -139,12 +139,20 @@ function rowsSource(
   }
 }
 
-function rowsOf(
-  host: PluginHost,
-  where: { module: string; table: string; at?: string; keep?: (r: Row) => boolean },
-  days: number,
-): Row[] {
-  const all = host.rows(where.module, where.table).filter((r) => !where.keep || where.keep(r))
+// Where a source's rows are: a table of a module, and another beside it read with it (Safari's
+// sites beside the other browsers').
+interface Where {
+  module: string
+  table: string
+  also?: string
+  at?: string
+  keep?: (r: Row) => boolean
+}
+
+function rowsOf(host: PluginHost, where: Where, days: number): Row[] {
+  const all = [where.table, ...(where.also ? [where.also] : [])]
+    .flatMap((t) => host.rows(where.module, t))
+    .filter((r) => !where.keep || where.keep(r))
   return where.at ? all.filter((r) => within(r.values[where.at as string], days)) : all
 }
 
@@ -238,7 +246,7 @@ export const SOURCES: Source[] = [
     'Browsing',
     'may I read which sites you use, and on how many days?',
     'The sites your browsers open on your computer and on how many days, counted there by Alpha Bridge; only sites seen on two days or more reach Alpha.',
-    { module: 'Your work', table: 'Sites' },
+    { module: 'Your work', table: 'Sites', also: 'Safari sites' },
     (rows) =>
       [
         `${rows.length} sites${fromBrowsers(rows)}.`,

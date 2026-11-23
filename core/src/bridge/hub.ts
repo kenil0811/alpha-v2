@@ -149,6 +149,15 @@ export class Hub {
     return p
   }
 
+  // System Settings' Full Disk Access opened on a Mac, on its person's yes to reading Safari: the
+  // Bridge opens only that pane, whatever is asked. False when it is not connected.
+  openFullDiskAccess(computer: string): boolean {
+    const c = this.connected.get(computer)
+    if (!c) return false
+    c.socket.send(JSON.stringify({ t: 'full-disk' }))
+    return true
+  }
+
   // Lend a folder, asked from Alpha's window: the computer opens its own picker, and lends only
   // what its person picks there (docs/rules.md, B2). False when it is not connected.
   pick(computer: string, connector: string): boolean {

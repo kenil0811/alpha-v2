@@ -232,6 +232,10 @@ const KEEPS = ['browsing', 'apps']
 export const keptReading = (host: PluginHost, person: string): string[] =>
   storyOf(host, person)
     .found.filter((f) => f.on && KEEPS.includes(f.key))
-    .flatMap((f) => SOURCES.find((s) => s.key === f.key)?.connectors ?? [])
+    .flatMap((f) => [
+      ...(SOURCES.find((s) => s.key === f.key)?.connectors ?? []),
+      // Safari is browsing too, once its offer was taken and it is lent
+      ...(f.key === 'browsing' ? ['safari'] : []),
+    ])
 
 export const KnowBody = z.object({ off: z.array(z.string()).default([]) })

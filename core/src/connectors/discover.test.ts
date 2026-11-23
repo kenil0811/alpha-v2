@@ -38,6 +38,7 @@ describe('connectors found in their folders', () => {
       'browsing',
       'apps',
       'ai-work',
+      'safari',
       'folder',
       'gmail',
       'google',

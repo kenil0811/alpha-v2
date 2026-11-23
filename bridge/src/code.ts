@@ -28,6 +28,7 @@ const ENTRIES: Record<string, string> = {
   browsing: COMPUTER,
   apps: COMPUTER,
   'ai-work': COMPUTER,
+  safari: COMPUTER, // lent only after its offer was taken in Alpha and Full Disk Access is on
 }
 
 // What this Bridge lends besides folders: on a Mac, Calendar and Contacts, through Alpha's helper.
@@ -35,7 +36,7 @@ export const LENDS_HERE = process.platform === 'darwin' ? ['calendar', 'contacts
 
 // The readers it carries that its Alpha offers only where a plugin is on (interviews): ticked in
 // the app only when the Alpha it is paired with says it offers them (welcome's offers).
-export const READERS = ['browsing', 'apps', 'ai-work']
+export const READERS = ['browsing', 'apps', 'ai-work', 'safari']
 
 // Alpha's helper, carried beside the Bridge in the app (or built in the repository), run here for
 // Calendar and Contacts, so macOS asks this computer's person.

@@ -6,8 +6,9 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { visitsIn } from './history.ts'
 import { browserName, claudeDir, historyFiles } from './paths.ts'
-import { claudeRequests, webConversations } from './read.ts'
+import { claudeRequests, sitesOf, webConversations } from './read.ts'
 import { recordedHome } from './recorded.ts'
+import { NO_ACCESS, safariBlocked, safariHistory, safariVisits } from './safari.ts'
 
 let dir: string
 beforeEach(() => {
@@ -97,4 +98,25 @@ it('names each browser by where its profiles sit', () => {
   expect(browserName('/Users/marcia/Library/Application Support/Google/Chrome')).toBe('Chrome')
   expect(browserName('/Users/sam/Library/Application Support/Dia/User Data')).toBe('Dia')
   expect(browserName('/Users/sam/Library/Application Support/Microsoft Edge')).toBe('Edge')
+})
+
+// 23 Nov: Safari, once Full Disk Access is on, read as the other browsers are; without it, said why.
+it('reads Safari’s history from a recorded home, and says why when it cannot', () => {
+  const home = recordedHome(
+    answers({
+      'browsing/history-safari.json': {
+        browser: 'Safari',
+        visits: [
+          { url: 'https://permits.example/a', title: 'Permit 12', at: '2026-01-10T10:00:00Z' },
+          { url: 'https://permits.example/b', title: 'Permit', at: '2026-01-12T10:00:00Z' },
+        ],
+      },
+    }),
+    join(dir, 'home'),
+    NOW,
+  )
+  expect(safariBlocked(safariHistory(home))).toBeNull()
+  const sites = sitesOf(safariVisits(safariHistory(home), 90, NOW))
+  expect(sites.map((s) => [s.site, s.days, s.browsers])).toEqual([['permits.example', 2, 'Safari']])
+  expect(safariBlocked(safariHistory(join(dir, 'nobody')))).toBe(NO_ACCESS)
 })

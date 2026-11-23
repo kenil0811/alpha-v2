@@ -9,13 +9,16 @@
 // What it did is kept on the computer too (did.json, the last 200), so its person can check what
 // Alpha asked without trusting the server.
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
+import { NO_ACCESS, safariBlocked, safariHistory } from '@alpha/connector-computer/safari'
 import { Bridge, keyAccount, pair } from './bridge.ts'
 import type { Start } from './children.ts'
 import { chromeHere, NO_CHROME } from './chrome.ts'
 import { computerName, folderOf, helper, LENDS_HERE, READERS } from './code.ts'
 import { type Config, fileOf, readConfig, writeConfig } from './config.ts'
+import { openFullDisk, untilReadable } from './fulldisk.ts'
 import type { KeyStore } from './keys.ts'
 
 const KEPT = 200
@@ -74,6 +77,7 @@ const NAMES: Record<string, string> = {
   browsing: 'Browsing',
   apps: 'Apps',
   'ai-work': 'AI work',
+  safari: 'Safari',
 }
 
 // A lend or an unlend on this computer: a folder by its path, or Calendar or Contacts on a Mac (by
@@ -167,6 +171,15 @@ export async function serve(
       moved: state,
       helper,
       home,
+      // on the person's yes to Safari in Alpha: the pane opened, the grant seen by reading
+      fullDisk: () => {
+        openFullDisk()
+        void untilReadable(() => safariBlocked(safariHistory(homedir()))).then((read) => {
+          if (!read) return note(NO_ACCESS)
+          lending({ connector: 'safari' }, true)
+          state()
+        })
+      },
       lendSite: (site, on) => {
         siteHere(home, site, on)
         state()

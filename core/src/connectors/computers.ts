@@ -3,6 +3,7 @@
 // person (docs/rules.md, B1); one whose computer is away or paused waits, said on its tile.
 import type { BrowserEngine, Connector } from '@alpha/connector-sdk'
 import { bridges, type Hands } from '../bridge/hub.ts'
+import { PHASED_READERS } from '../offers.ts'
 import type { Computer } from '../world/computers.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
@@ -127,6 +128,8 @@ export function handsFor(
       service
         .known()
         .filter((c) => c.manifest.plugin && c.manifest.runs === 'computer')
+        // a reader an offer brings is offered there only once its offer was taken (offers.ts)
+        .filter((c) => !PHASED_READERS.includes(c.manifest.name))
         .map((c) => c.manifest.name),
     sitesOn: (pc) =>
       (browser?.().as(pc.user).sites() ?? [])

@@ -348,7 +348,11 @@ the computer where Alpha's Mac app is not showing its own. Nothing new: no one i
 shows. Watching the person's work (the front app and its window's title every few seconds, never a
 picture of the screen) sits behind a wall in code: only on a computer of theirs where Alpha Bridge
 stays connected, and only on their own yes, kept with when and taken back in Settings ›
-Permissions. The watcher itself is a stub that refuses until Kenil decides it.
+Permissions. The watcher itself is a stub that refuses until Kenil decides it. Extra permissions
+come in phases: each is offered only once its prerequisite is met, one at a time, never in Set up
+Alpha, as one optional Home card (`core/config/offers.yaml`, `core/src/offers.ts`): Safari, through
+Full Disk Access that Alpha Bridge opens and then sees by reading, once Safari is among the apps
+read and the Bridge is connected; watching, once the Bridge has stayed connected a week since setup.
 
 ## The window
 

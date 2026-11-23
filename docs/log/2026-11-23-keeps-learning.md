@@ -16,8 +16,7 @@ plugin, so nothing there read any browser. Also fixed: a browser was named by a 
 whole path (a home called /Users/marcia made Chrome "Arc"); now by the folder its profiles sit in.
 
 **Dia** (Chromium; `Dia/User Data`) is read and named; his Dia history opens the same way.
-**Safari** is left out: its History.db needs Full Disk Access for Alpha Bridge, which its sandbox
-and its promise not to reach beyond what it says do not give.
+**Safari** comes later, as an offer (below).
 
 **After setup.** Browsing and Apps read every day through the Bridge for a person who finished Set
 up Alpha, only what they left on in Get to know you (`host.keepsReading`, wall in
@@ -36,3 +35,23 @@ edge-and-dia-history-are-read passes; three-days-on-nothing-new-wakes-no-one pas
 fails only at the draft (Claude is not signed in on this Mac), as a-quiet-month does;
 three-days-on-something-new-asks-again needs the model. Alpha Bridge needs a release for Dia and
 the naming fix; not bumped.
+
+## Asks in phases, and Safari
+
+Vikas: "Why isn't Alpha Bridge asking Full Disk Access?… rolled out phase wise when the
+prerequisites are met, rather than burdening the user upfront." An extra permission is now offered
+only once its prerequisite is met, one at a time, never in Set up Alpha, as one optional Home card
+with a tick (yes) and a cross (not now); a not now waits 30 days. One list, `core/config/offers.yaml`,
+judged by `core/src/offers.ts` (rule I7, proposed): Safari once Safari is among the apps the Apps
+reader found and Alpha Bridge is connected; watching once Alpha Bridge has been connected 7 days
+since setup (counted from the later of pairing and setup while connected now; a gap in between is
+not seen). Watching is given only there now; Settings › Permissions only takes it back.
+
+Safari's yes has Alpha Bridge open System Settings at Full Disk Access (that pane only); the card
+says to turn on Alpha Bridge there. The Bridge sees the grant by trying to read
+`~/Library/Safari/History.db` (read-only, immutable), then lends Safari itself. The Safari reader's
+sandbox names only `~/Library/Safari`; its sites land in Safari sites, read with Browsing's, through
+the same never-use list, every day after setup. Not seen yet: whether the grant reaches the
+reader's sandboxed child (macOS should count Alpha Bridge as the one asking); if not, its check
+says the grant is missing, in those words, and it reads nothing. Alpha Bridge needs a release for
+Dia, the naming fix and Safari; not bumped.

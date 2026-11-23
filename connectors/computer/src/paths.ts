@@ -9,6 +9,7 @@ const mac = process.platform === 'darwin'
 const win = process.platform === 'win32'
 // the person's folder: ALPHA_COMPUTER_HOME stands in for it where a journey records a computer
 const me = () => process.env.ALPHA_COMPUTER_HOME ?? homedir()
+export const home = me
 
 // The Chromium browsers' own folders, each holding its profiles (Default, Profile 1…), by name.
 const MAC: [string, string][] = [
@@ -77,5 +78,7 @@ export function readsOf(connector: string): string[] {
   if (connector === 'ai-work')
     return [claudeDir(), codexDir(), ...browserRoots()].filter((d) => existsSync(d))
   if (connector === 'apps') return appDirs().filter((d) => d.startsWith(me()))
+  // Safari's own folder, and nothing else of the person's (its history needs Full Disk Access)
+  if (connector === 'safari') return mac ? [join(me(), 'Library', 'Safari')] : []
   return []
 }

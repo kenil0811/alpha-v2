@@ -342,12 +342,14 @@ it('says which browsers the sites came from, and the most used first', async () 
     site('r_2', 'b.example', 40, 'Arc, Edge'),
     site('r_3', 'c.example', 9, 'Edge'),
   ]
-  const host = { rows: () => rows }
+  // Safari's sites, read with the others: one more browser
+  const safari = [site('r_4', 'd.example', 5, 'Safari')]
+  const host = { rows: (_m: string, t: string) => (t === 'Sites' ? rows : safari) }
   const browsing = SOURCES.find((x: { key: string }) => x.key === 'browsing')
   const words = browsing.read(host, 'u_1', 90).words as string
   expect(shownOf(words, true)).toEqual([
-    '3 sites from Arc (2) and Edge (2).',
-    'Most used: b.example (40 days), c.example (9 days), a.example (2 days).',
+    '4 sites from Arc (2), Edge (2) and Safari (1).',
+    'Most used: b.example (40 days), c.example (9 days), d.example (5 days), and more.',
   ])
 })
 

@@ -9,7 +9,15 @@
 import { readFileSync } from 'node:fs'
 import { type Call, type Connector, Problem, type TableSpec } from '@alpha/connector-sdk'
 import { visitsIn } from './history.ts'
-import { appDirs, BROWSERS, browserRoots, claudeDir, codexDir, historyFiles } from './paths.ts'
+import {
+  appDirs,
+  BROWSERS,
+  browserRoots,
+  claudeDir,
+  codexDir,
+  historyFiles,
+  home,
+} from './paths.ts'
 import {
   type App,
   claudeRequests,
@@ -19,6 +27,7 @@ import {
   webConversations,
   windowsApps,
 } from './read.ts'
+import { safariBlocked, safariHistory, safariVisits } from './safari.ts'
 
 const DAYS = 90
 const MODULE = 'Your work'
@@ -106,6 +115,39 @@ export const browsing: Connector = {
   },
 }
 
+// Safari, once its person said yes to Alpha's offer and gave Alpha Bridge Full Disk Access: its
+// sites, counted as the other browsers' are, in a table of its own.
+export const safari: Connector = {
+  manifest: { ...base('safari', 'Safari'), syncEveryMinutes: DAILY },
+  guide,
+  module: MODULE,
+  tables: [{ ...SITES, name: 'Safari sites' }],
+  tools: {},
+  check: async () => {
+    const why = safariBlocked(safariHistory(home()))
+    if (why) throw new Problem(why)
+  },
+  sync: async (c: Call) => {
+    const why = safariBlocked(safariHistory(home()))
+    if (why) throw new Problem(why)
+    const sites = sitesOf(safariVisits(safariHistory(home()), DAYS))
+    const landed = await c.host.land(
+      'Safari sites',
+      sites.map((s) => ({
+        key: s.site,
+        values: {
+          Site: s.site,
+          'Days used': s.days,
+          'Last used': s.last,
+          Titles: s.titles,
+          Browsers: s.browsers,
+        },
+      })),
+    )
+    return { rows: sites.length, sawNew: landed.added > 0 }
+  },
+}
+
 export const apps: Connector = {
   manifest: { ...base('apps', 'Apps'), syncEveryMinutes: DAILY },
   guide,
@@ -154,5 +196,6 @@ export const aiWork: Connector = {
   },
 }
 
-// What a folder of this connector exports for Alpha to load: three readers.
-export const connectors = [browsing, apps, aiWork]
+// What a folder of this connector exports for Alpha to load: four readers, Safari's offered only
+// after its offer was taken (core/src/offers.ts).
+export const connectors = [browsing, apps, aiWork, safari]
