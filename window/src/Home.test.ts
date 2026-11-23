@@ -2,6 +2,7 @@ import type { AgentView, CardView } from '@alpha/core/api'
 import { expect, it } from 'vitest'
 import { nearestWidth } from './CardGrid.tsx'
 import { fromWhom } from './NeedsYou.tsx'
+import { listOf, nameOf } from './ui/question.tsx'
 
 it('snaps a dragged share of the row to the nearest width', () => {
   expect(nearestWidth(0.05)).toBe('1/16')
@@ -34,4 +35,12 @@ it("puts each waiting card under its agent in the team's order, a schedule's und
     ['sign-ins', 'Sign-ins', [], 1],
   ])
   expect(fromWhom([], [], agents)).toEqual([])
+})
+
+it('reads a detail made only of a list as things to pick, and names each by its bold part', () => {
+  const items = listOf('- **Maria Chen**, CFO · maria@x.example\n- Tom Alvarez, owner · tom@y')
+  expect(items).toEqual(['**Maria Chen**, CFO · maria@x.example', 'Tom Alvarez, owner · tom@y'])
+  expect(items?.map(nameOf)).toEqual(['Maria Chen', 'Tom Alvarez'])
+  expect(listOf('Two deals:\n- one\n- two')).toBeNull()
+  expect(listOf('- only one')).toBeNull()
 })
