@@ -11,4 +11,4 @@ own), with the rows the landed lines name; Settings › What Alpha read shows it
 journals which sources Get to know you read or had switched off, lines dropped and playbacks
 answered. Activity carries each read; the report is a view over the same journal, not a second
 store. Export skipped: tables' Export is server-side per table, and this is not a table. Journey
-`what-is-never-kept` checks the report's counts. Proposed rule L22 and a design line wait on Kenil.
+`what-is-never-kept` checks the report's counts. Proposed rule L25 and a design line wait on Kenil.
