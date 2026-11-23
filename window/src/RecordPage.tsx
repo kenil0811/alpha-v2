@@ -47,7 +47,10 @@ export function RecordPage({
   properties: ReactNode
   blocks: Block[]
 }) {
-  const [tab, setTab] = useState('summary')
+  // a record with a page drawn for it (a client's report) opens on it, else on Summary (Vikas, 23
+  // Nov)
+  const [chosen, setTab] = useState<string | null>(null)
+  const tab = chosen ?? blocks.find((b) => b.bare)?.key ?? 'summary'
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null)
   // the person's own for every record of its table (or of People's, Organizations'), kept by the
   // core per person and table

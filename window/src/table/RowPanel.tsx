@@ -53,8 +53,9 @@ export function RowPanel({
       onClose={onClose}
       full={`#/row/${row.id}`}
     >
-      <RowBody {...rest} row={row} />
+      {/* a record's report first: a client opens on its report (Vikas, 23 Nov) */}
       <RecordPages row={row.id} />
+      <RowBody {...rest} row={row} />
     </SidePanel>
   )
 }
