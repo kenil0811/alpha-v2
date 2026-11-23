@@ -11,7 +11,7 @@ import { fromView } from '../modules/shipped.ts'
 import { pagesFor } from '../pages/pages.ts'
 import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
-import { all as allRows } from '../world/db.ts'
+import { all as allRows, one } from '../world/db.ts'
 import type { Provenance } from '../world/kinds.ts'
 import { besideFrom, type RecordOut, resetWords } from '../world/records/index.ts'
 import type { Module, Table } from '../world/shape/index.ts'
@@ -64,6 +64,14 @@ export function makeViews(ctx: BaseCtx) {
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
     review: engine.hands?.runner?.reviews.view(c) ?? null,
     acting: actingView(world, c),
+    // what a schedule's run raised: Home shows it under Schedules (Vikas, 23 Nov)
+    schedule: c.run
+      ? (one<{ id: string; name: string }>(
+          world.db,
+          'SELECT s.id, s.name FROM runs r JOIN schedules s ON s.id = r.schedule_id WHERE r.id = ?',
+          c.run,
+        ) ?? null)
+      : null,
   })
   // Tasks: the saved lists, a task's page, and the person's own word on
   // them: added, changed, moved, done, removed.
