@@ -1,8 +1,15 @@
 // Settings, a page of sections. Connections and Schedules are in their own files.
-import type { ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
+import type {
+  ConnectorsView,
+  DataPageView,
+  Health,
+  Me,
+  ModelView,
+  UpdateView,
+} from '@alpha/core/api'
 import { Plus, SlidersHorizontal } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { AccountsSection, Foot } from './Accounts.tsx'
+import { AccountsSection } from './Accounts.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { Connections } from './Connections.tsx'
@@ -37,6 +44,7 @@ import { SideItem, SideList } from './ui/side-list.tsx'
 import { STATE_CARDS, StateCard } from './ui/state-card.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Tabs } from './ui/tabs.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { WaitingRules } from './WaitingRules.tsx'
 
@@ -50,6 +58,7 @@ const PAGES: { name: string; parts: [string, string][] }[] = [
     parts: [
       ['appearance', 'Appearance'],
       ['people', 'Members'],
+      ['alpha', 'Alpha'],
     ],
   },
   {
@@ -173,6 +182,7 @@ export function Settings({
   if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />
   const body: Record<string, ReactNode> = {
     appearance: <Appearance view={view} onChange={load} />,
+    alpha: <AlphaPart me={me} />,
     people: <AccountsSection />,
     usage: <UsageSection />,
     model: <ModelSection />,
@@ -252,10 +262,74 @@ export function Settings({
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-page px-8 pb-12">
-        <Foot me={me} />
-      </div>
     </div>
+  )
+}
+
+// Alpha itself (Vikas, 23 Nov; the version was a line at Settings' foot): the version running and
+// Check for updates against the install's feed, and, where people sign in, who is and Sign out.
+function AlphaPart({ me }: { me: Me | null }) {
+  const [version, setVersion] = useState<string | null>(null)
+  const [update, setUpdate] = useState<UpdateView | null>(null)
+  const { busy, problem, act } = useAct()
+  useEffect(() => {
+    api.get<Health>('/api/health').then(
+      (h) => setVersion(h.version),
+      () => undefined,
+    )
+  }, [])
+  const said = !update
+    ? null
+    : !update.set
+      ? 'Updates aren’t set up on this Alpha yet'
+      : update.newest
+        ? `Update available: ${update.newest}`
+        : 'Up to date'
+  return (
+    <Section title="Alpha">
+      <List>
+        <Row
+          title={`Alpha ${version ?? ''}`}
+          sub={problem ?? said}
+          actions={
+            <>
+              {update?.url && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => window.open(update.url, '_blank', 'noreferrer')}
+                >
+                  Update
+                </Button>
+              )}
+              <UpdateNow
+                label="Check for updates"
+                at={null}
+                busy={busy}
+                words={false}
+                onClick={() => act(async () => setUpdate(await api.get<UpdateView>('/api/update')))}
+              />
+            </>
+          }
+        />
+        {me?.signIn && (
+          <Row
+            title={`Signed in as ${me.user.name}`}
+            actions={
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  void api.post('/api/session/out').finally(() => window.location.replace('/'))
+                }}
+              >
+                Sign out
+              </Button>
+            }
+          />
+        )}
+      </List>
+    </Section>
   )
 }
 

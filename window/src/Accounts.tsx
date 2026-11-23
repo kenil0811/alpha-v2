@@ -1,7 +1,6 @@
 // Settings › People: your own password, everyone's to change; and who may sign in to this Alpha,
 // the owner's. Adding someone or making a new link shows a one-time link to pass on; Alpha sends
 // no mail.
-import type { Me } from '@alpha/core/api'
 import { Copy, UserRound } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
@@ -229,37 +228,5 @@ function People() {
         They can no longer sign in. What they did stays in Activity under their name.
       </Confirm>
     </Section>
-  )
-}
-
-// Settings' foot: the version the core runs, and who is signed in with Sign out.
-export function Foot({ me }: { me: Me | null }) {
-  const [health, setHealth] = useState<{ version: string; build?: string } | null>(null)
-  useEffect(() => {
-    api.get<{ version: string; build?: string }>('/api/health').then(setHealth, () => undefined)
-  }, [])
-  return (
-    <div className="flex flex-col gap-1 text-ink-3 text-sm">
-      {health && (
-        <p>
-          Alpha {health.version}
-          {health.build ? ` · Version ${health.build}` : ''}
-        </p>
-      )}
-      {me?.signIn && (
-        <p className="flex items-center gap-2">
-          Signed in as {me.user.name}
-          <button
-            type="button"
-            className="underline underline-offset-3 hover:text-ink"
-            onClick={() => {
-              void api.post('/api/session/out').finally(() => window.location.replace('/'))
-            }}
-          >
-            Sign out
-          </button>
-        </p>
-      )}
-    </div>
   )
 }

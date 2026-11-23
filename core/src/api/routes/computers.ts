@@ -16,6 +16,7 @@ import { Refused } from '../../world/kinds.ts'
 import { connectionViews } from '../connection-view.ts'
 import type { ComputerPageView, ComputersView, ComputerView } from '../connector-types.ts'
 import type { Ctx } from '../ctx.ts'
+import { newer } from '../update.ts'
 
 // What a Mac's Bridge lends of its own besides folders, and the readers a plugin brings (rules B2).
 const MAC_LENDS = ['calendar', 'contacts'] as const
@@ -67,12 +68,6 @@ const KINDS: Record<string, BridgeFile['kind']> = {
   '-setup.exe': 'installer',
   '.app.tar.gz': 'update',
   '.zip': 'zip',
-}
-const newer = (a: string, b: string) => {
-  const [x, y] = [a, b].map((v) => v.split('.').map(Number))
-  for (let i = 0; i < 3; i++)
-    if ((x?.[i] ?? 0) !== (y?.[i] ?? 0)) return (x?.[i] ?? 0) > (y?.[i] ?? 0)
-  return false
 }
 
 // What Alpha hands out is what Kenil signed: each file's signature checked once, by its time.

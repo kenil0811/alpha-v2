@@ -48,6 +48,7 @@ import { registerTables } from './routes/tables.ts'
 import { registerTasks } from './routes/tasks.ts'
 import { registerUsage } from './routes/usage.ts'
 import type { Health } from './types.ts'
+import { updateFrom } from './update.ts'
 import { deny, makeViews } from './views.ts'
 import { watchTab } from './watch.ts'
 
@@ -112,6 +113,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       : null
   })()
   app.get('/api/health', async (): Promise<Health> => ({ ok: true, version: VERSION, build }))
+  app.get('/api/update', () => updateFrom(process.env.ALPHA_UPDATES, VERSION))
 
   const { engine, user: owner, token } = options
   if (!engine || !owner) return app
