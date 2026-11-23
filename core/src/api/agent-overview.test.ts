@@ -1,9 +1,10 @@
-// An agent's landing numbers: its tasks, how its cards to this person were answered, the runs of the
+// An agent's landing numbers, and an edit of its instructions as a proposal: its tasks, how its cards to this person were answered, the runs of the
 // schedules that wake it, and its last lines. The Chief of staff's are those no agent signed.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vitest'
+import { config } from '../config.ts'
 import { Engine } from '../engine/engine.ts'
 import { now, run } from '../world/db.ts'
 import { World } from '../world/world.ts'
@@ -79,5 +80,22 @@ it("counts the Chief of staff's tasks, cards, runs and lines", async () => {
   expect(
     (await a.inject({ url: '/api/agents/ag_gone/overview', headers: ok })).statusCode,
   ).not.toBe(200)
+  await a.close()
+})
+
+it('sends an edit of instructions as a proposal in the words kept in config, for an agent that is there', async () => {
+  const words = config.proposing({ name: 'Sales', was: '', proposed: 'Call back within a day.' })
+  expect(words).toContain("Sales's instructions")
+  expect(words).toContain('(none yet)')
+  expect(words).toContain('Call back within a day.')
+  expect(words).not.toMatch(/\{\w+\}/)
+  const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
+  const res = await a.inject({
+    method: 'POST',
+    url: '/api/agents/ag_gone/propose',
+    headers: ok,
+    payload: { instructions: 'Be brief.' },
+  })
+  expect(res.statusCode).not.toBe(200)
   await a.close()
 })

@@ -171,6 +171,12 @@ export const config = {
   reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
   // how the model sorts a person's items into the groups they named
   judging: (dir?: string) => load('judging.md', (t) => t.trim(), dir),
+  // what the Chief of staff is told when a person edits an agent's instructions by hand: a proposal
+  proposing: (a: { name: string; was: string; proposed: string }, dir?: string) =>
+    load('proposing.md', (t) => t.trim(), dir)
+      .replaceAll('{name}', a.name)
+      .replaceAll('{was}', a.was || '(none yet)')
+      .replaceAll('{proposed}', a.proposed),
   // what Claude is told when Set up Alpha checks that a token given reaches it
   checking: (dir?: string) => load('checking.md', (t) => t.trim(), dir),
 }
