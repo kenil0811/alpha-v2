@@ -5,23 +5,19 @@
 // carries, start a conversation with that agent, and put lines for How to work to the person
 // (rules P2). The core names no plugin; with none, Alpha runs as it did. A plugin that does not load
 // is said and left out, as a connector is.
-import { mkdirSync, readdirSync } from 'node:fs'
-import { basename, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { readAgents } from '@alpha/kit-sdk'
 import {
   type Chapter,
-  checkPlugin,
   type Input,
   type Made,
-  type Plugin,
   type PluginHost,
   type PluginTool,
   Refusal,
   type Row,
 } from '@alpha/plugin-sdk'
 import { config } from '../config.ts'
-import { entryOf } from '../connectors/discover.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import type { Engine } from '../engine/engine.ts'
 import type { ToolEntry } from '../engine/registry.ts'
@@ -40,59 +36,9 @@ import { CORE_CHAPTERS, progressOf, unmarkChapter } from '../world/story.ts'
 import { workspaceFor, workspaceName, workspaceSite } from '../world/workspace.ts'
 import type { User, World } from '../world/world.ts'
 
-export const PLUGINS_DIR = join(import.meta.dirname, '..', '..', '..', 'plugins')
+import { type Loaded, loadPlugins, named, PLUGINS_DIR } from './found.ts'
 
-export interface Loaded {
-  plugin: Plugin
-  dir: string
-}
-
-// Every plugin in a folder, checked; the folders that did not load, with why.
-export async function loadPlugins(
-  dir: string,
-): Promise<{ plugins: Loaded[]; failed: { folder: string; why: string }[] }> {
-  const plugins: Loaded[] = []
-  const failed: { folder: string; why: string }[] = []
-  let names: string[] = []
-  try {
-    names = readdirSync(dir, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name)
-      .sort()
-  } catch {
-    return { plugins, failed }
-  }
-  for (const name of names) {
-    const folder = join(dir, name)
-    try {
-      const mod = (await import(pathToFileURL(entryOf(folder)).href)) as { plugin?: unknown }
-      const problems = checkPlugin(
-        mod.plugin,
-        plugins.map((p) => p.plugin.name),
-      )
-      if (problems.length) throw new Error(problems.join(' '))
-      plugins.push({ plugin: mod.plugin as Plugin, dir: folder })
-    } catch (err) {
-      failed.push({ folder, why: err instanceof Error ? err.message : String(err) })
-    }
-  }
-  return { plugins, failed }
-}
-
-// Of the plugins found, those alpha.yaml's plugins line names; what kept a named one from loading.
-export function named(
-  names: string[],
-  found: Awaited<ReturnType<typeof loadPlugins>>,
-): { plugins: Loaded[]; problems: string[] } {
-  const plugins = found.plugins.filter((l) => names.includes(l.plugin.name))
-  const problems = found.failed
-    .filter((f) => names.includes(basename(f.folder)))
-    .map((f) => `The plugin in ${f.folder} did not load: ${f.why}`)
-  for (const n of names)
-    if (!plugins.some((l) => l.plugin.name === n) && !problems.some((p) => p.includes(`/${n}`)))
-      problems.push(`There is no plugin called ${n} in plugins/ to switch on.`)
-  return { plugins, problems }
-}
+export { type Loaded, loadPlugins, named, PLUGINS_DIR } from './found.ts'
 
 // The plugins alpha.yaml's plugins line names, loaded and given their hosts; one not named does not
 // load at all (rules P1). What kept a named one from loading, in words.
