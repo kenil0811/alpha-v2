@@ -20,7 +20,7 @@ export function Waiting({ className }: { className?: string }) {
         className,
       )}
     >
-      Loading…
+      <span className={late ? 'shimmer' : undefined}>Loading…</span>
     </p>
   )
 }
