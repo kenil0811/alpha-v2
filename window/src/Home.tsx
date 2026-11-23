@@ -12,6 +12,7 @@ import { StoryRow } from './story/StoryRow.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
 import { Group } from './ui/groups.tsx'
+import { Voice } from './ui/voice.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
 function NotLoaded({ onTry }: { onTry: () => void }) {
@@ -211,6 +212,7 @@ function AskBox({
           aria-label="Ask Alpha"
           className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
         />
+        <Voice value={words} onChange={setWords} />
         <button
           type="submit"
           aria-label="Send"

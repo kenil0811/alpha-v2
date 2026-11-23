@@ -9,6 +9,7 @@ import type { Module } from './stream.ts'
 import { IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { MenuItem, Popover } from './ui/popover.tsx'
+import { Voice } from './ui/voice.tsx'
 
 // The words before the caret that address a teammate: "@" at the start or after a space, then a name.
 export function mentionAt(text: string): string | null {
@@ -213,6 +214,7 @@ export function Composer({
           aria-label={`Message ${agent?.name ?? 'Chief of staff'}`}
           className="max-h-40 min-h-7 min-w-0 flex-1 resize-none self-center overflow-y-auto bg-transparent py-0.75 text-chat text-ink outline-none placeholder:text-ink-3"
         />
+        <Voice value={words} onChange={setWords} className="self-center" />
         {running && !words.trim() ? (
           <button
             type="button"

@@ -10,6 +10,7 @@ import { Card, CardPlace } from './card.tsx'
 import { cn } from './cn.ts'
 import { Field } from './field.tsx'
 import { Info } from './info.tsx'
+import { Voice } from './voice.tsx'
 import { Words } from './words.tsx'
 import { YesNo } from './yes-no.tsx'
 
@@ -187,7 +188,7 @@ export function Question({
   )
 }
 
-// An answer in the person's own words: a box and Answer.
+// An answer in the person's own words: a box, with a microphone in it, and Answer.
 export function Answer({
   busy,
   onAnswer,
@@ -206,12 +207,19 @@ export function Answer({
         if (typed.trim()) onAnswer(typed.trim())
       }}
     >
-      <Field
-        className="flex-1"
-        value={typed}
-        onChange={(e) => setTyped(e.target.value)}
-        placeholder={placeholder}
-      />
+      <div className="relative min-w-0 flex-1">
+        <Field
+          className="w-full pr-9"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder={placeholder}
+        />
+        <Voice
+          value={typed}
+          onChange={setTyped}
+          className="-translate-y-1/2 absolute top-1/2 right-1"
+        />
+      </div>
       <Button type="submit" variant="primary" disabled={busy || !typed.trim()}>
         Answer
       </Button>
