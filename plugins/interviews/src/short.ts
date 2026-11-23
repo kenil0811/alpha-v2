@@ -17,6 +17,7 @@ export const shortTool = (host: PluginHost) =>
       const who = { id: turn.person, name: turn.name, owner: turn.owner }
       keepStory(host, who.id, { since: changed, rounds: 0, problem: null })
       host.reopen(who.id, 'learned')
+      host.reopen(who.id, 'questions')
       void think(host, who)
       host.journal('Opened a short interview in Set up Alpha.', { person: who.id })
       return 'Their interview is open again in Set up Alpha’s What I learned, and its questions are being drafted. Mark your task done.'
