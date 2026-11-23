@@ -337,6 +337,7 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/session': 'a person signing in',
   'POST /api/session/out': 'a person signing out',
   'POST /api/session/link': 'a person setting their password from a link',
+  'POST /api/session/password': 'a person changing their own password',
   'POST /api/accounts': 'the owner adding a person who may sign in',
   'POST /api/story/:chapter/skip': 'how far a person has gone through Set up Alpha, kept with them',
   'POST /api/story/decline': 'Set up Alpha put off by a person, kept with them',

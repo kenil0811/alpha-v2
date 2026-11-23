@@ -294,20 +294,69 @@ export class Accounts {
       throw new Refused('Too many wrong tries: wait a minute, then try again.')
     const right = await matches(password, r?.password ?? (await nobody()))
     if (!r?.password || !right) {
-      if (r) {
-        const failed = r.failed + 1
-        const wait = failed >= TRIES ? Math.min(WAIT_MS * 2 ** (failed - TRIES), MAX_WAIT_MS) : 0
-        run(
-          this.db,
-          'UPDATE accounts SET failed = ?, wait_until = ? WHERE user_id = ?',
-          failed,
-          wait ? after(wait) : null,
-          r.user_id,
-        )
-      }
+      if (r) this.wrongTry(r)
       throw new Refused(WRONG)
     }
     return tx(this.db, () => this.session(r.user_id, r.name, days))
+  }
+
+  // One more wrong password in a row; past a few, each try waits longer.
+  private wrongTry(r: AccountRow): void {
+    const failed = r.failed + 1
+    const wait = failed >= TRIES ? Math.min(WAIT_MS * 2 ** (failed - TRIES), MAX_WAIT_MS) : 0
+    run(
+      this.db,
+      'UPDATE accounts SET failed = ?, wait_until = ? WHERE user_id = ?',
+      failed,
+      wait ? after(wait) : null,
+      r.user_id,
+    )
+  }
+
+  // A person's own new password, given their current one (Settings › People). Every other browser
+  // signed in as them is signed out; the one they changed it in stays in.
+  async changePassword(
+    userId: string,
+    current: string,
+    next: string,
+    keep: string | undefined,
+  ): Promise<void> {
+    const r = one<AccountRow>(
+      this.db,
+      `${SELECT} WHERE a.user_id = ? AND a.gone_at IS NULL`,
+      userId,
+    )
+    if (!r?.password) throw new Refused('You have no password here yet: use your link first.')
+    if (r.wait_until && r.wait_until > now())
+      throw new Refused('Too many wrong tries: wait a minute, then try again.')
+    if (!(await matches(current, r.password))) {
+      this.wrongTry(r)
+      throw new Refused('That is not your current password.')
+    }
+    if (next.length < MIN_PASSWORD)
+      throw new Refused(`A password is at least ${MIN_PASSWORD} characters.`)
+    const hash = await hashed(next)
+    tx(this.db, () => {
+      run(
+        this.db,
+        'UPDATE accounts SET password = ?, failed = 0, wait_until = NULL WHERE user_id = ?',
+        hash,
+        userId,
+      )
+      run(
+        this.db,
+        'DELETE FROM sessions WHERE user_id = ? AND hash != ?',
+        userId,
+        keep ? digest(keep) : '',
+      )
+      append(this.db, {
+        actor: { kind: 'person', id: userId },
+        kind: 'account',
+        words: `${r.name} changed their password.`,
+        data: { person: userId },
+        user: userId,
+      })
+    })
   }
 
   // Signed in by a provider, for an email the owner added; none when they did not.

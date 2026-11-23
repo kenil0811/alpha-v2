@@ -109,6 +109,20 @@ export function registerSession(ctx: Ctx): void {
     return { ok: true }
   })
 
+  // Your own password, changed in Settings › People with the current one: the browser it was
+  // changed in stays signed in, every other one is signed out.
+  app.post('/api/session/password', async (req) => {
+    if (!options.signIn) throw new Refused('Signing in is not set up in this Alpha.')
+    const b = z
+      .object({ current: z.string().max(1000), password: z.string().max(1000) })
+      .parse(req.body)
+    const token = cookieIn(req.headers.cookie, cookieOf(options.ports))
+    const who = world.accounts.userOf(token)
+    if (!who) throw new Refused('Sign in first.')
+    await world.accounts.changePassword(who.id, b.current, b.password, token)
+    return { ok: true }
+  })
+
   // Sign in with Microsoft, where the firm set up its sign-in app: the provider's own page.
   app.get('/api/session/microsoft', async (_req, reply) => {
     if (!options.signIn || !signsIn) throw new Refused('Signing in is not set up in this Alpha.')

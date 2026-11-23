@@ -182,3 +182,10 @@ come with extra spaces. A token or key pasted in (the Claude chapter, Settings' 
 now has every space, line break and invisible mark taken out, in the field as it is typed and again
 in the core before it is checked or kept; and every hidden field for a token, a key or a secret
 has an eye to show it and check it first.
+
+## Your password (23 Nov)
+
+On his word, setting up Avilo's Alpha again: everyone who signs in changes their own password in
+Settings › People, with their current one and the new one twice; the browser they change it in
+stays signed in, every other one is signed out, and the journal says they changed it. A member's
+People shows only that; the owner's shows it above the people. Held under A6.

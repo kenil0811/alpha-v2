@@ -82,9 +82,10 @@ export function Settings({
   useEffect(() => {
     api.get<Me>('/api/me').then(setMe, () => undefined)
   }, [])
-  // a member does not see the owner's sections (Data, People); People only where people sign in
+  // a member does not see the owner's Data, and sees only their own password in People; People
+  // only where people sign in
   const member = me?.user.role === 'member'
-  const hidden = new Set(member ? ['data', 'people'] : me?.signIn ? [] : ['people'])
+  const hidden = new Set([...(member ? ['data'] : []), ...(me?.signIn ? [] : ['people'])])
   const tabs = (TABS as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
   const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? TABS[0][0]
   if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />
@@ -103,7 +104,7 @@ export function Settings({
       </>
     ),
     activity: <Activity version={version} cards={cards} />,
-    people: <AccountsSection />,
+    people: <AccountsSection owner={!member} />,
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
   }

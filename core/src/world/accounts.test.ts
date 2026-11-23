@@ -81,6 +81,33 @@ describe('an account', () => {
     expect(world.accounts.userOf(undefined)).toBeNull()
   })
 
+  it('changes a password given the current one: other browsers signed out, this one stays', async () => {
+    const { id, session } = await priya()
+    const elsewhere = await world.accounts.signIn('priya@example.com', PASSWORD, 30)
+    await expect(
+      world.accounts.changePassword(id, 'not the one', 'a new long password', session),
+    ).rejects.toThrow(/not your current/)
+    await expect(world.accounts.changePassword(id, PASSWORD, 'short', session)).rejects.toThrow(
+      /12/,
+    )
+    await world.accounts.changePassword(id, PASSWORD, 'a new long password', session)
+    expect(world.accounts.userOf(session)?.name).toBe('Priya')
+    expect(world.accounts.userOf(elsewhere)).toBeNull()
+    await expect(world.accounts.signIn('priya@example.com', PASSWORD, 30)).rejects.toThrow()
+    expect(
+      world.accounts.userOf(
+        await world.accounts.signIn('priya@example.com', 'a new long password', 30),
+      )?.name,
+    ).toBe('Priya')
+    const words = (world.db.prepare('SELECT words FROM journal').all() as { words: string }[]).map(
+      (l) => l.words,
+    )
+    expect(words).toContain('Priya changed their password.')
+    expect(JSON.stringify(world.db.prepare('SELECT * FROM journal').all())).not.toMatch(
+      /long password/,
+    )
+  })
+
   it('takes a new link and removal: the old password and sessions end', async () => {
     const { id, session } = await priya()
     const link = world.accounts.newLink(id, ctx)

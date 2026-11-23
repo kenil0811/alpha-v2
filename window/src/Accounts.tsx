@@ -1,5 +1,6 @@
-// Settings › People: who may sign in to this Alpha, the owner's to change.
-// Adding someone or making a new link shows a one-time link to pass on; Alpha sends no mail.
+// Settings › People: your own password, everyone's to change; and who may sign in to this Alpha,
+// the owner's. Adding someone or making a new link shows a one-time link to pass on; Alpha sends
+// no mail.
 import type { Me } from '@alpha/core/api'
 import { Copy, UserRound } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
@@ -7,7 +8,7 @@ import { api, wordsOf } from './api.ts'
 import { dayWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
-import { Field } from './ui/field.tsx'
+import { Field, SecretField } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
@@ -21,7 +22,83 @@ interface Person {
   lastIn: string | null
 }
 
-export function AccountsSection() {
+// Your own password: the current one, then the new one twice. Other browsers signed in as you are
+// signed out; this one stays in.
+function YourPassword() {
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [again, setAgain] = useState('')
+  const [said, setSaid] = useState<{ ok: boolean; words: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const differs = !!again && next !== again
+  const ready = !!current && next.length >= 12 && next === again && !busy
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setSaid(null)
+    try {
+      await api.post('/api/session/password', { current, password: next })
+      setCurrent('')
+      setNext('')
+      setAgain('')
+      setSaid({ ok: true, words: 'Changed. Other browsers signed in as you were signed out.' })
+    } catch (err) {
+      setSaid({ ok: false, words: wordsOf(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Section title="Your password" about="At least 12 characters.">
+      <form onSubmit={(e) => void save(e)} className="flex max-w-md flex-col gap-2">
+        <SecretField
+          aria-label="Your current password"
+          placeholder="Your current password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+        />
+        <SecretField
+          aria-label="A new password"
+          placeholder="A new password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+        />
+        <SecretField
+          aria-label="The new password again"
+          placeholder="The new password again"
+          autoComplete="new-password"
+          value={again}
+          onChange={(e) => setAgain(e.target.value)}
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" size="sm" disabled={!ready}>
+            Change password
+          </Button>
+          {differs && <span className="text-ink-3 text-sm">The two new ones differ.</span>}
+          {said && (
+            <span className={said.ok ? 'text-ink-2 text-sm' : 'text-bad text-sm'}>
+              {said.words}
+            </span>
+          )}
+        </div>
+      </form>
+    </Section>
+  )
+}
+
+// People: your password for everyone; who may sign in, for the owner.
+export function AccountsSection({ owner }: { owner: boolean }) {
+  return (
+    <div className="flex flex-col gap-8">
+      <YourPassword />
+      {owner && <People />}
+    </div>
+  )
+}
+
+function People() {
   const [people, setPeople] = useState<Person[] | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')

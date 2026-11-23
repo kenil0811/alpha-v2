@@ -116,6 +116,30 @@ rule('A6', 'every request carries a session, and a person’s own stays theirs',
       const [a, b] = await Promise.all([as(owner), as(member)])
       return a.id === w.user.id && a.role === 'owner' && b.id === memberId && b.role === 'member'
     },
+    'a person changes their own password, from their own session': async (w) => {
+      const { app, member } = await people(w)
+      const change = (headers: Record<string, string>, current: string) =>
+        app.inject({
+          method: 'POST',
+          url: '/api/session/password',
+          headers,
+          payload: { current, password: 'a brand new password' },
+        })
+      // the member's current password changes theirs; the owner's session cannot use it for theirs
+      const wrong = await change(member, 'not the current one')
+      const theirs = await change(member, PASSWORD)
+      const still = await app.inject({ url: '/api/me', headers: member })
+      const none = await change(BASE, PASSWORD)
+      return (
+        wrong.statusCode === 409 &&
+        theirs.statusCode === 200 &&
+        still.json().user.name === 'Priya' &&
+        none.statusCode >= 400 &&
+        !!w.world
+          .lines({ kinds: ['account'] })
+          .find((l) => l.words === 'Priya changed their password.')
+      )
+    },
     'one person’s conversation is not another’s': async (w) => {
       const { app, owner, member } = await people(w)
       w.world.line({
