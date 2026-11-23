@@ -230,7 +230,11 @@ ships in `core/config/never.yaml` (banking, health and medical, passwords and cr
 matters, dating, personal money), changed there alone and never shown in Alpha. The list travels
 with every call; the connector's host leaves a matching row or file out before it lands, in the
 connector's own process, so on a person's computer it never leaves it, and the core leaves it out
-again as it lands. Each connection says how many its last read left out, never which. A connector
+again as it lands. Each connection says how many its last read left out, never which. Each read's
+journal line carries its counts by table (met, new, changed, the same, passed over, left out),
+counted in the host every connector goes through, and who allowed the connection; Settings › What
+Alpha read sums them per source with the rows the landed lines name, and Set up Alpha and Home say
+the running total in one live line (proposed, Vikas 23 Nov; for Kenil's review). A connector
 that lands nothing (QuickBooks, read by a module's own scripts) is outside it.
 
 A connection is connected, needs sign-in, not working, paused, or waiting for the customer. Signing
