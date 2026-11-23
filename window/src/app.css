@@ -437,6 +437,8 @@
     font-family: var(--font-sans);
     font-size: var(--fs-base);
     line-height: 1.45;
+    /* a long word (an address, a link) breaks rather than leaving its box (Vikas, 23 Nov) */
+    overflow-wrap: break-word;
     -webkit-font-smoothing: antialiased;
   }
   /* Alpha's face: a blink now and then, the light breathing while Alpha works */

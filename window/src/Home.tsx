@@ -1,6 +1,7 @@
-// Home: the date, the greeting, the ask box, what needs the person while something waits (cards
-// answered right here), and today's tasks. The modules are in the rail; the conversation has its
-// own place in the rail and on the right of every screen.
+// Home: the ask box, then its cards: Needs you while something waits (each answered right here),
+// Set up Alpha until it is done, today's tasks and the ones just completed, each card only while it
+// has something (Vikas, 23 Nov). The date and the greeting are in the bar (HomeHead). The modules
+// are in the rail; the conversation has its own place on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
 import { ArrowUp, CheckCheck, Inbox, ListChecks, LoaderCircle, Sparkles } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
@@ -26,6 +27,21 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
   )
 }
 
+// The date, and the greeting under it, at the left of Home's bar (Vikas, 22 Nov).
+export function HomeHead({ name }: { name: string }) {
+  const day = new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  return (
+    <div className="flex min-w-0 flex-col leading-tight">
+      <span className="truncate text-ink-3 text-xs">{day}</span>
+      <h1 className="truncate font-serif text-ink text-lg">{greeting(name)}</h1>
+    </div>
+  )
+}
+
 function greeting(name: string): string {
   const h = new Date().getHours()
   const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
@@ -34,12 +50,10 @@ function greeting(name: string): string {
 
 export function Home({
   stream,
-  name,
   agents,
   onAsked,
 }: {
   stream: Stream | null
-  name: string
   agents: AgentView[] // Needs you's faces
   onAsked: () => void // the answer opens on the right
 }) {
@@ -150,20 +164,8 @@ export function Home({
 
   return (
     <div className="@container h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-ink-3 text-sm">
-              {new Date().toLocaleDateString(undefined, {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
-            </p>
-            <h1 className="mt-1 font-serif text-2xl text-ink">{greeting(name)}</h1>
-          </div>
-          <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
-        </div>
+      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-7 pb-12">
+        <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
 
         {stream?.settingUp && (
           <p className="flex items-center gap-2 text-ink-2 text-md">
