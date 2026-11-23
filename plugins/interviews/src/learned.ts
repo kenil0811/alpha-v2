@@ -142,6 +142,13 @@ export async function learnedAct(
     }
     // the person's Keep, pressed here: written to How to work as theirs
     if (kept.length) host.keep(who.id, kept)
+    // what they dropped, counted for What Alpha read (a kept line is its own How to work line)
+    const dropped = open.filter((a) => drop.includes(a.id)).length
+    if (dropped)
+      host.journal(`Dropped ${dropped} line(s) in What I learned.`, {
+        person: who.id,
+        learned: { dropped },
+      })
     return { on: false }
   }
   if (body.retry) {
@@ -156,6 +163,10 @@ export async function learnedAct(
     if (p.values.Answer !== 'Waiting') throw new Refusal('That playback has its answer already.')
     const answer = answerOf(choice)
     host.own.set('Proposals', p.id, { Answer: answer })
+    host.journal(`Answered a playback in What I learned: ${answer}.`, {
+      person: who.id,
+      learned: { answer: answer === 'Not this' ? 'no' : 'yes' },
+    })
     host.own.change(
       'Workflows',
       flow.id,

@@ -212,7 +212,12 @@ export async function readAll(host: PluginHost, who: Who, off: string[]): Promis
   }
   host.journal(
     `Read ${found.filter((f) => f.on).length} sources for an interview, ${found.filter((f) => !f.on).length} left unread.`,
-    { person: who.id },
+    // which, by name, for What Alpha read: never what was in them
+    {
+      person: who.id,
+      read: found.filter((f) => f.on).map((f) => f.name),
+      off: found.filter((f) => !f.on).map((f) => f.name),
+    },
   )
 }
 
