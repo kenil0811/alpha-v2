@@ -7,7 +7,7 @@ import { ArrowUp, CheckCheck, Inbox, ListChecks, LoaderCircle, Sparkles } from '
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardGrid, type GridCard } from './CardGrid.tsx'
-import { fromWhom, NeedsYou } from './NeedsYou.tsx'
+import { fromWhom, mainOf, NeedsYou } from './NeedsYou.tsx'
 import { shownScreens } from './plugin/screens.ts'
 import { StoryCard, stepsDone, useStory } from './story/StoryCard.tsx'
 import { TaskList } from './Tasks.tsx'
@@ -93,7 +93,8 @@ export function Home({
   if (waiting > 0)
     grid.push({
       key: 'needs',
-      width: '1/2', // wide enough that a question stays within two lines (Vikas, 23 Nov)
+      width: '1/2', // a sign-in alone
+      main: mainOf(from),
       small: { icon: <Inbox className="size-4" />, value: String(waiting), label: 'Needs you' },
       node: <NeedsYou from={from} onChange={changeCard} />,
     })
