@@ -2,7 +2,8 @@
 // (Setup is the Module builder's own page). The page asks one warm question; Send hands the words
 // to the Module builder as a task, whose work then runs right here in the page's central column,
 // the task in the address (#/new/<task>) so leaving and coming back finds the build. Import beside
-// Send brings a file in (kept the way any file is), named to the builder by its id.
+// Send brings a file in (kept the way any file is), named to the builder by its id; a module sent
+// as a file (.alphakit) installs, or updates, instead (Vikas, 23 Nov).
 import type { TaskLineView, TasksView } from '@alpha/core/api'
 import { ArrowUp, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -64,6 +65,7 @@ export function NewModule({
   const [files, setFiles] = useState<{ name: string; hash: string }[]>([])
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [said, setSaid] = useState<string | null>(null)
   const pick = useRef<HTMLInputElement>(null)
   const [builder, setBuilder] = useState<string | null>(null)
   useEffect(() => {
@@ -82,11 +84,18 @@ export function NewModule({
   }, [version])
   const bring = async (picked: File[]) => {
     setBusy(true)
+    setProblem(null)
     for (const f of picked)
-      await api.upload(f).then(
-        (kept) => setFiles((x) => [...x, { name: kept.name, hash: kept.hash }]),
-        () => setProblem(`${f.name} did not go in.`),
-      )
+      if (f.name.endsWith('.alphakit'))
+        await api.uploadTo<{ words: string }>('/api/kits/pack', f).then(
+          (out) => setSaid(out.words),
+          (e) => setProblem(e instanceof Problem ? e.message : `${f.name} was not installed.`),
+        )
+      else
+        await api.upload(f).then(
+          (kept) => setFiles((x) => [...x, { name: kept.name, hash: kept.hash }]),
+          () => setProblem(`${f.name} did not go in.`),
+        )
     setBusy(false)
   }
   const build = async () => {
@@ -132,6 +141,7 @@ export function NewModule({
             </div>
           )}
           <div className="flex items-center justify-end gap-3">
+            {said && <span className="text-ink-2 text-md">{said}</span>}
             {problem && <span className="text-bad text-md">{problem}</span>}
             <Button disabled={busy} onClick={() => pick.current?.click()}>
               <Upload className="size-4" />
