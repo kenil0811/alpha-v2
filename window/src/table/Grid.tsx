@@ -44,7 +44,7 @@ import { cycleSort, setWidth } from './edits.ts'
 import { type Group, groupRows, TOTAL_WORDS, tintOf, toneOf, total, widthOf } from './engine.ts'
 import { type Grey, GreyChoice, isGrey } from './GreyChoice.tsx'
 import { useGoes } from './goes.ts'
-import type { LayoutNow } from './layout.ts'
+import { type LayoutNow, runOn, type Spill } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
 import { RowMenu } from './RowMenu.tsx'
 import { TagChips } from './Tags.tsx'
@@ -78,6 +78,7 @@ export interface PastePlan {
 
 const TICK = 36 // the ticks' column
 const ADD = 44 // the + column
+const PAD = 20 // a cell's words' room at its sides (px-2.5)
 const ACTION = 84 // a kept list's own button on each row (Run now)
 
 export function Grid({
@@ -397,6 +398,20 @@ export function Grid({
             const tint = tintOf(config, fields, r)
             const on = ticked.has(r.id)
             const bg = on ? 'bg-accent-soft' : 'bg-surface'
+            // Overflow, as in a spreadsheet (Vikas, 23 Nov): a cell of plain words runs on over the
+            // empty cells after it; a frozen one stays in its own, as the others pass under it
+            const run = runOn(
+              shown.map((f) => show(f, r.values[f.slug], names) === ''),
+              widths,
+              shown.map(
+                (f, i) =>
+                  stick(i) === undefined &&
+                  layout.spillOf(f.id) === 'overflow' &&
+                  !isTags(f) &&
+                  f.kind !== 'choice' &&
+                  !NUMERIC.has(f.kind),
+              ),
+            )
             return (
               <tr
                 key={r.id}
@@ -430,14 +445,17 @@ export function Grid({
                 {shown.map((f, i) => {
                   const here = { row: r.id, field: f.slug }
                   const isEditing = editing?.row === r.id && editing.field === f.slug
+                  const spill = layout.spillOf(f.id)
+                  const more = run.more[i] ?? 0
                   return (
                     <td
                       key={f.id}
                       {...menuOn(r, f)}
                       style={stick(i) === undefined ? undefined : { left: stick(i) }}
                       className={cn(
-                        'overflow-hidden border-hair border-b p-0 group-hover/row:bg-hover',
-                        layout.wrap.includes(f.id) ? 'whitespace-normal' : 'whitespace-nowrap',
+                        'border-hair border-b p-0 group-hover/row:bg-hover',
+                        more ? 'overflow-visible' : 'overflow-hidden',
+                        spill === 'wrap' ? 'whitespace-normal' : 'whitespace-nowrap',
                         bg,
                         stick(i) !== undefined && 'sticky z-1',
                         i === layout.frozen - 1 && 'shadow-[inset_-1px_0_0_var(--hair)]',
@@ -467,7 +485,9 @@ export function Grid({
                           row={r}
                           names={names}
                           first={i === 0}
-                          wrap={layout.wrap.includes(f.id)}
+                          spill={spill}
+                          room={more ? (widths[i] ?? 0) + more - PAD : undefined}
+                          under={run.under[i] ?? false}
                           tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
                           tone={
                             toneOf(config, f, r.values[f.slug]) ??
@@ -806,7 +826,9 @@ function Cell({
   row: r,
   names,
   first,
-  wrap,
+  spill,
+  room,
+  under,
   tasks,
   tone,
   selected,
@@ -819,7 +841,9 @@ function Cell({
   row: RowView
   names: Record<string, string>
   first: boolean
-  wrap: boolean
+  spill: Spill
+  room: number | undefined // how wide its words may run on over the empty cells after it
+  under: boolean // an empty cell the one before runs on over: no dash
   tasks: number
   tone: string | null
   selected: boolean
@@ -853,7 +877,7 @@ function Cell({
         className={cn(
           'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
           first ? 'cursor-pointer' : 'cursor-default', // only the first cell opens its row
-          wrap ? 'min-h-9.5 py-2' : 'h-9.5',
+          spill === 'wrap' ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
           // a value that meets its colour's rule fills its cell
           tone && !empty && TINT[tone],
@@ -862,17 +886,27 @@ function Cell({
         )}
       >
         {empty ? (
-          <span className="text-ink-3" data-tip={EMPTY_WORDS}>
-            {EMPTY_CELL}
-          </span>
+          !under && (
+            <span className="text-ink-3" data-tip={EMPTY_WORDS}>
+              {EMPTY_CELL}
+            </span>
+          )
         ) : isTags(f) ? (
           <TagChips field={f} value={value} />
         ) : f.kind === 'choice' ? (
           <Choice of={f} value={text} />
         ) : (
           <span
+            // running on, it is drawn over the empty cells after it (relative, under a frozen column)
+            style={room ? { maxWidth: room } : undefined}
             className={cn(
-              wrap ? 'break-words' : 'truncate',
+              spill === 'wrap'
+                ? 'break-words'
+                : spill === 'clip'
+                  ? 'overflow-hidden'
+                  : room
+                    ? 'relative shrink-0 truncate'
+                    : 'truncate',
               first && 'font-medium group-hover:underline',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
