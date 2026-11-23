@@ -1,5 +1,6 @@
 // Set up Alpha's Connect: tiles that connect in place, without leaving the story (the redesign's
-// calls 8 to 14), one compact row each. Each says what it reads before anything is connected,
+// calls 8 to 14), one compact row each; mail, calendar and contacts one tile of account lines with
+// one Add (AccountLines.tsx, Vikas 23 Nov), and Excluded at the foot. Each says what it reads before anything is connected,
 // connects as Settings › Connections does (its own form, a provider's sign-in app set up on the
 // tile, Alpha Bridge paired from it), and then shows what is landing, counted by the core.
 import type {
@@ -10,8 +11,18 @@ import type {
   SiteView,
   TileConnection,
 } from '@alpha/core/api'
-import { CalendarDays, Check, ExternalLink, FileUp, Laptop, LayoutGrid, X } from 'lucide-react'
+import {
+  CalendarDays,
+  Check,
+  ExternalLink,
+  FileUp,
+  Laptop,
+  LayoutGrid,
+  Mail,
+  X,
+} from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { AccountList, Excluded, useAccounts } from '../AccountLines.tsx'
 import { api } from '../api.ts'
 import { Install, lendsWords, mine, Pairing } from '../Computers.tsx'
 import { ConnectForm, ICONS } from '../Connections.tsx'
@@ -42,10 +53,12 @@ export function Connect({
   const loadView = useCallback(() => {
     api.get<ConnectorsView>('/api/connectors').then(setView, () => undefined)
   }, [])
+  const accounts = useAccounts(true)
   const again = useCallback(() => {
     loadView()
     reload()
-  }, [loadView, reload])
+    accounts.load()
+  }, [loadView, reload, accounts.load])
   useEffect(loadView, [])
   // what lands is counted again while the chapter is open
   useEffect(() => {
@@ -55,9 +68,19 @@ export function Connect({
   useEffect(() => next({ label: 'Continue', ready: true }), [next])
   return (
     <div className="flex flex-col gap-2">
-      {screen.tiles.map((t) => (
-        <TileBox key={t.key} tile={t} view={view} again={again} />
-      ))}
+      {screen.tiles.map((t) =>
+        t.kind === 'accounts' ? (
+          <Frame key={t.key} tile={t} icon={<Mail className="size-4" />}>
+            {accounts.view && (
+              <AccountList view={accounts.view} connectors={view} onChange={again} />
+            )}
+          </Frame>
+        ) : (
+          <TileBox key={t.key} tile={t} view={view} again={again} />
+        ),
+      )}
+      {/* what the person deleted or left out, to restore (Vikas, 23 Nov) */}
+      {accounts.view && <Excluded items={accounts.view.excluded} onChange={again} />}
     </div>
   )
 }

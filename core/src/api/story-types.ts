@@ -64,7 +64,7 @@ export interface TileConnection {
 // the first frame: a tile that connects changes its words, never its shape.
 export interface ConnectTile {
   key: string
-  kind: 'connector' | 'calendar' | 'computer' | 'apps' | 'file'
+  kind: 'accounts' | 'connector' | 'calendar' | 'computer' | 'apps' | 'file'
   title: string
   reads: string
   connectors: string[] // connected in place, by name, as Settings › Connections connects them

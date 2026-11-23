@@ -5,6 +5,7 @@
 import { type Db, one, run } from './db.ts'
 
 const LEFT_OUT = 'story:apps_left_out'
+const EXCLUDED = 'connect:accounts_excluded'
 
 export type ChapterState = 'done' | 'skipped'
 
@@ -77,29 +78,87 @@ export function reopenStory(db: Db, user: string): void {
   save(db, user, { ...progressOf(db, user), doneAt: null, declinedAt: null })
 }
 
-// The apps a person left out of Connect's Apps you use, by name: never listed for them again.
-export function appsLeftOut(db: Db, user: string): string[] {
+// What a person keeps by key, as JSON: none, or one that does not read, is the fallback.
+function pref<T>(db: Db, user: string, key: string, none: T): T {
   const r = one<{ value: string }>(
     db,
     'SELECT value FROM preferences WHERE user_id = ? AND key = ?',
     user,
-    LEFT_OUT,
+    key,
   )
   try {
-    return r ? (JSON.parse(r.value) as string[]) : []
+    return r ? (JSON.parse(r.value) as T) : none
   } catch {
-    return []
+    return none
   }
+}
+
+function keep(db: Db, user: string, key: string, value: unknown): void {
+  run(
+    db,
+    'INSERT INTO preferences (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value',
+    user,
+    key,
+    JSON.stringify(value),
+  )
+}
+
+// The apps a person left out of Connect's Apps you use, by name: never listed for them again,
+// until they restore one from Excluded.
+export function appsLeftOut(db: Db, user: string): string[] {
+  return pref<string[]>(db, user, LEFT_OUT, [])
 }
 
 export function leaveAppOut(db: Db, user: string, name: string): void {
   const now = appsLeftOut(db, user)
   if (now.some((n) => n.toLowerCase() === name.toLowerCase())) return
-  run(
+  keep(db, user, LEFT_OUT, [...now, name])
+}
+
+export function bringAppBack(db: Db, user: string, name: string): void {
+  const now = appsLeftOut(db, user)
+  keep(
     db,
-    'INSERT INTO preferences (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value',
     user,
     LEFT_OUT,
-    JSON.stringify([...now, name]),
+    now.filter((n) => n.toLowerCase() !== name.toLowerCase()),
   )
+}
+
+// An account a person deleted from their connections: kept under Excluded, by its provider and
+// address, with the connectors it was read by, so Restore brings it back.
+export interface ExcludedAccount {
+  provider: string // google, microsoft, or a connector's own name
+  account: string
+  connectors: string[]
+}
+
+const key = (a: { provider: string; account: string }) =>
+  `${a.provider}:${a.account.trim().toLowerCase()}`
+
+export function accountsExcluded(db: Db, user: string): ExcludedAccount[] {
+  return pref<ExcludedAccount[]>(db, user, EXCLUDED, [])
+}
+
+export function excludeAccount(db: Db, user: string, a: ExcludedAccount): void {
+  const rest = accountsExcluded(db, user).filter((x) => key(x) !== key(a))
+  keep(db, user, EXCLUDED, [...rest, a])
+}
+
+// Taken off Excluded: what it was, for the caller to bring back; none if it was not there.
+export function unexcludeAccount(
+  db: Db,
+  user: string,
+  a: { provider: string; account: string },
+): ExcludedAccount | null {
+  const all = accountsExcluded(db, user)
+  const was = all.find((x) => key(x) === key(a)) ?? null
+  if (was)
+    keep(
+      db,
+      user,
+      EXCLUDED,
+      all.filter((x) => x !== was),
+    )
+  return was
 }

@@ -116,3 +116,46 @@ export interface ComputerPageView {
   lends: ConnectionView[]
   did: { id: number; at: string; words: string; failed: boolean }[] // newest first
 }
+
+// One account a person reads, as one line in Connect and in Settings › Connections (Vikas,
+// 23 Nov): its address, how it stands, and what landed, counted by code. A Google account is one
+// line for its sign-in (calendar and contacts) and its mail (an app password, while Google's mail
+// scope waits on its review); a Microsoft account one line for its sign-in.
+export interface AccountLine {
+  key: string // provider:address
+  provider: string // google, microsoft, or another mail connector's own name
+  title: string // Google, Microsoft, or that connector's title
+  account: string
+  // connected: a green dot; reading: its first read runs; off: disconnected; failed: it asks
+  // something of the person (a sign-in, a password, their IT)
+  state: 'connected' | 'reading' | 'off' | 'failed'
+  problem: string | null // what a failed one asks, in words
+  landed: string[] // "412 mails", "30 events"
+  reads: string[] // for its ⓘ: what it reads
+  by: string // who connected it: You, a name, or Alpha
+  connections: { id: string; connector: string; auth: string; state: string }[]
+  // a Google line can add its mail (an app password) or its calendar and contacts (the sign-in)
+  adds: ('mail' | 'calendar')[]
+}
+
+// What a person excluded, kept so it can come back: an account they deleted, or an app they left
+// out of Apps you use.
+export interface ExcludedView {
+  kind: 'account' | 'app'
+  provider: string // an account's provider; an app's is "app"
+  name: string // the address, or the app's name
+  title: string // Google, Microsoft, a connector's title, or "App"
+}
+
+export interface AccountsView {
+  lines: AccountLine[]
+  excluded: ExcludedView[]
+  // each provider's one sign-in: ready to sign in (Alpha's own app, or the firm's set up), and
+  // Microsoft's admin approval link for Alpha's own app
+  google: { loaded: boolean; ready: boolean; mail: boolean }
+  microsoft: { loaded: boolean; ready: boolean; consent: string | null }
+  other: string[] // other mail connectors, by name, for Add › Other mail
+  appPassword: { words: string; url: string | null }[] // Gmail's app password, step by step
+  owner: boolean // setting up a provider's sign-in app is the owner's
+  ownerName: string
+}
