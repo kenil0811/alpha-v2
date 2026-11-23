@@ -2,20 +2,24 @@
 import { ChevronLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Face, type Mood } from './Face.tsx'
+import { openLink } from './opened.ts'
 import { MOD } from './time.ts'
+import { cn } from './ui/cn.ts'
 
-// The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
-// on the left when one is on, with a ‹ to the page above; on Home the date and the greeting there
-// instead, with no ‹ and no name (Vikas, 22 Nov); at its right, on Home what comes next
-// today, and Alpha's face, which opens the assistant while it is closed.
+export type Crumb = { label: string; href: string }
+
+// The bar over each screen, at the shared 48px: the screen's switch or name centred; at its left a
+// ‹ to the page above and the path from Home to it, each part a way there (Home / Deals), the
+// middle cut short with … when long (Vikas, 23 Nov); at its right, on Home what comes next today,
+// and Alpha's face, which opens the assistant while it is closed. On Home the date and the greeting
+// stand at its left instead, with no ‹ and no name (Vikas, 22 Nov).
 // Find is ⌘K, from anywhere.
 export function Bar({
   name,
   middle,
   plain,
   ask,
-  back,
-  path,
+  trail,
   next,
   lead,
 }: {
@@ -23,43 +27,64 @@ export function Bar({
   middle: (at: HTMLElement | null) => void
   plain?: boolean // the conversation's: a small sans title, as Claude Code's
   ask: { mood: Mood; open: () => void } | null
-  back: { label: string; href: string } | null // the page above this one; none at the top
-  path?: string | undefined // under the way back, small: where a record sits (Module / Table)
+  trail: Crumb[] // Home to the page above this one; none on Home
   next?: ReactNode // on Home, what comes next today, before the face
   lead?: ReactNode // on Home, the date and the greeting, in place of the ‹ and the name
 }) {
+  const back = trail.at(-1)
   return (
     <div
       data-tauri-drag-region
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        <div className="flex min-w-0 flex-col justify-center">
-          {lead ? (
-            lead
-          ) : back ? (
-            <a
-              href={back.href}
-              className="-ml-2 flex min-w-0 shrink items-center gap-0.5 rounded-md py-1 pr-2 pl-1 text-ink-3 text-md hover:bg-hover hover:text-ink"
-            >
-              <ChevronLeft className="size-4 shrink-0" />
-              <span className="truncate">{back.label}</span>
-            </a>
-          ) : (
-            // always in its place, greyed where there is no page above
+        {lead ? (
+          lead
+        ) : back ? (
+          <nav
+            aria-label="Where you are"
+            className="-ml-2 flex min-w-0 items-center text-ink-3 text-md"
+          >
             <button
               type="button"
-              disabled
-              aria-label="Back: nothing above this page"
-              className="-ml-2 flex shrink-0 items-center rounded-md p-1 text-ink-3 opacity-40"
+              aria-label={`Back to ${back.label}`}
+              data-href={back.href}
+              onClick={(e) => openLink(back.href, e)}
+              className="grid shrink-0 place-items-center rounded-md p-1 hover:bg-hover hover:text-ink"
             >
               <ChevronLeft className="size-4" />
             </button>
-          )}
-          {path && (
-            <span className="-mt-0.5 truncate pl-4.5 text-ink-3 text-xs leading-tight">{path}</span>
-          )}
-        </div>
+            {trail.map((c, i) => (
+              <span
+                key={c.href}
+                className={cn(
+                  'flex min-w-0 items-center',
+                  i === 0 ? 'shrink-0' : i < trail.length - 1 && 'shrink-[9]',
+                )}
+              >
+                {i > 0 && <span className="shrink-0 px-0.5">/</span>}
+                <button
+                  type="button"
+                  data-href={c.href}
+                  onClick={(e) => openLink(c.href, e)}
+                  className="min-w-0 truncate rounded-md px-1 py-0.5 hover:bg-hover hover:text-ink"
+                >
+                  {c.label}
+                </button>
+              </span>
+            ))}
+          </nav>
+        ) : (
+          // always in its place, greyed where there is no page above
+          <button
+            type="button"
+            disabled
+            aria-label="Back: nothing above this page"
+            className="-ml-2 flex shrink-0 items-center rounded-md p-1 text-ink-3 opacity-40"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+        )}
         {plain && (
           <h1 className="min-w-0 truncate font-medium font-sans text-chat text-ink">{name}</h1>
         )}

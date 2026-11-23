@@ -14,7 +14,7 @@ import { AgentPage, AgentPicker, CHIEF, useAgents } from './Agents.tsx'
 import { AgentsScreen } from './AgentsScreen.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
-import { Bar } from './Bar.tsx'
+import { Bar, type Crumb } from './Bar.tsx'
 import { CardPage } from './CardPage.tsx'
 import { ComputerPage } from './ComputerPage.tsx'
 import { Conversation } from './Conversation.tsx'
@@ -48,7 +48,7 @@ import { frameOf } from './table/frame.ts'
 import { titleOf } from './table/values.ts'
 import { useTableLoad } from './table-load.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
-import { inside, landingOf } from './tree.ts'
+import { inside } from './tree.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { useWorkspaceHere, WorkspaceContext } from './Workspace.tsx'
@@ -300,15 +300,9 @@ export function App() {
     void refresh()
   }, [chosen, refresh])
 
-  // the page above this one, for the bar's ‹; none on a page at the top
-  const parentOf = (): { label: string; href: string } | null => {
-    const HOME = { label: 'Home', href: '#/' }
-    // above a module: the module it sits in, where that one opens, else Home
-    const aboveModule = (id: string | null): { label: string; href: string } => {
-      const up = id ? modules.find((m) => m.id === id)?.parent : null
-      const p = up ? modules.find((m) => m.id === up) : null
-      return p ? { label: p.name, href: landingOf(modules, p) } : { label: 'Home', href: '#/' }
-    }
+  // the page above this one; none on Home
+  const HOME = { label: 'Home', href: '#/' }
+  const parentOf = (): Crumb | null => {
     switch (place.at) {
       case 'tasks':
         return place.id ? { label: 'Tasks', href: '#/tasks' } : HOME
@@ -316,15 +310,14 @@ export function App() {
         return { label: itemName || 'The task', href: `#/tasks/${place.id}` }
       case 'row':
         return rowPlace && { label: rowPlace.table.name, href: `#/table/${rowPlace.table.id}` }
-      // a module's own tables and pages are the module: they go to the module it sits in, else Home
-      // (the module's address would open this same table again)
+      // a module's own tables and pages sit under Home: the path never names a module (Vikas, 23 Nov)
       case 'table':
-        if (place.row) return table && { label: table.name, href: `#/table/${place.id}` }
-        return aboveModule(moduleHereId)
+        return place.row ? table && { label: table.name, href: `#/table/${place.id}` } : HOME
       case 'module':
         // a module's details sit under its Setup
-        if (place.tab === 'details') return { label: 'Setup', href: `#/module/${place.id}/setup` }
-        return aboveModule(place.id)
+        return place.tab === 'details'
+          ? { label: 'Setup', href: `#/module/${place.id}/setup` }
+          : HOME
       case 'item':
         return place.kind === 'schedule'
           ? { label: 'Automations', href: '#/settings/schedules' }
@@ -337,8 +330,6 @@ export function App() {
       // a computer's page is one of Connections › Your computers
       case 'computer':
         return { label: 'Connections', href: '#/settings/connections' }
-      case 'card':
-        return { label: 'Home', href: '#/' }
       // a kept file is one of Settings › Files
       case 'file':
         return { label: 'Files', href: '#/settings/files' }
@@ -353,6 +344,18 @@ export function App() {
       default:
         return HOME
     }
+  }
+
+  // the path from Home to the page above this one, for the bar: a task's thread is under Tasks, a
+  // page of Settings under Settings (Vikas, 23 Nov)
+  const trailOf = (): Crumb[] => {
+    const up = parentOf()
+    if (!up) return []
+    if (up.href === '#/') return [up]
+    if (place.at === 'work') return [HOME, { label: 'Tasks', href: '#/tasks' }, up]
+    if (up.href.startsWith('#/settings/'))
+      return [HOME, { label: 'Settings', href: '#/settings' }, up]
+    return [HOME, up]
   }
 
   // the screen's name, for the bar
@@ -426,8 +429,7 @@ export function App() {
               middle={setMiddle}
               plain={place.at === 'work'}
               ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
-              back={parentOf()}
-              path={place.at === 'row' ? rowPlace?.path : undefined}
+              trail={trailOf()}
               next={place.at === 'home' && <NextChip version={version} />}
               lead={place.at === 'home' && <HomeHead name={name} />}
             />

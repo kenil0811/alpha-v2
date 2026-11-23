@@ -17,14 +17,21 @@ import { Tasks } from './Tasks.tsx'
 import { DayBeside } from './Today.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
-// A click on a link to one of these kinds opens it beside the page, in the address.
+// A click on a link to one of these kinds opens it beside the page, in the address; a ⌘-click on a
+// link to any place in Alpha goes to its page here, not to a new window, which would hold no token.
 export function useOpenBeside(): void {
   useEffect(() => {
     const click = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return
+      if (e.defaultPrevented || e.button !== 0 || e.shiftKey) return
       const a = (e.target as Element | null)?.closest?.('a[href]')
       const href = a?.getAttribute('href')
       if (!a || !href) return
+      if (e.metaKey || e.ctrlKey) {
+        if (!href.startsWith('#')) return
+        e.preventDefault()
+        window.location.hash = href
+        return
+      }
       const { base } = splitBeside(window.location.hash)
       const opened = linkBeside(href, base)
       if (!opened) return

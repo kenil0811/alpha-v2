@@ -27,7 +27,6 @@ export interface RowPlace {
   module: { id: string; name: string }
   table: { id: string; name: string }
   title: string
-  path: string // under the bar's way back: Module / Table
 }
 
 // what is around the row, counted for its blocks
@@ -84,7 +83,6 @@ export function RowPage({
             module: view.table.module,
             table: view.table,
             title: view.title,
-            path: `${view.table.module.name} / ${view.table.name}`,
           }
         : null,
     )
