@@ -18,10 +18,11 @@ import { moduleNetwork, removeHost } from '../../modules/runs/reach.ts'
 import { agentSchedules } from '../../modules/schedules.ts'
 import { fromView } from '../../modules/shipped.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
+import { all, one } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import { STATE_WORDS } from '../../world/tasks/index.ts'
 import type { Ctx } from '../ctx.ts'
-import type { AgentDetail, AgentView, MemoryView } from '../types.ts'
+import type { AgentDetail, AgentOverview, AgentView, MemoryView } from '../types.ts'
 import { scheduleOut } from './schedules.ts'
 
 export function registerAgents(ctx: Ctx): void {
@@ -116,6 +117,49 @@ export function registerAgents(ctx: Ctx): void {
 
   // the Module builder New module opens; none once the person deleted it
   app.get('/api/agents/builder', async () => ({ id: builderId(world) }))
+
+  // An agent's landing page (Vikas, 23 Nov): how it is doing, in numbers. The Chief of staff's
+  // cards and lines are those no agent signed; only this person's cards and lines count.
+  app.get('/api/agents/:id/overview', async (req): Promise<AgentOverview> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    known(id)
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
+    const mine = id === CHIEF ? 'agent_id IS NULL' : 'agent_id = ?'
+    const who = id === CHIEF ? [] : [id]
+    const count = (sql: string, ...args: string[]) =>
+      one<{ n: number }>(world.db, `SELECT COUNT(*) AS n ${sql}`, ...args)?.n ?? 0
+    const cards = (states: string) =>
+      count(
+        `FROM cards WHERE ${mine} AND user_id = ? AND state IN (${states}) AND created_at >= ?`,
+        ...who,
+        user.id,
+        since,
+      )
+    const runs = (state: string) =>
+      count(
+        `FROM runs r JOIN schedules s ON s.id = r.schedule_id
+         WHERE s.agent = ? AND r.state = ? AND r.started_at >= ?`,
+        id,
+        state,
+        since,
+      )
+    const tasks = world.tasks.list({ owner: { kind: 'alpha', id } })
+    return {
+      tasks: {
+        open: tasks.filter((t) => t.state !== 'done' && t.state !== 'dropped').length,
+        done: tasks.filter((t) => t.state === 'done').length,
+      },
+      cards: { yes: cards("'yes', 'allowed'"), no: cards("'no'") },
+      runs: { ok: runs('ok'), failed: runs('failed') },
+      recent: all<{ at: string; words: string }>(
+        world.db,
+        `SELECT at, words FROM journal WHERE ${mine} AND actor_kind = 'alpha'
+         AND (user_id IS NULL OR user_id = ?) ORDER BY id DESC LIMIT 5`,
+        ...who,
+        user.id,
+      ),
+    }
+  })
 
   app.get('/api/agents/:id', async (req): Promise<AgentDetail> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

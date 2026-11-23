@@ -66,3 +66,11 @@ export interface SiteView {
   at: string // when they signed in
   on: string | null // the computer of theirs it was signed in to on (the Bridge), by its name
 }
+
+// How an agent is doing, for its landing page (Vikas, 23 Nov): the last thirty days but its tasks.
+export interface AgentOverview {
+  tasks: { open: number; done: number } // the tasks it owns
+  cards: { yes: number; no: number } // its cards to this person that were answered so
+  runs: { ok: number; failed: number } // runs of the schedules that wake it
+  recent: { at: string; words: string }[] // its last lines, newest first
+}
