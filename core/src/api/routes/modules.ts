@@ -5,7 +5,14 @@ import { installedKits, unseenChanges } from '../../modules/kits/index.ts'
 import { deleteModule } from '../../modules/remove.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
 import { agentName, shownSchedules, whenWords } from '../../modules/schedules.ts'
-import { pageAnswer, pageDocument, pageRecord, pagesFor, printPage } from '../../pages/pages.ts'
+import {
+  pageAnswer,
+  pageDocument,
+  pageRecord,
+  pagesFor,
+  printPage,
+  retitlePage,
+} from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
 import type { Ctx } from '../ctx.ts'
@@ -13,7 +20,7 @@ import type { ModuleSummary, ModuleView } from '../types.ts'
 import { listed, livesPeople, tableSummary } from '../views.ts'
 
 export function registerModules(ctx: Ctx): void {
-  const { app, world, engine, user, options } = ctx
+  const { app, world, engine, user, options, live } = ctx
   const { needsOf, summaries } = ctx.views
 
   app.get('/api/modules', async (): Promise<ModuleSummary[]> => summaries())
@@ -180,6 +187,14 @@ export function registerModules(ctx: Ctx): void {
     const { record } = z.object({ record: z.string().optional() }).parse(req.query)
     const row = record ? pageRecord(world, m, name, record) : undefined
     return { ...page, html: pageDocument(m, name, undefined, row) }
+  })
+  // a page's tab renamed: its title, seen at once in every window
+  app.post('/api/modules/:id/pages/:name/title', async (req) => {
+    const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
+    const { title } = z.object({ title: z.string().max(80) }).parse(req.body)
+    retitlePage(pageModule(id), name, title)
+    live()
+    return { ok: true }
   })
   app.post('/api/modules/:id/pages/:name/ask', async (req) => {
     const { id } = z.object({ id: z.string(), name: z.string() }).parse(req.params)

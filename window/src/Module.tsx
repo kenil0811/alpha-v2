@@ -172,7 +172,9 @@ export const moduleTabs = (
   current: ModuleTab | null,
   kept: TabsKept = NO_TABS, // the person's own: the tables they hid and the ones they pinned
 ): Tab[] => [
-  ...[...m.pages]
+  // a record's page is drawn on each record, never a tab of the module (Vikas, 23 Nov)
+  ...m.pages
+    .filter((p) => !p.record)
     .sort((a, b) => Number(!!b.front) - Number(!!a.front))
     .map((p) => ({
       key: `p:${p.name}`,
@@ -180,6 +182,8 @@ export const moduleTabs = (
       label: p.title,
       icon: <LayoutDashboard className="size-3.5" />,
       sel: current?.kind === 'page' && current.name === p.name,
+      // renaming the tab renames the page: its title (Vikas, 23 Nov)
+      rename: (to: string) => api.post(`/api/modules/${m.id}/pages/${p.name}/title`, { title: to }),
     })),
   ...[...m.tables.filter((t) => t.place === 'main'), ...m.tables.filter((t) => t.place !== 'main')]
     // the one open stays in sight, hidden or not
