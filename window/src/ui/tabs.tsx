@@ -1,13 +1,14 @@
 // A screen's own pages: a pill switch in the bar, or, where the screen has no bar of its own (a
-// page opened beside) or the tabs belong under a record's head, one row of tabs: every label in
-// full, a table's row count beside its name, the chosen tab underlined in the accent; a row too
-// long scrolls sideways, never folds a label to an icon or cuts it short.
+// page opened beside) or the tabs belong under a record's head, one row of tabs: each label 15
+// characters at most, the rest sliding into view under the pointer (ui/fit.tsx), a table's row
+// count beside its name, the chosen tab underlined in the accent; a row too long scrolls sideways.
 import type { TableSummary } from '@alpha/core/api'
 import { type DragEvent, type MouseEvent, type ReactNode, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { TableTab } from '../TableTab.tsx'
 import { useBarSlot } from './bar-slot.tsx'
 import { cn } from './cn.ts'
+import { Fit } from './fit.tsx'
 import { PillSwitch } from './pill-switch.tsx'
 import type { TabKeeping } from './tab-order.ts'
 
@@ -90,12 +91,12 @@ export function Tabs({
                   }
                 : {})}
               className={cn(
-                'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-ink-2 text-md hover:text-ink',
+                'group/fit flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-ink-2 text-md hover:text-ink',
                 t.sel ? 'border-accent font-medium text-ink' : 'border-transparent',
               )}
             >
               {t.icon && <span className="text-ink-3">{t.icon}</span>}
-              {t.label}
+              <Fit>{t.label}</Fit>
               {t.count !== undefined && (
                 <span className="font-normal text-ink-3 text-xs tabular-nums">{t.count}</span>
               )}

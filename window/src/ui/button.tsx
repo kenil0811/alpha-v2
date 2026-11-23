@@ -3,9 +3,10 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 import type { ComponentProps } from 'react'
 import { cn } from './cn.ts'
+import { fitWords } from './fit.tsx'
 
 const button = cva(
-  'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+  'group/fit inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -34,9 +35,14 @@ export function Button({
   variant,
   size,
   type = 'button',
+  children,
   ...props
 }: ComponentProps<'button'> & VariantProps<typeof button>) {
-  return <button type={type} className={cn(button({ variant, size }), className)} {...props} />
+  return (
+    <button type={type} className={cn(button({ variant, size }), className)} {...props}>
+      {fitWords(children)}
+    </button>
+  )
 }
 
 // A square button holding one icon; its label is for screen readers and the tooltip.
