@@ -7,6 +7,7 @@ import { DeleteModule } from './DeleteModule.tsx'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
+import { notify } from './ui/notice.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
 // Modules hidden from the rail, with the modules inside them, kept per person by the core like the
@@ -143,6 +144,9 @@ export function ModuleMenu({
         <MenuItem
           onClick={() => {
             hiding.set([...hiding.hidden, m.id])
+            notify({
+              words: `${m.name} is hidden from the sidebar. Bring it back from any module's ⋮ › Hidden modules.`,
+            })
             close()
           }}
           reason={

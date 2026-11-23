@@ -574,9 +574,15 @@ export function Grid({
         open={!!removing}
         title="Delete this row?"
         yes="Delete row"
+        done={{
+          words: 'The row is deleted. Bring it back from',
+          where: { label: 'Activity', href: '#/settings/activity' },
+        }}
         onClose={() => setRemoving(null)}
         onYes={async () => {
-          if (removing && (await onRemove?.([removing]))) setRemoving(null)
+          const ok = !!removing && !!(await onRemove?.([removing]))
+          if (ok) setRemoving(null)
+          return ok
         }}
       >
         {goes}

@@ -218,11 +218,12 @@ function People() {
         open={!!leaving}
         title={`Delete ${leaving?.name}'s sign-in?`}
         yes="Delete"
+        done={{ words: `${leaving?.name} can no longer sign in.` }}
         onClose={() => setLeaving(null)}
         onYes={() => {
           const p = leaving
           setLeaving(null)
-          if (p) void act(() => api.post(`/api/accounts/${p.id}/remove`))
+          return p ? act(() => api.post(`/api/accounts/${p.id}/remove`)) : false
         }}
       >
         They can no longer sign in. What they did stays in Activity under their name.

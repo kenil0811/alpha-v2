@@ -309,10 +309,11 @@ export function AgentSchedulePage({
           title={`Delete ${s.name}?`}
           yes="Delete it"
           busy={busy}
+          done={{ words: `${s.name} is deleted. What it reported stays.` }}
           onClose={() => setAsking(false)}
           onYes={() => {
             setAsking(false)
-            act(async () => {
+            return act(async () => {
               await api.post(`/api/schedules/${s.id}/remove`)
               window.location.hash = `#/agent/${s.agent.id}`
             })

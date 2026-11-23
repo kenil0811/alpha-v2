@@ -436,6 +436,7 @@ function TaskPage({
             open={removing}
             title={`Delete this task${t.children ? ' and the ones beneath it' : ''}?`}
             yes="Delete"
+            done={{ words: 'The task is deleted.' }}
             onClose={() => setRemoving(false)}
             onYes={async () => {
               await api.delete(`/api/tasks/${t.id}`)

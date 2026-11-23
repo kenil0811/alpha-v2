@@ -35,6 +35,9 @@ import { Words } from './ui/words.tsx'
 
 // A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, its
 // content; no card around it.
+// a part's place on the page, for a link to it (a notice's Find it in Setup › Tables)
+export const partId = (title: string) => `setup-${title.toLowerCase().replaceAll(' ', '-')}`
+
 export function Part({
   title,
   about,
@@ -45,7 +48,7 @@ export function Part({
   children: ReactNode
 }) {
   return (
-    <section className="flex flex-col">
+    <section id={partId(title)} className="flex scroll-mt-4 flex-col">
       <div className="mb-2.5 flex items-center gap-1.5">
         <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
         {about && <Info help={about} />}
@@ -447,10 +450,14 @@ function Yours({ moduleId, onChange }: { moduleId: string; onChange: () => void 
           title={`Delete ${gone.name}'s values?`}
           yes={`Delete ${gone.rows === 1 ? 'it' : `all ${gone.rows}`}`}
           busy={busy}
+          done={{
+            words: `${gone.name}'s values are deleted. Bring them back from`,
+            where: { label: 'Activity', href: '#/settings/activity' },
+          }}
           onClose={() => setAsking(null)}
           onYes={() => {
             setAsking(null)
-            act(() =>
+            return act(() =>
               api.post(`/api/kits/${moduleId}/fields/remove`, {
                 table: gone.table,
                 field: gone.fieldId,

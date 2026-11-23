@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useRef } from 'react'
 import { Button } from './button.tsx'
 import { cn } from './cn.ts'
 import { FRAME } from './frame.tsx'
+import { type Notice, notify } from './notice.tsx'
 
 export function Dialog({
   open,
@@ -53,7 +54,8 @@ export function Dialog({
 }
 
 // Asks before something that can't be undone: the button names what will happen, and Cancel
-// holds the focus, so Return never deletes.
+// holds the focus, so Return never deletes. Once done (onYes not refused: false or a throw), a
+// notice says so, and where to bring it back when there is a way (Vikas, 23 Nov).
 export function Confirm({
   open,
   title,
@@ -61,12 +63,14 @@ export function Confirm({
   onYes,
   onClose,
   busy,
+  done,
   children,
 }: {
   open: boolean
   title: string
   yes: string
-  onYes: () => void
+  onYes: () => unknown // false, or a promise of false, when it did not happen
+  done: Notice // what the notice says once it is done
   onClose: () => void
   busy?: boolean
   children?: ReactNode
@@ -81,7 +85,13 @@ export function Confirm({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="danger" disabled={busy} onClick={onYes}>
+          <Button
+            variant="danger"
+            disabled={busy}
+            onClick={async () => {
+              if ((await onYes()) !== false) notify(done)
+            }}
+          >
             {yes}
           </Button>
         </>

@@ -16,3 +16,8 @@ Not done: a grid cell's edit keeps a spreadsheet's keys (Enter, Escape, Tab) wit
 
 Later the same day: a label on a tab, a toggle, a tag or a button is as wide as its words and
 about 15 letters at most (`ui/fit.tsx`); the rest slides into view under the pointer or focus.
+
+Later still: a notice at the window's foot (`ui/notice.tsx`) after anything is deleted, hidden,
+turned off or disconnected, with a link to where it can be found again (Hide from header: Setup ›
+Tables, scrolled to). Every Confirm names its notice; one that fails shows none. A link, email or
+phone value on a record's page and in its side panel opens in the browser, the mail app or a call.

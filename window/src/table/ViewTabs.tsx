@@ -255,6 +255,7 @@ export function ViewTabs({
         open={removing && !!view}
         title={`Delete ${view?.name} for everyone?`}
         yes="Delete list"
+        done={{ words: `${view?.name} is deleted.` }}
         onClose={() => setRemoving(false)}
         onYes={() => {
           setRemoving(false)

@@ -273,12 +273,13 @@ function DataSection() {
         open={!!goingBack}
         title="Go back to this backup?"
         yes="Go back to it"
+        done={{ words: 'Going back to that backup. Alpha restarts in a moment.' }}
         busy={busy || restarting}
         onClose={() => setGoingBack(null)}
         onYes={() => {
           const name = goingBack
           setGoingBack(null)
-          void act(() => api.post('/api/data/restore', { name }))
+          return act(() => api.post('/api/data/restore', { name }))
         }}
       >
         Alpha backs up now first, then restarts on this one.

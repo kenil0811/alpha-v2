@@ -6,6 +6,7 @@ import { Gate } from './SignIn.tsx'
 import { StoryGate } from './story/Story.tsx'
 import { applyTextSize, applyTheme, savedTextSize, savedTheme } from './theme.ts'
 import { LinkStatus } from './ui/link-status.tsx'
+import { Notices } from './ui/notice.tsx'
 import { Tooltips } from './ui/tooltip.tsx'
 
 applyTheme(savedTheme())
@@ -22,6 +23,7 @@ if (root) {
       </Gate>
       <Tooltips />
       <LinkStatus />
+      <Notices />
     </StrictMode>,
   )
 }

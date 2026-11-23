@@ -276,15 +276,17 @@ function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefi
   }
   const yes = () => {
     setBusy(true)
-    api.post<UndoView>('/api/undo', u.target).then(
+    return api.post<UndoView>('/api/undo', u.target).then(
       () => {
         setBusy(false)
         setOpen(false)
         onDone?.()
+        return true
       },
       (e) => {
         setBusy(false)
         setProblem(wordsOf(e))
+        return false
       },
     )
   }
@@ -307,6 +309,7 @@ function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefi
         open={open}
         title={u.label === 'Revert' ? `Revert ${u.what}?` : 'Bring these rows back?'}
         yes={u.label}
+        done={{ words: u.label === 'Revert' ? `Reverted ${u.what}.` : 'The rows are back.' }}
         busy={busy || !view?.can}
         onClose={() => setOpen(false)}
         onYes={yes}

@@ -186,10 +186,11 @@ export function ComputerPage({
         title={`Delete ${c.name}?`}
         yes="Delete"
         busy={busy}
+        done={{ words: `${c.name} is deleted.` }}
         onClose={() => setLeaving(false)}
         onYes={() => {
           setLeaving(false)
-          void act(async () => {
+          return act(async () => {
             await api.delete(`/api/computers/${c.id}`)
             window.location.hash = '#/settings/connections'
           })

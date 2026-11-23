@@ -299,6 +299,7 @@ function DeleteConnector({
         title={`Delete ${c.title}?`}
         yes="Delete it"
         busy={busy}
+        done={{ words: `${c.title} is deleted.` }}
         onClose={() => setRemoving(false)}
         onYes={async () => {
           setBusy(true)
@@ -308,6 +309,8 @@ function DeleteConnector({
             setRemoving(false)
           } catch (err) {
             setProblem(wordsOf(err))
+            setBusy(false)
+            return false
           }
           setBusy(false)
           onChange()

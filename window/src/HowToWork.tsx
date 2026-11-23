@@ -40,6 +40,7 @@ export function HowToWork({ version }: { version: number }) {
       remove={{
         title: 'Forget this?',
         yes: 'Forget it',
+        done: 'Forgotten. Saying it again brings it back.',
         what: (l) =>
           `Alpha stops doing it from now on: “${l.words}”. Saying it again brings it back.`,
         run: (l) => after(api.post('/api/instructions/remove', { for: l.for, words: l.words })),
