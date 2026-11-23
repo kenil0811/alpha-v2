@@ -2,7 +2,8 @@ name: a-member-joins
 title: A member added to a workspace already set up goes through their own shorter story, never seeing Claude or Your people, and is told only what is true about what is shared
 why: >
   Onboarding redesigned (Kenil's calls, 22 Nov): a member joins something already alive (call 4).
-  Their story is Welcome to the workspace, What's here, Connect your own and Done, with no Claude,
+  Their story (one page since 23 Nov, proposed) is Hello, What's here, Your computer, Your
+  accounts and Done, with no Claude,
   no workspace and no people chapters; What's here shows the workspace's real modules and says
   only what is true today, that the tables are everyone's here, and promises no private chats
   (call 23). Their story is theirs: the owner's stays done. Interviews off, so no interview
@@ -18,7 +19,7 @@ steps:
     checks:
       - story:
           as: Priya
-          chapters: [welcome, here, connect, done]
+          chapters: [welcome, here, computer, connect, done]
           at: welcome
           done: false
   - story: { as: Priya, chapter: welcome }
@@ -27,6 +28,8 @@ steps:
       - story_says: { as: Priya, chapter: here, matches: 'Harbor Books' }
       - story_says: { as: Priya, chapter: here, matches: "everyone", never: 'private' }
   - story: { as: Priya, chapter: here }
+  # nothing paired or connected: each is skipped, never ticked done
+  - story: { as: Priya, chapter: computer }
   - story: { as: Priya, chapter: connect }
   - story: { as: Priya, chapter: done }
     checks:

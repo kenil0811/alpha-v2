@@ -9,13 +9,16 @@
 //   GET  /api/story/<chapter>  the chapter's screen: { key, title, says, words, ... }
 //   POST /api/story/<chapter>  its act (a body as the chapter takes it), then on to the next
 //   POST /api/story/<chapter>/skip
-//   GET  /api/story/learned    { drafting, question: { id, words, options } | null,
-//                                about: [{ id, line, decided }], playbacks: [{ id, words, choices,
-//                                decided }] }
-//   POST /api/story/learned    { answer: { id, choice } } | { about: { drop: [ids], keep: 'rest' } }
-//                              | { playback: { id, choice } } | {} to go on
-// Chapters: the owner's welcome, claude (only while no model is set), workspace, connect, know and
-// learned (interviews on), people, done; a member's welcome, here, connect, know, learned, done.
+//   GET  /api/story/learned    { drafting, question: { id, words, options } | null,   (also
+//                                about: [{ id, line, decided }], playbacks: [{ id, words,   questions
+//                                choices, decided }] }                                       and plate)
+//   POST /api/story/learned    { about: { drop: [ids], keep: 'rest' } } | { read: { off } } | {}
+//   POST /api/story/questions  { answer: { id, choice } } | {} to go on
+//   POST /api/story/plate      { playback: { id, choice } } | {} to go on
+// Steps, on one page (proposed, Vikas 23 Nov): the owner's welcome, workspace, claude (only while
+// no model is set), computer, connect, people, then learned, questions and plate (interviews on),
+// done; a member's welcome, here, computer, connect, learned, questions, plate, done. A step
+// pressed on with nothing on it is skipped, never done.
 import { z } from 'zod'
 import type { buildServer } from '../api/server.ts'
 import { cardAgent } from '../modules/agent-marks.ts'
@@ -143,7 +146,10 @@ export async function storyStep(
     }
   }
   if (!step.chapter) return { ok: false, what: '**A story step names no chapter.**' }
-  if (step.chapter === 'learned' && (step.answers || step.drop !== undefined))
+  if (
+    ['learned', 'questions', 'plate'].includes(step.chapter) &&
+    (step.answers || step.drop !== undefined)
+  )
     return learned(step, app, h, who)
   const url = `/api/story/${step.chapter}${step.skip ? '/skip' : ''}`
   const out = await post(app, url, filled(step.body ?? {}, h.fill))
@@ -170,8 +176,9 @@ interface Learned {
 
 const pause = (ms: number) => new Promise((ok) => setTimeout(ok, ms))
 
-// What I learned, as the person goes through it: each question as it comes, About you's lines,
-// each playback; then on.
+// The interview's three steps, as the person goes through them: About you's lines on What I
+// learned, each question as it comes on A few questions, each playback on Off your plate; then on
+// from each.
 async function learned(
   step: z.infer<typeof StoryPress>,
   app: App,
@@ -201,7 +208,7 @@ async function learned(
     const q = v.body.question
     if (q) {
       const choice = pick(q.words)
-      await post(app, '/api/story/learned', { answer: { id: q.id, choice } })
+      await post(app, '/api/story/questions', { answer: { id: q.id, choice } })
       said.push(`“${q.words.slice(0, 80)}”: ${choice}`)
       continue
     }
@@ -215,11 +222,13 @@ async function learned(
     const p = v.body.playbacks.find((x) => !x.decided)
     if (p) {
       const choice = pick(p.words)
-      await post(app, '/api/story/learned', { playback: { id: p.id, choice } })
+      await post(app, '/api/story/plate', { playback: { id: p.id, choice } })
       said.push(`“${p.words.slice(0, 80)}”: ${choice}`)
       continue
     }
-    const on = await post(app, '/api/story/learned', {})
+    let on = { ok: true, raw: '' }
+    for (const c of ['learned', 'questions', 'plate'])
+      if (on.ok) on = await post(app, `/api/story/${c}`, {})
     const failed = v.body.problem ? ` (**the draft: ${v.body.problem}**)` : ''
     return on.ok
       ? {

@@ -14,10 +14,11 @@ steps:
       # no site offered from a mail provider's domain
       - story_says: { chapter: workspace, never: 'gmail\.com' }
   - story: { chapter: workspace, body: { for: 'Just me. I do the books for a handful of small shops in town, on my own.' } }
+  - story: { chapter: computer, skip: true }
   - story: { chapter: connect }
-  - story: { chapter: know, body: { off: [mail, calendar, contacts, alpha] } }
-  # Your people: no one to add, so skipped
+  # Invite team: no one to add, so skipped
   - story: { chapter: people, skip: true }
+  - story: { chapter: learned, body: { read: { off: [mail, calendar, contacts, alpha] } } }
   - story:
       chapter: learned
       answers:

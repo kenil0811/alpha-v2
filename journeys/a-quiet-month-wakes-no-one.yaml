@@ -2,17 +2,18 @@ name: a-quiet-month-wakes-no-one
 title: A month after the owner goes through Set up Alpha, the Interviewer's check finds nothing new and wakes no one
 why: >
   Regular interviews (Kenil's 18 Nov calls 35 to 37, kept by the 22 Nov redesign, call 21): a
-  check on the Interviewer's schedule, monthly from the person's first time through Get to know
-  you, only looks. It wakes the Interviewer only when it finds something, as a Home row whose short
+  check on the Interviewer's schedule, monthly from the person's first time through What I
+  learned, only looks. It wakes the Interviewer only when it finds something, as a Home row whose short
   interview opens the story; a month with nothing new costs nothing, leaves no row and no task. A
   made-up bookkeeper who goes through the story at once, letting Alpha read nothing.
 plugins: [interviews]
 steps:
   - story: { chapter: welcome }
   - story: { chapter: workspace, body: { for: 'Just me, doing the books for a few shops.' } }
+  - story: { chapter: computer, skip: true }
   - story: { chapter: connect }
-  - story: { chapter: know, body: { off: [alpha] } }
   - story: { chapter: people, skip: true }
+  - story: { chapter: learned, body: { read: { off: [alpha] } } }
   - story: { chapter: learned, answers: [] }
   - story: { chapter: done }
     checks:

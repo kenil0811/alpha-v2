@@ -3,9 +3,9 @@ title: The owner of a fresh Alpha with interviews off goes through Welcome, Clau
 why: >
   Onboarding redesigned (Kenil's calls, 22 Nov): every Alpha has a first run, with or without
   interviews (call 2), and nothing has to be ready before handover (call 6). On a fresh server
-  nothing works until Claude is set, so Claude is the owner's second chapter while no model is set,
-  with a live check that Claude answered (call 7). Your workspace takes the name and who the work
-  is for (call 20), Connect shows what landed counted by code (calls 8, 13), Your people adds a
+  nothing works until Claude is set, so Connect my thinking follows About you while no model is set,
+  with a live check that Claude answered (call 7). About you takes the name, the site and business
+  or personal (call 20; one page, proposed, Vikas 23 Nov), Connect shows what landed counted by code (calls 8, 13), Your people adds a
   colleague and gives a one-time link, sending no mail (call 22). Done lands on Home with no row
   left. With interviews off, no trace of them anywhere (rules P1). A made-up bookshop.
 claude: unset
@@ -14,23 +14,24 @@ steps:
     checks:
       # no model yet: Claude is in the story, and it is the owner's whole path with interviews off
       - story:
-          chapters: [welcome, claude, workspace, connect, people, done]
+          chapters: [welcome, workspace, claude, computer, connect, people, done]
           at: welcome
           done: false
           row: 'Carry on setting up'
   - story: { chapter: welcome }
+  - story:
+      chapter: workspace
+      body: { name: Harbor Books, site: harborbooks.example, use: business }
+    checks:
+      - story_says: { chapter: workspace, matches: 'Harbor Books' }
   # Claude cannot be skipped while no model is set (call 5)
   - story: { chapter: claude, skip: true, refused: true }
     checks:
       - story: { at: claude }
   - story: { chapter: claude, body: { token: '{claude}' } }
     checks:
-      - story: { at: workspace }
-  - story:
-      chapter: workspace
-      body: { name: Harbor Books, for: 'Harbor Books, our bookshop: me and two staff.' }
-    checks:
-      - story_says: { chapter: workspace, matches: 'Harbor Books' }
+      - story: { at: computer }
+  - story: { chapter: computer, skip: true }
   # what landed, counted by code
   - story: { chapter: connect }
     checks:
