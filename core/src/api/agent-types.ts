@@ -35,6 +35,7 @@ export interface AgentDetail extends AgentView {
   tasks: { id: string; title: string; state: string }[]
   schedules: AgentScheduleView[]
   sites: string[] // the sites it opens with no card, shared with its scripts and shell (sites.yaml)
+  timeSaved: TimeSavedView | null
 }
 
 export interface ScheduleRunView {
@@ -73,4 +74,13 @@ export interface AgentOverview {
   cards: { yes: number; no: number } // its cards to this person that were answered so
   runs: { ok: number; failed: number } // runs of the schedules that wake it
   recent: { at: string; words: string }[] // its last lines, newest first
+}
+
+// What an agent saved the person this week, Monday to today: worked out from its finished work and
+// the minutes each kind saves (limits.yaml), so always an estimate; none when it finished nothing.
+export interface TimeSavedView {
+  minutes: number
+  days: number[] // Monday to Sunday, minutes each
+  source: 'estimated'
+  how: string // in words: "12 tasks done × 15 min each"
 }

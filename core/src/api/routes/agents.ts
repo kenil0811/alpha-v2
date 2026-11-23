@@ -24,6 +24,7 @@ import { STATE_WORDS } from '../../world/tasks/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { AgentDetail, AgentOverview, AgentView, MemoryView } from '../types.ts'
 import { scheduleOut } from './schedules.ts'
+import { timeSaved } from './time-saved.ts'
 
 export function registerAgents(ctx: Ctx): void {
   const { app, world, engine, user } = ctx
@@ -191,6 +192,7 @@ export function registerAgents(ctx: Ctx): void {
         tasks: tasksOf(id),
         schedules: schedulesOf(id),
         sites: sitesOf(id),
+        timeSaved: timeSaved(world, id),
       }
     const a = world.agents.get(id)
     if (!a) throw new Refused('That agent is not there.')
@@ -211,6 +213,7 @@ export function registerAgents(ctx: Ctx): void {
       tasks: tasksOf(id),
       schedules: schedulesOf(id),
       sites: sitesOf(id),
+      timeSaved: timeSaved(world, id),
     }
   })
 
