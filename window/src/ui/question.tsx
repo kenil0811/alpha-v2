@@ -9,6 +9,7 @@ import { Actions, Card } from './card.tsx'
 import { Field } from './field.tsx'
 import { Info } from './info.tsx'
 import { Words } from './words.tsx'
+import { isYesNo, YesNo } from './yes-no.tsx'
 
 export function Question({
   words,
@@ -46,16 +47,24 @@ export function Question({
       )}
       {children}
       <Actions>
-        {options.map((o, i) => (
-          <Button
-            key={o}
-            variant={i === 0 ? 'primary' : 'default'}
+        {isYesNo(options) ? (
+          <YesNo
+            value={null}
             disabled={busy}
-            onClick={() => onAnswer(o)}
-          >
-            {answerWords(o)}
-          </Button>
-        ))}
+            onChange={(a) => onAnswer(a === 'yes' ? 'Yes' : 'No')}
+          />
+        ) : (
+          options.map((o, i) => (
+            <Button
+              key={o}
+              variant={i === 0 ? 'primary' : 'default'}
+              disabled={busy}
+              onClick={() => onAnswer(o)}
+            >
+              {answerWords(o)}
+            </Button>
+          ))
+        )}
         {options.length === 0 && <Answer busy={busy} onAnswer={onAnswer} />}
       </Actions>
       {/* the person's own words always do, besides the offered ones */}

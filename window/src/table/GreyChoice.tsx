@@ -1,7 +1,6 @@
 // A grey value (estimated, assumed) double-clicked: ✓ keeps it as the person's own, ✕ empties it
 // and keeps it turned down so Alpha does not guess the same again. Escape leaves it as it was.
-import { Check, X } from 'lucide-react'
-import { IconButton } from '../ui/button.tsx'
+import { YesNo } from '../ui/yes-no.tsx'
 
 export type Grey = 'accept' | 'reject'
 
@@ -24,18 +23,14 @@ export function GreyChoice({
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && onCancel()}
     >
       <span className="truncate text-ink-2 italic">{text}</span>
-      <IconButton
-        label="Accept as yours"
-        className="text-good"
-        // biome-ignore lint/a11y/noAutofocus: opened by a double-click, so Escape and Tab work at once
+      {/* opened by a double-click, so Escape and Tab work at once */}
+      <YesNo
+        value={null}
+        yes="Accept as yours"
+        no="Empty it"
         autoFocus
-        onClick={() => onChoose('accept')}
-      >
-        <Check className="size-4" />
-      </IconButton>
-      <IconButton label="Empty it" className="text-bad" onClick={() => onChoose('reject')}>
-        <X className="size-4" />
-      </IconButton>
+        onChange={(a) => onChoose(a === 'yes' ? 'accept' : 'reject')}
+      />
     </span>
   )
 }

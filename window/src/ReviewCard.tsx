@@ -9,12 +9,14 @@ import { Button } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
+import { YesNo } from './ui/yes-no.tsx'
 
 export function ReviewCard({ card, review }: { card: CardView; review: ReviewView }) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const [first, ...others] = review.choices
+  const pair = others.length === 1 ? others[0] : undefined
   // a line for How to work is decided in verbs: Keep, Edit, Drop (its row keeps Kept or Dropped)
   const say = (c: string) =>
     review.edits ? (c === first ? 'Keep' : c === others[0] ? 'Drop' : c) : c
@@ -92,17 +94,7 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
               {r.value ? (
                 <span className="shrink-0 text-ink-2 text-sm">{r.value}</span>
               ) : (
-                <span className="flex shrink-0 gap-1.5">
-                  {first && (
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      disabled={busy}
-                      onClick={() => choose([r.id], first)}
-                    >
-                      {say(first)}
-                    </Button>
-                  )}
+                <span className="flex shrink-0 items-center gap-1.5">
                   {review.edits && (
                     <Button
                       size="sm"
@@ -113,17 +105,40 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
                       Edit
                     </Button>
                   )}
-                  {others.filter(Boolean).map((c) => (
-                    <Button
-                      key={c}
-                      size="sm"
+                  {/* two choices are a yes and a no to the row: the tick and the cross */}
+                  {first && pair ? (
+                    <YesNo
+                      value={null}
+                      yes={say(first)}
+                      no={say(pair)}
                       disabled={busy}
-                      className={cn('text-ink-2')}
-                      onClick={() => choose([r.id], c as string)}
-                    >
-                      {say(c as string)}
-                    </Button>
-                  ))}
+                      onChange={(a) => choose([r.id], a === 'yes' ? first : pair)}
+                    />
+                  ) : (
+                    <>
+                      {first && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          disabled={busy}
+                          onClick={() => choose([r.id], first)}
+                        >
+                          {say(first)}
+                        </Button>
+                      )}
+                      {others.filter(Boolean).map((c) => (
+                        <Button
+                          key={c}
+                          size="sm"
+                          disabled={busy}
+                          className={cn('text-ink-2')}
+                          onClick={() => choose([r.id], c as string)}
+                        >
+                          {say(c as string)}
+                        </Button>
+                      ))}
+                    </>
+                  )}
                 </span>
               )}
             </div>

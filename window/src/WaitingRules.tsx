@@ -1,5 +1,5 @@
 // Rules waiting on their Save card: a group in Settings › Permissions, each rule as it would hold,
-// with Approve and Decline.
+// with the tick and the cross (Approve and Decline).
 // Both answer the card itself, by its yes and no as their words, so the rule, its journal line
 // and its Always count come out as on the card. Nothing waiting: nothing shows.
 import type { WaitingRuleView } from '@alpha/core/api'
@@ -8,9 +8,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
-import { Button } from './ui/button.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
+import { YesNo } from './ui/yes-no.tsx'
 
 export function WaitingRules({
   version,
@@ -54,25 +54,17 @@ export function WaitingRules({
             actions={
               <>
                 {on === r.card && <Refusal words={problem} />}
-                <Button
-                  size="sm"
+                <YesNo
+                  value={null}
                   disabled={busy}
-                  onClick={() =>
-                    act(() => api.post(`/api/cards/${r.card}`, { answer: r.no }), r.card)
+                  onChange={(a) =>
+                    act(
+                      () =>
+                        api.post(`/api/cards/${r.card}`, { answer: a === 'yes' ? r.yes : r.no }),
+                      r.card,
+                    )
                   }
-                >
-                  Decline
-                </Button>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  disabled={busy}
-                  onClick={() =>
-                    act(() => api.post(`/api/cards/${r.card}`, { answer: r.yes }), r.card)
-                  }
-                >
-                  Approve
-                </Button>
+                />
               </>
             }
           />
