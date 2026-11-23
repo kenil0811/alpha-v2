@@ -6,11 +6,15 @@ import { createContext, type ReactNode, useContext } from 'react'
 import { FRAME } from './frame.tsx'
 import { Label } from './pill.tsx'
 
-// Where a card shows: in a list, with the address of its own page; or on that page, whole.
-export const CardPlace = createContext<{ open: string | null; whole: boolean }>({
-  open: null,
-  whole: false,
-})
+// Where a card shows: in a list, with the address of its own page; or on that page, whole. Bare:
+// inside a card of its own (Home's Needs you), its body only, no head and no way out, and the
+// page numbers under it (Vikas, 23 Nov).
+export const CardPlace = createContext<{
+  open: string | null
+  whole: boolean
+  bare?: boolean
+  pager?: ReactNode
+}>({ open: null, whole: false })
 
 export function Card({
   label,
@@ -21,7 +25,14 @@ export function Card({
   waits?: string
   children: ReactNode
 }) {
-  const { open } = useContext(CardPlace)
+  const { open, bare, pager } = useContext(CardPlace)
+  if (bare)
+    return (
+      <div className="flex flex-col gap-3">
+        {children}
+        {pager}
+      </div>
+    )
   return (
     <div className={`${FRAME} overflow-hidden shadow-pop`}>
       <div className="flex items-center gap-2 border-line border-b bg-sunk px-3.5 py-2">

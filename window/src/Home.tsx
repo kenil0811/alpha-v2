@@ -2,18 +2,16 @@
 // answered right here), and today's tasks. The modules are in the rail; the conversation has its
 // own place in the rail and on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
-import { ArrowUp, CheckCheck, Inbox, KeyRound, ListChecks, LoaderCircle } from 'lucide-react'
+import { ArrowUp, CheckCheck, Inbox, ListChecks, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { CardBox } from './CardBox.tsx'
 import { CardGrid, type GridCard } from './CardGrid.tsx'
+import { fromWhom, NeedsYou } from './NeedsYou.tsx'
 import { shownScreens } from './plugin/screens.ts'
-import { signInWith } from './SignInApps.tsx'
 import { StoryRow } from './story/StoryRow.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
-import { Group, Line } from './ui/groups.tsx'
-import { Segmented } from './ui/segmented.tsx'
+import { Group } from './ui/groups.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
 function NotLoaded({ onTry }: { onTry: () => void }) {
@@ -25,15 +23,6 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
       </Button>
     </p>
   )
-}
-
-// The agents the waiting cards come from, each with how many, in the team's order; a sign-in,
-// which no agent raised, shows under All only.
-function byAgent(cards: CardView[], agents: AgentView[]) {
-  return agents.flatMap((a) => {
-    const count = cards.filter((c) => c.agent === a.id).length
-    return count ? [{ id: a.id, name: a.name, count }] : []
-  })
 }
 
 function greeting(name: string): string {
@@ -50,7 +39,7 @@ export function Home({
 }: {
   stream: Stream | null
   name: string
-  agents: AgentView[] // for Needs you's filter by agent
+  agents: AgentView[] // Needs you's faces
   onAsked: () => void // the answer opens on the right
 }) {
   const [tasks, setTasks] = useState<TasksView | null>(null)
@@ -76,13 +65,8 @@ export function Home({
     load()
   }, [load, last])
 
-  const [from, setFrom] = useState('all') // Needs you's cards from one agent, or all
-  const all = stream?.cards ?? []
-  const by = byAgent(all, agents)
-  const one = by.length > 1 && by.some((a) => a.id === from) ? from : 'all'
-  const cards = one === 'all' ? all : all.filter((c) => c.agent === one)
-  const signIns = one === 'all' ? (stream?.attention ?? []) : []
-  const waiting = all.length + (stream?.attention ?? []).length
+  const from = fromWhom(stream?.cards ?? [], stream?.attention ?? [], agents)
+  const waiting = (stream?.cards.length ?? 0) + (stream?.attention.length ?? 0)
   const changeCard = (card: CardView) => {
     setWords(`About “${card.words.replace(/\?$/, '')}”: `)
     ask.current?.focus()
@@ -95,57 +79,7 @@ export function Home({
       key: 'needs',
       width: '1/2', // wide enough that a question stays within two lines (Vikas, 23 Nov)
       small: { icon: <Inbox className="size-4" />, value: String(waiting), label: 'Needs you' },
-      node: (
-        <Group title="Needs you" count={waiting}>
-          {by.length > 1 && (
-            <div>
-              <Segmented
-                label="From"
-                value={one}
-                onChange={setFrom}
-                options={[
-                  { value: 'all', label: `All ${waiting}` },
-                  ...by.map((a) => ({ value: a.id, label: `${a.name} ${a.count}` })),
-                ]}
-              />
-            </div>
-          )}
-          {cards.map((c) => (
-            <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
-          ))}
-          {signIns.map((a) => (
-            <Line
-              key={a.connector}
-              icon={<KeyRound className="size-3.5 text-warn" />}
-              head={a.waiting ? 'Waiting on your side' : 'Sign-in'}
-              words={
-                a.waiting
-                  ? `${a.title}: ${a.waiting}`
-                  : a.inBrowser
-                    ? `${a.title} needs you to sign in: it opens in Chrome`
-                    : a.signsInWith
-                      ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
-                      : `${a.title} needs you to sign in again`
-              }
-              {...(a.waiting
-                ? { href: '#/settings/connections' }
-                : a.inBrowser
-                  ? {
-                      onClick: () => {
-                        void api.post(`/api/connections/${a.connection}/sign-in`)
-                      },
-                    }
-                  : a.signsInWith
-                    ? {
-                        onClick: () => {
-                          void signInWith(a.connection)
-                        },
-                      }
-                    : { href: `#/settings/connections?connect=${a.connector}` })}
-            />
-          ))}
-        </Group>
-      ),
+      node: <NeedsYou from={from} onChange={changeCard} />,
     })
   if (failed || (tasks?.lines.length ?? 0) > 0)
     grid.push({
