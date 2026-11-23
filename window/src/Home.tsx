@@ -2,13 +2,13 @@
 // answered right here), and today's tasks. The modules are in the rail; the conversation has its
 // own place in the rail and on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
-import { ArrowUp, CheckCheck, Inbox, ListChecks, LoaderCircle } from 'lucide-react'
+import { ArrowUp, CheckCheck, Inbox, ListChecks, LoaderCircle, Sparkles } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardGrid, type GridCard } from './CardGrid.tsx'
 import { fromWhom, NeedsYou } from './NeedsYou.tsx'
 import { shownScreens } from './plugin/screens.ts'
-import { StoryRow } from './story/StoryRow.tsx'
+import { StoryCard, stepsDone, useStory } from './story/StoryCard.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
 import { Group } from './ui/groups.tsx'
@@ -50,6 +50,7 @@ export function Home({
   const [words, setWords] = useState('')
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
+  const [story, setStory] = useStory(last)
   const load = useCallback(() => {
     api.get<TasksView>('/api/tasks?list=finished').then(setFinished, () => undefined)
     api.get<TasksView>('/api/tasks?list=today').then(
@@ -81,6 +82,18 @@ export function Home({
       width: '1/2', // wide enough that a question stays within two lines (Vikas, 23 Nov)
       small: { icon: <Inbox className="size-4" />, value: String(waiting), label: 'Needs you' },
       node: <NeedsYou from={from} onChange={changeCard} />,
+    })
+  // Set up Alpha, until the person finishes it or declines
+  if (story?.row)
+    grid.push({
+      key: 'set-up',
+      width: '1/4',
+      small: {
+        icon: <Sparkles className="size-4 text-accent" />,
+        value: `${stepsDone(story)}/${story.chapters.length}`,
+        label: 'Set up Alpha',
+      },
+      node: <StoryCard story={story} onChange={setStory} />,
     })
   if (failed || (tasks?.lines.length ?? 0) > 0)
     grid.push({
@@ -158,9 +171,6 @@ export function Home({
             Setting up {stream.settingUp}
           </p>
         )}
-
-        {/* Set up Alpha, until the person finishes it or declines */}
-        <StoryRow version={last} />
 
         {/* a plugin's row, while something of its waits for the person */}
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}
