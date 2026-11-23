@@ -451,7 +451,7 @@ export function App() {
               ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
               trail={trailOf()}
               next={place.at === 'home' && <NextChip version={version} />}
-              lead={place.at === 'home' && <HomeHead name={name} />}
+              lead={place.at === 'home' && <HomeHead />}
             />
             {problem && (
               <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">

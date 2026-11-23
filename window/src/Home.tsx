@@ -30,7 +30,7 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
 }
 
 // The date, and the greeting under it, at the left of Home's bar (Vikas, 22 Nov).
-export function HomeHead({ name }: { name: string }) {
+export function HomeHead() {
   const day = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     day: 'numeric',
@@ -39,15 +39,15 @@ export function HomeHead({ name }: { name: string }) {
   return (
     <div className="flex min-w-0 flex-col leading-tight">
       <span className="truncate text-ink-3 text-xs">{day}</span>
-      <h1 className="truncate font-serif text-ink text-lg">{greeting(name)}</h1>
+      <h1 className="truncate font-serif text-ink text-lg">{greeting()}</h1>
     </div>
   )
 }
 
-function greeting(name: string): string {
+// no name in it (Vikas, 23 Nov)
+function greeting(): string {
   const h = new Date().getHours()
-  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-  return name ? `${part}, ${name}` : part
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
 export function Home({
