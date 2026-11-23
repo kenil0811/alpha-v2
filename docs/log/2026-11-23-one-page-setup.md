@@ -1,0 +1,23 @@
+# 23 Nov 2026: Set up Alpha on one page
+
+Vikas, on a fresh install: "connecting to LLM, workspace, everything could have been a single
+continuous scrollable page", warmer words "more like a proposal", and "nothing is compulsory, even
+your computer". Built on `claude/one-page-setup`, every change marked proposed for Kenil.
+
+The story's chapters are now steps of one page (`window/src/story/Story.tsx`): a slim progress bar
+and Later at the top, each step opening under the one before once done or skipped. The core still
+owns the steps and their state; the order is Hello, About you, Connect my thinking, Your computer
+(its tile on a step of its own), Your accounts, Invite team, then the interview's What I learned,
+A few questions and Off your plate, and Done. About you guesses the organization's name from the
+mail domain (a pencil to change it), asks "Is harborreno.com your organization's website?" with a
+tick and a cross, and Business or Personal (`workspace_use`); who the work is for is no longer
+asked on the first run. Promises and lines say permission and approval. Get to know you and its
+switches are gone: what is connected is read in the background when What I learned is drawn, and
+again when more is connected; a source is turned off only in Your work's Interview sources (rule
+I3 reworded). A step on which nothing happened is marked skipped, never done; Done says what is
+true and, without the interview, offers one box for something the person repeats. Invite team
+makes links only on Send. Claude can be skipped, as the last commit, so Kenil can drop it.
+
+Journeys run here (no Claude sign-in): an Alpha without interviews, a member joins and the new
+everything skipped ends on something to do pass; the ones that call the model were adjusted, not
+run. Not looked at in the app.
