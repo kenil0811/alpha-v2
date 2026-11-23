@@ -3,6 +3,7 @@
 // pieces (ui/chart.tsx). A bar's click shows those rows in the table.
 import type { FieldView, RowView } from '@alpha/core/api'
 import { Bars } from '../../ui/chart.tsx'
+import { Frame } from '../../ui/frame.tsx'
 import { groupRows, numberOf } from '../engine.ts'
 import { money } from '../values.ts'
 
@@ -50,7 +51,7 @@ export function ChartView({
   const sum = values.reduce((a, b) => a + b, 0)
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
-      <div className="max-w-stream rounded-lg border border-line bg-surface p-5">
+      <Frame className="max-w-stream">
         <div className="mb-4 flex items-baseline gap-3">
           <h2 className="font-medium font-serif text-ink text-xl">
             {measure ? `${measure.name} by ${axis.name}` : `Rows by ${axis.name}`}
@@ -67,7 +68,7 @@ export function ChartView({
           // a choice's bars wear its choices' colours; months and others the accent
           colours={axis.kind === 'choice' ? 'parts' : 'accent'}
         />
-      </div>
+      </Frame>
     </div>
   )
 }

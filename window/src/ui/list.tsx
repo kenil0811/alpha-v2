@@ -1,14 +1,11 @@
 // A list: rows in one bordered box, each with what it is, a line under it, and its actions.
 import type { ReactNode } from 'react'
 import { cn } from './cn.ts'
+import { FRAME } from './frame.tsx'
 import { Info } from './info.tsx'
 
 export function List({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={cn('overflow-hidden rounded-lg border border-line bg-surface', className)}>
-      {children}
-    </div>
-  )
+  return <div className={cn(FRAME, 'overflow-hidden', className)}>{children}</div>
 }
 
 export function Row({

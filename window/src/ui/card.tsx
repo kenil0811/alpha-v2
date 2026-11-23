@@ -3,6 +3,7 @@
 // has a way to its own page, where it shows whole.
 import { ArrowUpRight } from 'lucide-react'
 import { createContext, type ReactNode, useContext } from 'react'
+import { FRAME } from './frame.tsx'
 import { Label } from './pill.tsx'
 
 // Where a card shows: in a list, with the address of its own page; or on that page, whole.
@@ -22,7 +23,7 @@ export function Card({
 }) {
   const { open } = useContext(CardPlace)
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-pop">
+    <div className={`${FRAME} overflow-hidden shadow-pop`}>
       <div className="flex items-center gap-2 border-line border-b bg-sunk px-3.5 py-2">
         <Label className="text-ink-2">{label}</Label>
         {waits && (

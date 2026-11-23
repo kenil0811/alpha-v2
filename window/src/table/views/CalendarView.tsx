@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { cn } from '../../ui/cn.ts'
 import { cutTip } from '../../ui/cut-tip.ts'
+import { FRAME } from '../../ui/frame.tsx'
 import { Segmented } from '../../ui/segmented.tsx'
 import { numberOf } from '../engine.ts'
 import { DOT, titleOf } from '../values.ts'
@@ -267,7 +268,7 @@ function Hours({ days, placed, names, toneOf, onOpen }: Draw & { days: Date[] })
   const allDay = days.map((d) => on(d).filter((p) => p.allDay))
   const hours = Array.from({ length: 24 }, (_, h) => h)
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
+    <div className={`${FRAME} flex min-h-0 flex-1 flex-col overflow-hidden`}>
       <div
         className="grid overflow-y-hidden border-line border-b [scrollbar-gutter:stable]"
         style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}

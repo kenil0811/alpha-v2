@@ -10,6 +10,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { Frame } from './ui/frame.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -76,7 +77,7 @@ function ScheduleForm({
         : api.post(`/api/agents/${agent}/schedules`, body)
     })
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3">
+    <Frame className="flex flex-col gap-2">
       <Field
         placeholder="What to call it"
         aria-label="Name"
@@ -119,7 +120,7 @@ function ScheduleForm({
         </Button>
         <Refusal words={problem} />
       </div>
-    </div>
+    </Frame>
   )
 }
 

@@ -24,6 +24,7 @@ import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { cutTip } from '../ui/cut-tip.ts'
 import { carriesFiles, dropped } from '../ui/drop-zone.tsx'
+import { FRAME } from '../ui/frame.tsx'
 import { Info } from '../ui/info.tsx'
 import { Tile } from '../ui/list.tsx'
 import { Pill } from '../ui/pill.tsx'
@@ -103,11 +104,7 @@ function Frame({
   children?: ReactNode
 }) {
   return (
-    <section
-      className={cn(
-        'flex min-w-0 flex-col gap-2.5 rounded-lg border border-line bg-surface px-3.5 py-3',
-      )}
-    >
+    <section className={cn(FRAME, 'flex min-w-0 flex-col gap-2.5 p-4')}>
       <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2">
         <Tile>{icon}</Tile>
         {/* on a phone its act goes under its name on every tile, never beside it */}

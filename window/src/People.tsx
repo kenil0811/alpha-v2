@@ -18,7 +18,9 @@ import { FieldList } from './table/FieldList.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
+import { Frame } from './ui/frame.tsx'
 import { Info } from './ui/info.tsx'
+import { List } from './ui/list.tsx'
 import { Section } from './ui/section.tsx'
 import { arrangeTabs } from './ui/tab-order.ts'
 import { Tabs } from './ui/tabs.tsx'
@@ -218,7 +220,7 @@ function PersonPage({
           title="Works at"
           about="As your rows say; an earlier one is kept with its dates"
         >
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <List>
             {p.companies.map((c) => (
               <a
                 key={`${c.id}${c.title ?? ''}`}
@@ -235,13 +237,13 @@ function PersonPage({
                 </span>
               </a>
             ))}
-          </div>
+          </List>
         </Section>
       )}
 
       {company && p.people.length > 0 && (
         <Section small title="People there">
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <List>
             {p.people.map((m) => (
               <a
                 key={m.id}
@@ -256,7 +258,7 @@ function PersonPage({
                 <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
               </a>
             ))}
-          </div>
+          </List>
         </Section>
       )}
 
@@ -266,7 +268,7 @@ function PersonPage({
           title="In your modules"
           about="Rows that name them, by a person or an address"
         >
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <List>
             {p.rows.map((r) => (
               <div
                 key={r.href}
@@ -295,7 +297,7 @@ function PersonPage({
                 </a>
               </div>
             ))}
-          </div>
+          </List>
         </Section>
       )}
 
@@ -305,7 +307,7 @@ function PersonPage({
           title="Mentioned in"
           about="Notes on rows that mention them; each opens its row"
         >
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <List>
             {mentions.flatMap((m) =>
               m.rows.map((r) => (
                 <a
@@ -321,7 +323,7 @@ function PersonPage({
                 </a>
               )),
             )}
-          </div>
+          </List>
         </Section>
       )}
     </div>
@@ -351,7 +353,7 @@ function PersonPage({
           title="Merged into this one"
           about="Unmerge gives one back its own addresses and rows, kept apart from then on"
         >
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <List>
             {p.merged.map((m) => (
               <div
                 key={m.id}
@@ -364,7 +366,7 @@ function PersonPage({
                 </Button>
               </div>
             ))}
-          </div>
+          </List>
         </Section>
       )}
     </div>
@@ -499,14 +501,12 @@ function PersonPage({
       properties={
         <div className="grid items-start gap-x-8 gap-y-6 @3xl:grid-cols-2">
           {!company && (
-            <div className="@3xl:col-span-2 rounded-lg border border-line bg-surface px-4 py-3 text-ink-2 text-md">
-              {contact.join(' · ')}
-            </div>
+            <Frame className="@3xl:col-span-2 text-ink-2 text-md">{contact.join(' · ')}</Frame>
           )}
 
           {(p.emails.length > 0 || p.phones.length > 0 || p.profile) && (
             <Section small title="How to reach them">
-              <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              <List>
                 {p.emails.map((e) => (
                   <Detail key={e} label="Email">
                     <a className="text-ink hover:underline" href={`mailto:${e}`}>
@@ -531,7 +531,7 @@ function PersonPage({
                     </a>
                   </Detail>
                 )}
-              </div>
+              </List>
             </Section>
           )}
 
@@ -544,7 +544,7 @@ function PersonPage({
               title={t.table.name}
               about="One row each; double-click to change"
             >
-              <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              <List>
                 <FieldList
                   tableId={t.table.id}
                   fields={t.fields}
@@ -569,7 +569,7 @@ function PersonPage({
                     }
                   }}
                 />
-              </div>
+              </List>
             </Section>
           ))}
         </div>

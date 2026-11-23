@@ -5,6 +5,7 @@
 import { type ReactNode, useState } from 'react'
 import { Bars, ChartTable, Columns, Donut, Key, type Part } from './chart.tsx'
 import { Select } from './field.tsx'
+import { Frame } from './frame.tsx'
 
 export type Look = 'columns' | 'bars' | 'donut' | 'table'
 const LOOK_WORDS: Record<Look, string> = {
@@ -35,7 +36,7 @@ export function ChartCard({
   const [look, setLook] = useState<Look>(offered[0] ?? 'table')
   const shown = offered.includes(look) ? look : (offered[0] ?? 'table')
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3.5">
+    <Frame className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-medium text-ink text-md">{title}</h3>
         <span className="ml-auto flex flex-wrap items-center gap-2">
@@ -66,6 +67,6 @@ export function ChartCard({
           {shown !== 'bars' && parts.length > 1 && <Key parts={parts} fmt={fmt} />}
         </>
       )}
-    </div>
+    </Frame>
   )
 }
