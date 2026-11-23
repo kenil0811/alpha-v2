@@ -10,6 +10,15 @@ export interface Health {
   build: string | null // the window this core serves: a window on another build reloads
 }
 
+// Settings › General's Check for updates: the version running, whether a feed is set, and a newer
+// one with where to get it when there is one.
+export interface UpdateView {
+  current: string
+  set: boolean
+  newest?: string
+  url?: string
+}
+
 export type { ActingView, CardView, ReviewView } from './card-types.ts'
 export type {
   BridgeDownload,
