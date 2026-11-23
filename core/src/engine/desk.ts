@@ -8,6 +8,7 @@ import { realpathSync } from 'node:fs'
 import { config } from '../config.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { instructionsOf } from '../modules/agents.ts'
+import { raiseToCheck } from '../modules/reviews.ts'
 import { type AgentAsk, askOfTurn, OPEN } from '../world/agents/asks.ts'
 import { agentReach, CHIEF } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
@@ -558,6 +559,7 @@ export class Desk {
       // what this turn kept only if it finished: a turn that failed or was stopped saves nothing
       if (e.ok && !stopped) for (const keep of this.here.afterTurn) keep()
       this.here.afterTurn = []
+      raiseToCheck(this.world, { turn: running.turn }, { actor: this.actor, user: this.user.id })
       this.world.markSeen(this.user.id, this.world.lastLineId(), this.sessionKey)
       settleAsk(this.world, this.bus, this.user, running, e, stopped, costOf(spent))
       this.running = null

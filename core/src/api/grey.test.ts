@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Engine } from '../engine/engine.ts'
 import { applyShape } from '../engine/tools/index.ts'
+import { guesses, raiseToCheck, TO_CHECK } from '../modules/reviews.ts'
 import { isPersonsOwn } from '../world/kinds.ts'
 import { revert } from '../world/records/index.ts'
 import type { Table } from '../world/shape/index.ts'
@@ -119,5 +120,26 @@ describe('a grey value', () => {
     await grey('accept')
     expect((await grey('reject')).statusCode).toBeGreaterThanOrEqual(400)
     expect(bags()?.values.bags).toBe(40)
+  })
+})
+
+// Alpha's guesses put to the person on one card per table (Vikas, 23 Nov).
+describe('a To check card', () => {
+  const turn = { actor: alpha, turn: 't1' }
+  const waiting = () => world.cards.waiting().filter((c) => c.call?.tool === TO_CHECK)
+
+  it('is raised once per table after a turn writes a guess, and lists each with its words', () => {
+    world.records.change(table.id, [{ id: row, values: { Bags: 42 }, provenance: guess }], turn)
+    raiseToCheck(world, { turn: 't1' }, { actor: alpha, user: null })
+    raiseToCheck(world, { turn: 't1' }, { actor: alpha, user: null })
+    expect(waiting()).toHaveLength(1)
+    expect(guesses(world, table)).toContainEqual(
+      expect.objectContaining({ name: 'Sugar', field: 'Bags', value: 42, why: guess.basis }),
+    )
+  })
+
+  it('is not raised by a turn that wrote nothing', () => {
+    raiseToCheck(world, { turn: 't0' }, { actor: alpha, user: null })
+    expect(waiting()).toHaveLength(0)
   })
 })
