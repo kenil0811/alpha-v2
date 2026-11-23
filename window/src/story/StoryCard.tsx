@@ -1,6 +1,6 @@
 // Home's Set up Alpha card while a person's story waits: how many steps are done, a bar, the next
 // step, Carry on and Decline (Vikas, 23 Nov). Decline takes it away until they open the story
-// again from the workspace tile's menu.
+// again (from Settings › General, to come).
 import type { StoryView } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api } from '../api.ts'

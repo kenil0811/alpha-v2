@@ -1,2 +1,2 @@
-// Where Set up Alpha opens: from Home's row and the workspace tile's menu.
+// Where Set up Alpha opens: from Home's card.
 export const SET_UP = '#/set-up'

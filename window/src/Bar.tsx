@@ -5,7 +5,8 @@ import { Face, type Mood } from './Face.tsx'
 import { MOD } from './time.ts'
 
 // The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
-// on the left when one is on, with a ‹ to the page above; at its right, on Home what comes next
+// on the left when one is on, with a ‹ to the page above; on Home the date and the greeting there
+// instead, with no ‹ and no name (Vikas, 22 Nov); at its right, on Home what comes next
 // today, and Alpha's face, which opens the assistant while it is closed.
 // Find is ⌘K, from anywhere.
 export function Bar({
@@ -16,6 +17,7 @@ export function Bar({
   back,
   path,
   next,
+  lead,
 }: {
   name: string
   middle: (at: HTMLElement | null) => void
@@ -24,6 +26,7 @@ export function Bar({
   back: { label: string; href: string } | null // the page above this one; none at the top
   path?: string | undefined // under the way back, small: where a record sits (Module / Table)
   next?: ReactNode // on Home, what comes next today, before the face
+  lead?: ReactNode // on Home, the date and the greeting, in place of the ‹ and the name
 }) {
   return (
     <div
@@ -32,7 +35,9 @@ export function Bar({
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
         <div className="flex min-w-0 flex-col justify-center">
-          {back ? (
+          {lead ? (
+            lead
+          ) : back ? (
             <a
               href={back.href}
               className="-ml-2 flex min-w-0 shrink items-center gap-0.5 rounded-md py-1 pr-2 pl-1 text-ink-3 text-md hover:bg-hover hover:text-ink"
@@ -61,7 +66,7 @@ export function Bar({
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        {!plain && (
+        {!plain && !lead && (
           <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">
             {name}
           </h1>

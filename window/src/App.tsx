@@ -20,7 +20,7 @@ import { ComputerPage } from './ComputerPage.tsx'
 import { Conversation } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Find } from './Find.tsx'
-import { Home } from './Home.tsx'
+import { Home, HomeHead } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { applyLive, clearLive } from './live.ts'
@@ -145,8 +145,8 @@ export function App() {
   const mood = useMood(stream, !!busyTurn)
   // the agent the assistant shows, kept per person; the Chief of staff when it has gone
   const agents = useAgents(version)
-  // the workspace tile: one name and picture for the Alpha, and what is new in Activity
-  const workspaceHere = useWorkspaceHere(me, place, version)
+  // the workspace tile: one name and picture for the Alpha
+  const workspaceHere = useWorkspaceHere(me)
   const asked = layout.agent ?? CHIEF
   const chosen = agents.some((a) => a.id === asked) ? asked : CHIEF
   const agentHere = agents.find((a) => a.id === chosen) ?? null
@@ -430,6 +430,7 @@ export function App() {
               back={parentOf()}
               path={place.at === 'row' ? rowPlace?.path : undefined}
               next={place.at === 'home' && <NextChip version={version} />}
+              lead={place.at === 'home' && <HomeHead name={name} />}
             />
             {problem && (
               <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
@@ -440,12 +441,7 @@ export function App() {
               <div className="flex min-h-0 flex-1">
                 <div className="min-w-0 flex-1">
                   {place.at === 'home' ? (
-                    <Home
-                      stream={stream}
-                      name={name}
-                      agents={agents}
-                      onAsked={() => setAsking(true)}
-                    />
+                    <Home stream={stream} agents={agents} onAsked={() => setAsking(true)} />
                   ) : place.at === 'conversation' ? (
                     <AgentsScreen
                       setup={place.setup}

@@ -1,13 +1,10 @@
 // The rail's head: the workspace tile (its picture, or the person's initial on an accent tile) and
-// its name. It opens a menu: Activity, with how much Alpha did since the person last opened it,
-// Rename and Change picture, the owner's (one name and picture for the whole Alpha), and Log out
-// where people sign in. Out of Shell.tsx, which holds the rail itself.
+// its name. It opens a menu: Rename and Change picture, the owner's (one name and picture for the
+// whole Alpha), and Log out where people sign in. Set up Alpha is a card on Home (Vikas, 23 Nov). Out of Shell.tsx, which holds the rail itself.
 import type { Me, Workspace as WorkspaceData } from '@alpha/core/api'
-import { Activity, Image, LogOut, Pencil, Sparkles } from 'lucide-react'
+import { Image, LogOut, Pencil } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
-import type { Place } from './place.ts'
-import { SET_UP } from './story/address.ts'
 import { CoreImage } from './ui/core-file.tsx'
 import { Field } from './ui/field.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
@@ -17,7 +14,6 @@ export interface WorkspaceHere {
   workspace: WorkspaceData
   owner: boolean // only the owner names the workspace and gives it a picture
   signIn: boolean // people sign in here, so they can log out
-  news: number // what Alpha did since this person last opened Activity
   change: (to: { name?: string | null; picture?: string | null }) => Promise<unknown>
 }
 
@@ -25,7 +21,6 @@ export const NO_WORKSPACE: WorkspaceHere = {
   workspace: { name: null, picture: null },
   owner: true,
   signIn: false,
-  news: 0,
   change: async () => undefined,
 }
 
@@ -33,31 +28,13 @@ export const WorkspaceContext = createContext<WorkspaceHere>(NO_WORKSPACE)
 
 const OWNERS = 'The owner names the workspace'
 
-// The workspace as this window has it: from the person's me, the count of what is new kept up as
-// the world changes. Opening Activity moves the seen mark; so does a first look, once the core says
-// there is none, so a newcomer starts from now and not from everything before them.
-export function useWorkspaceHere(me: Me | null, place: Place, version: number): WorkspaceHere {
-  const inActivity = place.at === 'settings' && place.section === 'activity'
+// The workspace as this window has it, from the person's me. No count of what Alpha did on the
+// tile: what waits is on Home (Vikas, 22 Nov).
+export function useWorkspaceHere(me: Me | null): WorkspaceHere {
   const [workspace, setWorkspace] = useState<WorkspaceData>({ name: null, picture: null })
-  const [news, setNews] = useState(0)
   useEffect(() => {
     if (me) setWorkspace(me.workspace)
   }, [me])
-  useEffect(() => {
-    if (version < 0) return
-    if (inActivity) {
-      setNews(0)
-      api.post('/api/activity/seen').catch(() => undefined)
-      return
-    }
-    api.get<{ count: number; marked: boolean }>('/api/activity/new').then(
-      (r) => {
-        setNews(r.count)
-        if (!r.marked) api.post('/api/activity/seen').catch(() => undefined)
-      },
-      () => undefined,
-    )
-  }, [inActivity, version])
   const change = useCallback(
     (to: { name?: string | null; picture?: string | null }) =>
       api.post<WorkspaceData>('/api/workspace', to).then(setWorkspace),
@@ -68,10 +45,9 @@ export function useWorkspaceHere(me: Me | null, place: Place, version: number): 
       workspace,
       owner: me ? me.user.role === 'owner' : false,
       signIn: !!me?.signIn,
-      news,
       change,
     }),
-    [workspace, me, news, change],
+    [workspace, me, change],
   )
 }
 
@@ -103,7 +79,7 @@ export function squared(f: File): Promise<string> {
 }
 
 export function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
-  const { workspace, owner, signIn, news, change } = useContext(WorkspaceContext)
+  const { workspace, owner, signIn, change } = useContext(WorkspaceContext)
   const label = workspace.name ?? (name ? `${name}'s workspace` : 'Your workspace')
   const anchor = useRef<HTMLDivElement>(null)
   const pic = useRef<HTMLButtonElement>(null)
@@ -150,11 +126,6 @@ export function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean
           initial
         )}
       </button>
-      {news > 0 && (
-        <span className="pointer-events-none absolute -top-0.5 left-5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 font-semibold text-accent-ink text-xs">
-          {news > 99 ? '99+' : news}
-        </span>
-      )}
       <Renamable
         name={label}
         rename={tileOnly || !owner ? null : (to) => change({ name: to.slice(0, 80) })}
@@ -162,7 +133,7 @@ export function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean
         {(start) => (
           <button
             type="button"
-            aria-label={news ? `${label}, ${news} new in Activity` : label}
+            aria-label={label}
             aria-haspopup="menu"
             aria-expanded={open}
             data-tip={start ? RENAME_TIP : undefined}
@@ -201,16 +172,6 @@ export function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean
       <Popover anchor={anchor} open={open} onClose={close}>
         {renaming === null ? (
           <>
-            <MenuItem
-              hint={news > 0 ? `${news} new` : undefined}
-              onClick={() => {
-                window.location.hash = '#/settings/activity'
-                close()
-              }}
-            >
-              <Activity className="size-3.5 text-ink-3" />
-              Activity
-            </MenuItem>
             <MenuItem reason={owner ? undefined : OWNERS} onClick={() => setRenaming(label)}>
               <Pencil className="size-3.5 text-ink-3" />
               Rename
@@ -224,21 +185,6 @@ export function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean
             >
               <Image className="size-3.5 text-ink-3" />
               Change picture
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                close()
-                // from the start, what was done shown as done
-                void api
-                  .post('/api/story/reopen')
-                  .catch(() => undefined)
-                  .finally(() => {
-                    window.location.hash = SET_UP
-                  })
-              }}
-            >
-              <Sparkles className="size-3.5 text-ink-3" />
-              Set up Alpha
             </MenuItem>
             {signIn && (
               <MenuItem onClick={logOut}>
