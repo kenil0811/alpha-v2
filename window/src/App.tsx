@@ -49,6 +49,7 @@ import { titleOf } from './table/values.ts'
 import { useTableLoad } from './table-load.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
 import { inside, landingOf } from './tree.ts'
+import { crossFade } from './ui/motion.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { useWorkspaceHere, WorkspaceContext } from './Workspace.tsx'
@@ -141,7 +142,14 @@ export function App() {
   useEffect(() => {
     if (!askable) setAsking(false)
   }, [askable, setAsking])
-  const mood: Mood = stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'
+  const lastLine = stream?.lines.at(-1)?.kind
+  const mood: Mood = stream?.cards.length
+    ? 'needs'
+    : busyTurn || stream?.busy
+      ? 'working'
+      : lastLine === 'error' || lastLine === 'refused'
+        ? 'failed'
+        : 'quiet'
   // the agent the assistant shows, kept per person; the Chief of staff when it has gone
   const agents = useAgents(version)
   // the workspace tile: one name and picture for the Alpha, and what is new in Activity
@@ -237,7 +245,12 @@ export function App() {
     const onHash = () => {
       const h = forward(window.location.hash)
       if (h !== window.location.hash) window.history.replaceState(null, '', h)
-      setPlace(placeOf(h))
+      const next = placeOf(h)
+      // a new screen cross-fades in (motion, 23 Nov); a change within one (a row beside, a tab)
+      // just happens
+      const screen = (p: Place) => `${p.at}:${'id' in p ? p.id : ''}`
+      if (screen(next) === screen(placeRef.current)) setPlace(next)
+      else crossFade(() => setPlace(next))
     }
     onHash()
     window.addEventListener('hashchange', onHash)

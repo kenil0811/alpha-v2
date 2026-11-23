@@ -44,6 +44,7 @@ import { FormView } from './table/views/FormView.tsx'
 import { MapView } from './table/views/MapView.tsx'
 import { blankFor, drawnAs, useCoreView, useKept, useWorkingList, viewOf } from './table/working.ts'
 import { Select } from './ui/field.tsx'
+import { grow, shrink } from './ui/motion.ts'
 
 export function TableView({
   data,
@@ -239,9 +240,12 @@ export function TableView({
     !!config.group
   const openRowPanel = (id: string) => {
     if (kept) return kept.open(id)
-    setOpened(id)
-    setPicked(null)
-    setAdding(false)
+    // the row's panel grows out of the row (motion, 23 Nov)
+    grow(() => {
+      setOpened(id)
+      setPicked(null)
+      setAdding(false)
+    })
   }
   // New adds a row, or says why one can't be added here
   const onNew = kept
@@ -616,7 +620,7 @@ export function TableView({
                 setPicked({ row: openedRow.id, field: slug })
                 setOpened(null)
               }}
-              onClose={() => setOpened(null)}
+              onClose={() => shrink(() => setOpened(null))}
             />
           )}
           {!adding && !quiet && !openedRow && pickedRow && pickedField && (

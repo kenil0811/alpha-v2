@@ -465,6 +465,23 @@
   .face-pulse {
     animation: face-pulse 1.4s ease-in-out infinite;
   }
+  /* its moods (Face.tsx): eyes move smoothly, glance about while it thinks, a nod when done, a
+     quick blink back when clicked */
+  .face-eyes {
+    transition: transform 200ms var(--ease-soft);
+  }
+  .face-glance {
+    animation: face-glance 2.4s var(--ease-soft) infinite;
+  }
+  .face-nod {
+    animation: face-nod 600ms var(--ease-soft);
+  }
+  .face-boop {
+    scale: 1.06;
+  }
+  .face-boop .face-blink {
+    animation: face-boop 320ms;
+  }
   /* Set up Alpha: a chapter's line and screen come in with a short fade and rise, and nothing else
      moves (ui-rules U3) */
   .story-rise {
@@ -587,6 +604,34 @@
   }
 }
 
+@keyframes face-glance {
+  0%,
+  15%,
+  100% {
+    transform: translate(0, -2px);
+  }
+  30%,
+  45% {
+    transform: translate(-6px, -3px);
+  }
+  60%,
+  80% {
+    transform: translate(2px, -3px);
+  }
+}
+@keyframes face-nod {
+  30% {
+    transform: translateY(5px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+}
+@keyframes face-boop {
+  40% {
+    transform: scaleY(0.1);
+  }
+}
 @keyframes face-pulse {
   50% {
     opacity: 0.45;
@@ -642,4 +687,22 @@
 }
 .alpha-map .maplibregl-ctrl-attrib-button {
   filter: var(--map-icon);
+}
+
+/* Screens cross-fade, and a record grows out of its row (ui/motion.ts): short, on the curves above */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease-soft);
+}
+::view-transition-group(record) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-spring);
+}
+::view-transition-old(record),
+::view-transition-new(record) {
+  animation-duration: 200ms;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
 }
