@@ -444,6 +444,7 @@ export function App() {
                   ) : place.at === 'conversation' ? (
                     <AgentsScreen
                       setup={place.setup}
+                      whole={place.whole}
                       agents={agents}
                       chosen={chosen}
                       agent={agentHere}
