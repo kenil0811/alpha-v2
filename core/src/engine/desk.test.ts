@@ -258,7 +258,7 @@ describe('the desk', () => {
     expect(line?.words).toBe('Alpha can’t reach Claude yet: Claude isn’t signed in here.')
     expect(line?.data).toMatchObject({
       refused: 'authentication_failed',
-      fix: { at: '#/settings/model', words: 'Open Settings › LLM' },
+      fix: { at: '#/settings/model', words: 'Open Settings › Models' },
     })
     desk.close()
   })

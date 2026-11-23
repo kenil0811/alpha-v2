@@ -1,15 +1,13 @@
-// Settings › Activity: what waits for the person, then every run of a schedule or a reader and
-// every read of a connection, newest first, in one list by day, with Alpha's turns that changed
+// Settings › Logs (Activity until 23 Nov; what waits for the person is on Home): every run of a
+// schedule or a reader and every read of a connection, newest first, in one list by day, with Alpha's turns that changed
 // rows, removals and reverts. A run shows its time, name, module, state, one line of what
 // happened, how long it took and whether the model was used; it opens to its steps. Runs that
 // changed nothing fold into one line per name and day. A running one can be stopped; one that
 // wrote rows has Revert behind its ⋮, a removal Bring back, both said first in the one pop-up.
-import type { CardView, RunView, UndoView } from '@alpha/core/api'
+import type { RunView, UndoView } from '@alpha/core/api'
 import { ChevronRight, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
-import { startAsk } from './ask.ts'
-import { CardBox } from './CardBox.tsx'
 import { RUN_STATE } from './runState.ts'
 import { usdWords } from './Usage.tsx'
 import { Button } from './ui/button.tsx'
@@ -64,7 +62,7 @@ function fold(runs: RunView[]): Line[] {
   return out
 }
 
-export function Activity({ version, cards }: { version: number; cards: CardView[] }) {
+export function Logs({ version }: { version: number }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [only, setOnly] = useState<'all' | 'failed'>('all')
@@ -85,36 +83,26 @@ export function Activity({ version, cards }: { version: number; cards: CardView[
   }
 
   return (
-    <div className="flex flex-col">
+    <Section
+      title="Logs"
+      about="Every run of a schedule or a reader, every read of a connection, and what Alpha changed, newest first."
+      action={
+        // cuts of one list, each with its count
+        <Cuts label="Show">
+          <Cut on={only === 'all'} count={runs?.length} onClick={() => setOnly('all')}>
+            All
+          </Cut>
+          <Cut
+            on={only === 'failed'}
+            count={runs?.filter((r) => r.state === 'failed').length}
+            onClick={() => setOnly('failed')}
+          >
+            {RUN_STATE.failed[0]}
+          </Cut>
+        </Cuts>
+      }
+    >
       <div className="flex flex-col">
-        {cards.length > 0 && (
-          <Section title="Waiting for you">
-            {cards.map((c) => (
-              <CardBox
-                key={c.id}
-                id={c.id}
-                card={c}
-                onChange={(card) => startAsk(`About “${card.words.replace(/\?$/, '')}”: `)}
-              />
-            ))}
-          </Section>
-        )}
-        <div className="flex items-center gap-3">
-          <span className="flex-1" />
-          {/* cuts of one list, each with its count */}
-          <Cuts label="Show">
-            <Cut on={only === 'all'} count={runs?.length} onClick={() => setOnly('all')}>
-              All
-            </Cut>
-            <Cut
-              on={only === 'failed'}
-              count={runs?.filter((r) => r.state === 'failed').length}
-              onClick={() => setOnly('failed')}
-            >
-              {RUN_STATE.failed[0]}
-            </Cut>
-          </Cuts>
-        </div>
         {runs && shown.length === 0 && (
           <p className="mt-4 text-ink-2 text-md">
             {only === 'failed' ? 'Everything that ran finished.' : 'Nothing has run yet.'}
@@ -151,7 +139,7 @@ export function Activity({ version, cards }: { version: number; cards: CardView[
           </section>
         ))}
       </div>
-    </div>
+    </Section>
   )
 }
 

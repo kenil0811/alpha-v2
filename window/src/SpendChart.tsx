@@ -1,4 +1,4 @@
-// The top of Settings › LLM: the month's figures (spent, a forecast, replies and runs), then one
+// Settings › Usage: the month's figures (spent, a forecast, replies and runs), then one
 // chart card of its spend, split by a choice and drawn as columns by day, bars, a donut or a table;
 // by person only for the owner, a member's own line beside everyone else's.
 import type { UsageSplit, UsageView } from '@alpha/core/usage'

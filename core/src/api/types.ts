@@ -10,6 +10,15 @@ export interface Health {
   build: string | null // the window this core serves: a window on another build reloads
 }
 
+// Settings › General's Check for updates: the version running, whether a feed is set, and a newer
+// one with where to get it when there is one.
+export interface UpdateView {
+  current: string
+  set: boolean
+  newest?: string
+  url?: string
+}
+
 export type { ActingView, CardView, CheckView, ReviewView } from './card-types.ts'
 export type {
   BridgeDownload,
@@ -153,7 +162,7 @@ export interface DraftView {
   always: string | null // the standing permission's sentence, when offered
 }
 
-// What this Mac still needs, for the first open and Settings › Permissions, On this computer.
+// What this Mac still needs, for the first open and Settings › Connections.
 export interface SetupView {
   claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
   route: 'subscription' | 'key'
@@ -170,7 +179,7 @@ export interface SetupView {
   }
 }
 
-// A rule as Settings › Permissions lists it, in code's own words.
+// A rule as Settings › Rules lists it, in code's own words.
 export interface RuleView {
   id: string
   words: string

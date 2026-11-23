@@ -1,4 +1,4 @@
-// The spend card on Settings › LLM draws with the window's one set of chart pieces: the month's
+// The spend card on Settings › Usage draws with the window's one set of chart pieces: the month's
 // figures with no cost per task, and a card split by a choice, shown as columns, bars, a donut or
 // a table.
 import type { UsageView } from '@alpha/core/usage'

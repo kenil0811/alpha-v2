@@ -1,4 +1,4 @@
-// What the model was used for and what it cost, a month at a time, at the top of Settings › LLM:
+// What the model was used for and what it cost, a month at a time, in Settings › Usage:
 // the month's figures, then one chart card split by a choice (its Table look holds the numbers). On the subscription the cost is
 // what it would be on an API key, and says so.
 import type { UsageView } from '@alpha/core/usage'

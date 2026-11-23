@@ -104,7 +104,7 @@ export function factsOf(input: GateInput): CallFacts {
 
 // The words the model reads when a rule refused its call.
 export const refusedBy = (r: Rule) =>
-  `Refused by the person's rule: “${r.words}” Do not try it another way. Tell them which rule stopped it, and that they can revoke it in Settings › Permissions.`
+  `Refused by the person's rule: “${r.words}” Do not try it another way. Tell them which rule stopped it, and that they can revoke it in Settings › Rules.`
 
 export function decide(world: World, input: GateInput): Verdict {
   const facts = factsOf(input)
@@ -138,7 +138,7 @@ export function decide(world: World, input: GateInput): Verdict {
       return {
         pass: false,
         card: null,
-        reason: `Not done: Alpha noticed the person keeps to “${noticed.words}” Say so in a line; they can approve or dismiss it in Settings › Permissions.`,
+        reason: `Not done: Alpha noticed the person keeps to “${noticed.words}” Say so in a line; they can approve or dismiss it in Settings › Rules.`,
         rule: noticed,
       }
     }

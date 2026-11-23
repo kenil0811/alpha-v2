@@ -1,5 +1,5 @@
 // A month's spend day by day, each day split every way: what the chart at the top of
-// Settings › LLM stacks. Only priced rows count; an unpriced one has no dollars.
+// Settings › Usage stacks. Only priced rows count; an unpriced one has no dollars.
 import { dayOf } from '../../world/day.ts'
 import type { SpendRow } from '../../world/spend.ts'
 import { SPLITS, type UsageDay, type UsageSplit } from '../usage-types.ts'

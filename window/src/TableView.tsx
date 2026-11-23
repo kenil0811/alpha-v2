@@ -323,46 +323,42 @@ export function TableView({
                 </>
               }
               right={
-                <>
-                  <More
-                    tableId={data.id}
-                    fields={fields}
-                    shown={shown}
-                    config={config}
-                    layout={layout}
-                    adding={!kept || !!fieldsAt}
-                    onConfig={setConfig}
-                    readBy={data.readBy}
-                    mirror={data.mirror}
-                    tab={
-                      summary && (summary.place === 'part' || summary.place === 'setup')
-                        ? summary.tab
-                        : null
-                    }
-                    onTab={(tab) => write(() => api.post(`/api/tables/${data.id}/tab`, { tab }))}
-                    onCopy={() =>
-                      navigator.clipboard?.writeText(
-                        [
-                          shown.map((f) => f.name),
-                          ...rows.map((r) =>
-                            shown.map((f) => show(f, r.values[f.slug], data.names)),
-                          ),
-                        ]
-                          .map((line) => line.map((t) => t.replace(/[\t\n]/g, ' ')).join('\t'))
-                          .join('\n'),
-                      )
-                    }
-                    onExport={(as) =>
-                      write(() =>
-                        api.download(
-                          `/api/tables/${data.id}/export`,
-                          { rows: rows.map((r) => r.id), fields: shown.map((f) => f.id), as },
-                          `${data.name}.${as}`,
-                        ),
-                      )
-                    }
-                  />
-                </>
+                <More
+                  tableId={data.id}
+                  fields={fields}
+                  shown={shown}
+                  config={config}
+                  layout={layout}
+                  adding={!kept || !!fieldsAt}
+                  onConfig={setConfig}
+                  readBy={data.readBy}
+                  mirror={data.mirror}
+                  tab={
+                    summary && (summary.place === 'part' || summary.place === 'setup')
+                      ? summary.tab
+                      : null
+                  }
+                  onTab={(tab) => write(() => api.post(`/api/tables/${data.id}/tab`, { tab }))}
+                  onCopy={() =>
+                    navigator.clipboard?.writeText(
+                      [
+                        shown.map((f) => f.name),
+                        ...rows.map((r) => shown.map((f) => show(f, r.values[f.slug], data.names))),
+                      ]
+                        .map((line) => line.map((t) => t.replace(/[\t\n]/g, ' ')).join('\t'))
+                        .join('\n'),
+                    )
+                  }
+                  onExport={(as) =>
+                    write(() =>
+                      api.download(
+                        `/api/tables/${data.id}/export`,
+                        { rows: rows.map((r) => r.id), fields: shown.map((f) => f.id), as },
+                        `${data.name}.${as}`,
+                      ),
+                    )
+                  }
+                />
               }
               links={lists}
               views={views}
@@ -481,6 +477,7 @@ export function TableView({
                 group={fields.find((f) => f.id === config.group)}
                 names={data.names}
                 onOpen={openRowPanel}
+                rowAction={kept?.rowAction}
               />
             ) : config.kind === 'gallery' ? (
               <GalleryView rows={paged} fields={shown} names={data.names} onOpen={openRowPanel} />
@@ -501,64 +498,62 @@ export function TableView({
                 }
               />
             ) : (
-              <>
-                <Grid
-                  tableId={data.id}
-                  rows={paged}
-                  counted={rows}
-                  allRows={data.rows}
-                  fields={fields}
-                  shown={shown}
-                  config={config}
-                  names={data.names}
-                  tasks={taskCounts}
-                  panelRow={opened ?? picked?.row ?? null}
-                  openRow={openRow ?? null}
-                  ticked={ticked}
-                  readOnly={!!kept && !own?.editable.length}
-                  onSource={(p) => {
-                    if (kept) return
-                    setPicked(p)
-                    setOpened(null)
-                  }}
-                  onConfig={setConfig}
-                  onTick={setTicked}
-                  onEdit={edit}
-                  onOpen={openRowPanel}
-                  loading={loading}
-                  rowAction={kept?.rowAction}
-                  onDuplicate={
-                    kept
-                      ? undefined
-                      : (r) =>
-                          write(() =>
-                            api.post(`/api/tables/${data.id}/rows/many`, {
-                              add: [
-                                {
-                                  values: Object.fromEntries(
-                                    data.fields
-                                      .filter((f) => canType(f) && r.values[f.slug] != null)
-                                      .map((f) => [f.name, r.values[f.slug]]),
-                                  ),
-                                },
-                              ],
-                            }),
-                          )
-                  }
-                  onRemove={
-                    kept || data.mirror
-                      ? undefined
-                      : (rs) =>
-                          write(() =>
-                            api.post(`/api/tables/${data.id}/rows/remove`, {
-                              rows: rs.map((r) => r.id),
-                            }),
-                          )
-                  }
-                  layout={layout}
-                  onPaste={setPasting}
-                />
-              </>
+              <Grid
+                tableId={data.id}
+                rows={paged}
+                counted={rows}
+                allRows={data.rows}
+                fields={fields}
+                shown={shown}
+                config={config}
+                names={data.names}
+                tasks={taskCounts}
+                panelRow={opened ?? picked?.row ?? null}
+                openRow={openRow ?? null}
+                ticked={ticked}
+                readOnly={!!kept && !own?.editable.length}
+                onSource={(p) => {
+                  if (kept) return
+                  setPicked(p)
+                  setOpened(null)
+                }}
+                onConfig={setConfig}
+                onTick={setTicked}
+                onEdit={edit}
+                onOpen={openRowPanel}
+                loading={loading}
+                rowAction={kept?.rowAction}
+                onDuplicate={
+                  kept
+                    ? undefined
+                    : (r) =>
+                        write(() =>
+                          api.post(`/api/tables/${data.id}/rows/many`, {
+                            add: [
+                              {
+                                values: Object.fromEntries(
+                                  data.fields
+                                    .filter((f) => canType(f) && r.values[f.slug] != null)
+                                    .map((f) => [f.name, r.values[f.slug]]),
+                                ),
+                              },
+                            ],
+                          }),
+                        )
+                }
+                onRemove={
+                  kept || data.mirror
+                    ? undefined
+                    : (rs) =>
+                        write(() =>
+                          api.post(`/api/tables/${data.id}/rows/remove`, {
+                            rows: rs.map((r) => r.id),
+                          }),
+                        )
+                }
+                layout={layout}
+                onPaste={setPasting}
+              />
             )}
             <FootBar
               onNew={config.kind === 'form' ? null : onNew}

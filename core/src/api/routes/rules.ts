@@ -1,4 +1,4 @@
-// Rules: as Settings › Permissions lists them, and the person's own
+// Rules: as Settings › Rules lists them, and the person's own
 // acts on them: Revoke, and Approve or Dismiss on what Alpha noticed. A rule is made only on its
 // Save card (cards.ts, the engine's answer).
 import { z } from 'zod'
@@ -8,6 +8,12 @@ import { type Rule, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/r
 import type { Ctx } from '../ctx.ts'
 import { keptField, keptTable } from '../kept.ts'
 import type { KeptTable, RowLine, RuleView, WaitingRuleView } from '../types.ts'
+
+// The one standing choice, the first row of the rules list (Vikas, 23 Nov): whether agents and
+// their scripts ask before opening a site they were not shown and have not listed. Off on a fresh
+// install; the window turns it from its row.
+const ASK_SITES = 'ask-before-sites'
+const ASK_WORDS = 'Ask before agents open a new website'
 
 export function registerRules(ctx: Ctx): void {
   const { app, world, user, live, asPerson } = ctx
@@ -65,7 +71,7 @@ export function registerRules(ctx: Ctx): void {
     })
   })
 
-  // A rule as one line of the list Permissions opens on: its sentence with today's names, what
+  // A rule as one line of the list Rules opens on: its sentence with today's names, what
   // it does, when and by whom it was made, how often it was used, and where it holds.
   const lineOf = (r: Rule, v: RuleView): RowLine => {
     const by = v.madeBy === 'You' ? 'you' : v.madeBy
@@ -88,10 +94,11 @@ export function registerRules(ctx: Ctx): void {
     }
   }
 
-  // as a list of sentences under Settings › Permissions, or a table: read here; a rule's page
-  // acts on it
+  // as a list of sentences under Settings › Rules, or a table: read here; a rule's page acts on it,
+  // the standing choice its own switch
   app.get('/api/kept/rules', async (): Promise<KeptTable> => {
     const rules = world.rules.list().map((r) => ({ r, v: ruleOut(r) }))
+    const asks = asksBeforeSites(world)
     return keptTable(
       'rules',
       'Rules',
@@ -102,31 +109,56 @@ export function registerRules(ctx: Ctx): void {
         keptField('Made', 'date'),
         keptField('Uses', 'number'),
         keptField('Last used', 'date'),
-        keptField('State', 'choice', { Live: 'good', Revoked: 'bad' }),
+        keptField('State', 'choice', { Live: 'good', Revoked: 'bad', On: 'good', Off: 'warn' }),
       ],
-      rules.map(({ v }) => ({
-        id: v.id,
-        values: {
-          rule: v.words,
-          kind: v.kind === 'inferred' ? 'Noticed' : v.side === 'deny' ? 'Denied' : 'Allowed',
-          where: v.where,
-          made: v.madeAt,
-          uses: v.uses,
-          'last used': v.lastUsedAt,
-          state: v.revokedAt ? 'Revoked' : 'Live',
+      [
+        {
+          id: ASK_SITES,
+          values: {
+            rule: ASK_WORDS,
+            kind: null,
+            where: 'All of Alpha',
+            made: null,
+            uses: null,
+            'last used': null,
+            state: asks ? 'On' : 'Off',
+          },
         },
-      })),
+        ...rules.map(({ v }) => ({
+          id: v.id,
+          values: {
+            rule: v.words,
+            kind: v.kind === 'inferred' ? 'Noticed' : v.side === 'deny' ? 'Denied' : 'Allowed',
+            where: v.where,
+            made: v.madeAt,
+            uses: v.uses,
+            'last used': v.lastUsedAt,
+            state: v.revokedAt ? 'Revoked' : 'Live',
+          },
+        })),
+      ],
       {
         editable: [],
         why: 'Open a rule to revoke it; its page asks first.',
         layout: 'list',
-        lines: Object.fromEntries(rules.map(({ r, v }) => [r.id, lineOf(r, v)])),
+        lines: {
+          [ASK_SITES]: {
+            parts: [{ text: ASK_WORDS, bold: false }],
+            light: [
+              asks
+                ? 'On · an agent opens a link it was shown or a site on its list, and asks before a link it wrote itself to another site'
+                : 'Off · agents and what runs on a schedule open any website',
+            ],
+            chip: 'All of Alpha',
+            dim: false,
+          },
+          ...Object.fromEntries(rules.map(({ r, v }) => [r.id, lineOf(r, v)])),
+        },
       },
     )
   })
 
-  // The one standing choice at the top of Permissions: whether agents and their scripts ask before
-  // opening a site they were not shown and have not listed. Off on a fresh install.
+  // The standing choice, read and turned by the owner
   app.get('/api/rules/ask-before-sites', async () => ({ on: asksBeforeSites(world) }))
   app.post('/api/rules/ask-before-sites', async (req) => {
     if (user.role !== 'owner') throw new Refused('Only the owner can do that.')

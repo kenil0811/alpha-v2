@@ -129,14 +129,16 @@ export function placeOf(address: string): Place {
   return { at: 'home' }
 }
 
-// An agent's, a computer's, a schedule's and a rule's own page sit under Settings on the rail.
-// Old Intelligence addresses become Settings' (bookmarks, links kept elsewhere).
+// A computer's, a schedule's and a rule's own page sit under Settings on the rail; an agent's under
+// Agents. Old Intelligence addresses become Settings' (bookmarks, links kept elsewhere); Settings ›
+// Agents is Agents › Setup (Vikas, 23 Nov).
 export const forward = (hash: string): string =>
-  hash.replace(/^#\/intelligence(?=$|[/?])/, '#/settings')
+  hash
+    .replace(/^#\/intelligence(?=$|[/?])/, '#/settings')
+    .replace(/^#\/settings\/agents$/, '#/conversation/setup')
 
 export const inSettings = (p: Place): boolean =>
   p.at === 'settings' ||
   (p.at === 'item' && p.kind === 'rule') ||
-  p.at === 'agent' ||
   p.at === 'computer' ||
   (p.at === 'item' && p.kind === 'schedule')

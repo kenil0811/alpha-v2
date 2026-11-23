@@ -13,7 +13,7 @@ import type { ScheduleRunner } from './runner.ts'
 import type { RunFor, RunPlace } from './types.ts'
 
 // Whether the firm asks before an agent or a script opens a site it was not shown and has not
-// listed: off unless the owner turns it on in Settings › Permissions, since a card for every new
+// listed: off unless the owner turns it on in Settings › Rules, since a card for every new
 // site is too much asking. Off, every site opens, and a deny rule still closes one.
 const ASK = 'ask_before_sites'
 export const asksBeforeSites = (world: World) =>

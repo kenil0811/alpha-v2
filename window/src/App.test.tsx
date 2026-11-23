@@ -111,6 +111,7 @@ describe('the window', () => {
     })
     expect(placeOf('#/intelligence')).toEqual({ at: 'settings', section: null, open: null })
     expect(forward('#/intelligence/files?module=m1')).toBe('#/settings/files?module=m1')
+    expect(forward('#/settings/agents')).toBe('#/conversation/setup')
     expect(placeOf('#/intelligence/connections?connect=gmail')).toEqual({
       at: 'settings',
       section: 'connections',

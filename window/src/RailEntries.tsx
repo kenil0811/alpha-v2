@@ -86,7 +86,7 @@ export function entriesOf(
       label: 'Agents',
       href: '#/conversation',
       icon: <MessageSquare className="size-4" />,
-      on: place.at === 'conversation',
+      on: place.at === 'conversation' || place.at === 'agent',
     },
     {
       id: 'tasks',

@@ -327,13 +327,13 @@ export function App() {
         return aboveModule(place.id)
       case 'item':
         return place.kind === 'schedule'
-          ? { label: 'Schedules', href: '#/settings/schedules' }
+          ? { label: 'Automations', href: '#/settings/schedules' }
           : place.kind === 'run'
-            ? { label: 'Activity', href: '#/settings/activity' }
-            : { label: 'Permissions', href: '#/settings/permissions' }
-      // an agent's page is one of Settings › Agents
+            ? { label: 'Logs', href: '#/settings/logs' }
+            : { label: 'Rules', href: '#/settings/rules' }
+      // an agent's page is one of Agents › Setup
       case 'agent':
-        return { label: 'Agents', href: '#/settings/agents' }
+        return { label: 'Agents', href: '#/conversation/setup' }
       // a computer's page is one of Connections › Your computers
       case 'computer':
         return { label: 'Connections', href: '#/settings/connections' }
@@ -501,12 +501,7 @@ export function App() {
                       onName={setPersonName}
                     />
                   ) : place.at === 'settings' ? (
-                    <Settings
-                      tab={place.section}
-                      open={place.open}
-                      version={version}
-                      cards={stream?.cards ?? []}
-                    />
+                    <Settings tab={place.section} open={place.open} version={version} />
                   ) : moduleHereId ? (
                     <ModuleScreen
                       moduleId={moduleHereId}
