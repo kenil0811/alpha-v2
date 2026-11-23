@@ -3,11 +3,21 @@
 // own requests to Claude Code and Codex, and their ChatGPT and claude.ai conversations' titles).
 // Each runs only on the computer, only where its person ticked it in the Bridge, and comes with
 // the interviews plugin: an Alpha without it knows none of them (rules P1). Their rows land in
-// Your work, the Interviewer's module. They read at the interview, never on a clock (call 20).
+// Your work, the Interviewer's module. They read at the interview (call 20) and, once the person
+// finished Set up Alpha, Browsing and Apps every day for what they switched on there: the core
+// holds that wall (proposed, Vikas 23 Nov). AI work reads at the interview alone.
 import { readFileSync } from 'node:fs'
 import { type Call, type Connector, Problem, type TableSpec } from '@alpha/connector-sdk'
 import { visitsIn } from './history.ts'
-import { appDirs, browserRoots, claudeDir, codexDir, historyFiles } from './paths.ts'
+import {
+  appDirs,
+  BROWSERS,
+  browserRoots,
+  claudeDir,
+  codexDir,
+  historyFiles,
+  home,
+} from './paths.ts'
 import {
   type App,
   claudeRequests,
@@ -17,6 +27,7 @@ import {
   webConversations,
   windowsApps,
 } from './read.ts'
+import { safariBlocked, safariHistory, safariVisits } from './safari.ts'
 
 const DAYS = 90
 const MODULE = 'Your work'
@@ -50,7 +61,11 @@ const REQUESTS: TableSpec = {
   ],
 }
 
-const visits = () => visitsIn(browserRoots().flatMap(historyFiles), DAYS)
+const visits = () =>
+  visitsIn(
+    browserRoots().flatMap((r) => historyFiles(r)),
+    DAYS,
+  )
 
 // Each reader's account is the computer it reads, by the name Alpha knows it by.
 const base = (name: string, title: string) => ({
@@ -68,14 +83,18 @@ const base = (name: string, title: string) => ({
 const nothing = (what: string) =>
   new Problem(`${what} is not on this computer, so there is nothing for Alpha to read.`)
 
+// once a day, and only while the core's keeps-learning wall lets it
+const DAILY = 24 * 60
+
 export const browsing: Connector = {
-  manifest: base('browsing', 'Browsing'),
+  manifest: { ...base('browsing', 'Browsing'), syncEveryMinutes: DAILY },
   guide,
   module: MODULE,
   tables: [SITES],
   tools: {},
   check: async () => {
-    if (!browserRoots().length) throw nothing('No Chrome, Edge, Brave, Arc, Vivaldi or Chromium')
+    if (!browserRoots().length)
+      throw nothing(`No ${BROWSERS.slice(0, -1).join(', ')} or ${BROWSERS.at(-1)}`)
   },
   sync: async (c: Call) => {
     const sites = sitesOf(visits())
@@ -96,8 +115,41 @@ export const browsing: Connector = {
   },
 }
 
+// Safari, once its person said yes to Alpha's offer and gave Alpha Bridge Full Disk Access: its
+// sites, counted as the other browsers' are, in a table of its own.
+export const safari: Connector = {
+  manifest: { ...base('safari', 'Safari'), syncEveryMinutes: DAILY },
+  guide,
+  module: MODULE,
+  tables: [{ ...SITES, name: 'Safari sites' }],
+  tools: {},
+  check: async () => {
+    const why = safariBlocked(safariHistory(home()))
+    if (why) throw new Problem(why)
+  },
+  sync: async (c: Call) => {
+    const why = safariBlocked(safariHistory(home()))
+    if (why) throw new Problem(why)
+    const sites = sitesOf(safariVisits(safariHistory(home()), DAYS))
+    const landed = await c.host.land(
+      'Safari sites',
+      sites.map((s) => ({
+        key: s.site,
+        values: {
+          Site: s.site,
+          'Days used': s.days,
+          'Last used': s.last,
+          Titles: s.titles,
+          Browsers: s.browsers,
+        },
+      })),
+    )
+    return { rows: sites.length, sawNew: landed.added > 0 }
+  },
+}
+
 export const apps: Connector = {
-  manifest: base('apps', 'Apps'),
+  manifest: { ...base('apps', 'Apps'), syncEveryMinutes: DAILY },
   guide,
   module: MODULE,
   tables: [APPS],
@@ -144,5 +196,6 @@ export const aiWork: Connector = {
   },
 }
 
-// What a folder of this connector exports for Alpha to load: three readers.
-export const connectors = [browsing, apps, aiWork]
+// What a folder of this connector exports for Alpha to load: four readers, Safari's offered only
+// after its offer was taken (core/src/offers.ts).
+export const connectors = [browsing, apps, aiWork, safari]

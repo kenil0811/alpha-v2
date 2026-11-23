@@ -87,15 +87,17 @@ const KINDS: Record<string, string> = {
 
 // What a source found, as the person reads it on Get to know you: its first line is on the row
 // already, so the next two at most, the few that come back with how often, and none of the ids a
-// line may cite (those are for the draft).
-export function shownOf(words: string): string[] {
+// line may cite (those are for the draft). A computer's reader's row says only that it reads on
+// Read these, so its first line, the count and which browsers it came from, is shown too (23 Nov:
+// Edge was read, and nothing on the screen said so).
+export function shownOf(words: string, first = false): string[] {
   return words
     .split('\n')
-    .slice(1)
+    .slice(first ? 0 : 1)
     .filter((l) => !/^line \d+:/.test(l))
     .map((l) =>
       l
-        .replace(/\s*\((\d+);[^)]*\)/g, ' ($1)')
+        .replace(/\s*\((\d+(?: [a-z]+)?);[^)]*\)/g, ' ($1)')
         .replace(/\s*\(file [0-9a-f]+\)/g, '')
         .replace(/[a-z]+\/[\w.+-]+/g, (k) => KINDS[k] ?? k.split('/')[1] ?? k)
         .replace(/<[^>]*>/g, '')
@@ -231,9 +233,16 @@ async function readAll(host: PluginHost, who: Who, off: string[]): Promise<void>
           const not = await host.read(c)
           if (not) why.push(not)
         }
-      const words = [...why, source.read(host, who.id, config.lookback_days).words].join('\n')
+      const said = source.read(host, who.id, config.lookback_days).words
+      const words = [...why, said].join('\n')
       mark(source.name, 'Allowed', words)
-      found.push({ key: s.key, name: s.name, on: true, words, shown: [...why, ...shownOf(words)] })
+      found.push({
+        key: s.key,
+        name: s.name,
+        on: true,
+        words,
+        shown: [...why, ...shownOf(said, !!source.atInterview)],
+      })
       keepStory(host, who.id, { found })
     }
   } finally {
@@ -252,3 +261,16 @@ async function readAll(host: PluginHost, who: Who, off: string[]): Promise<void>
 
 // Read again now, leaving out these sources (marked turned off in Interview sources).
 export const ReadBody = z.object({ off: z.array(z.string()).default([]) })
+
+// The computer's readers that keep reading for a person after setup (Vikas, 23 Nov): Browsing and
+// Apps, each only where they left it on and it was read in Get to know you; one switched off, or
+// never read, never starts (I3). AI work reads at the interview alone.
+const KEEPS = ['browsing', 'apps']
+export const keptReading = (host: PluginHost, person: string): string[] =>
+  storyOf(host, person)
+    .found.filter((f) => f.on && KEEPS.includes(f.key))
+    .flatMap((f) => [
+      ...(SOURCES.find((s) => s.key === f.key)?.connectors ?? []),
+      // Safari is browsing too, once its offer was taken and it is lent
+      ...(f.key === 'browsing' ? ['safari'] : []),
+    ])

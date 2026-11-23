@@ -4,7 +4,7 @@
 name: Your work
 # off the rail: the Interviewer's report opens from its link and ⌘K (Vikas, 22 Nov)
 hidden: true
-version: 0.5.1
+version: 0.6.0
 api: 3
 business_case:
   for: Each person here, about their own work

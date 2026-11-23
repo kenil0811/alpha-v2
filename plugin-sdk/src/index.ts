@@ -88,6 +88,11 @@ export interface PluginHost {
   // A chapter of its own opened again for a person: their story waits on Home until they go
   // through it again (a short interview after a regular check).
   reopen(person: string, chapter: string): void
+  // The computer's readers to read every day for a person once their Set up Alpha is finished: the
+  // plugin says which they switched on, by connector name. The core reads one only for a person
+  // whose story is finished and not declined, through a connection not paused, and never a reader
+  // the plugin did not name for them (proposed, 23 Nov).
+  keepsReading(allowed: (person: string) => string[]): void
   // A block for the start of every conversation (what the person kept), or none.
   startBlock(words: () => string | null): void
   // A line in the journal: counts and what was done, never what was read.

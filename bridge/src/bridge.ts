@@ -38,6 +38,7 @@ type FromAlpha =
   | { t: 'cdp-open'; id: string; site: string } // a signed-in site's profile, driven out of sight
   | { t: 'cdp'; id: string; m: string }
   | { t: 'cdp-close'; id: string }
+  | { t: 'full-disk' } // the person said yes to Safari in Alpha: Full Disk Access opened here
 
 // The account a computer's key is kept under: the Alpha it is paired with.
 export const keyAccount = (alpha: string) => new URL(alpha).host
@@ -103,6 +104,7 @@ export interface BridgeOptions {
   chrome?: () => string | null // where Chrome is here (chrome.ts)
   window?: (chrome: string, dir: string, url: string) => Promise<void> // a sign-in window
   lendSite?: (site: string, on: boolean) => void // a site signed in to or out of here, kept
+  fullDisk?: () => void // System Settings' Full Disk Access opened, then Safari lent once it reads
 }
 
 // A site's address that is the site's own (google.com, or drive.google.com for it), on the web.
@@ -314,6 +316,9 @@ export class Bridge {
     else if (m.t === 'cdp-close') {
       this.pipes.get(m.id)?.close()
       this.pipes.delete(m.id)
+    } else if (m.t === 'full-disk') {
+      this.said('Alpha asked for Full Disk Access, to read Safari.')
+      this.options.fullDisk?.()
     } else if (m.t === 'pick') {
       this.said('Alpha asked to lend a folder from this computer.')
       this.options.pick?.(m.connector)

@@ -342,6 +342,8 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/story/decline': 'Set up Alpha put off by a person, kept with them',
   'POST /api/story/reopen': 'Set up Alpha opened again by a person, kept with them',
   'POST /api/story/apps/remove': 'an app left out of a person’s Apps you use, kept with them',
+  'DELETE /api/observe': 'that leave taken back, kept with them',
+  'POST /api/offers/:key': 'a person’s yes or not now to an extra permission, kept with them',
   'POST /api/accounts/:id/link': 'the owner making a new sign-in link',
   'POST /api/accounts/:id/remove': 'the owner removing a person’s way in; their history stays',
   'POST /api/runs/:id/stop': 'stops a run under way; what it wrote stays',
@@ -398,6 +400,8 @@ export const NOT_DOORS: Record<string, string> = {
   'plugin chapter': 'a chapter of its own in Set up Alpha, whose writes are its host’s calls',
   'plugin workspace': 'reads',
   'plugin reopen': 'a chapter of its own opened again for a person in Set up Alpha, kept with them',
+  'plugin keepsReading':
+    'which of a person’s computer readers keep reading after setup, whose reads write through the connector’s own sync',
   'plugin keep':
     'lines the person kept on its chapter’s screen, written to How to work as theirs, which no row or module holds',
   'plugin startBlock': 'words at the start of a conversation',

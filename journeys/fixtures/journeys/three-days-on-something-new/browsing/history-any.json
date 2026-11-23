@@ -1,0 +1,15 @@
+{
+  "browser": "Chrome",
+  "visits": [
+    {
+      "url": "https://www.timbermart.example/orders",
+      "title": "Orders | Timber Mart",
+      "at": "2026-11-10T09:00:00Z"
+    },
+    {
+      "url": "https://www.timbermart.example/orders",
+      "title": "Orders | Timber Mart",
+      "at": "2026-11-12T09:00:00Z"
+    }
+  ]
+}

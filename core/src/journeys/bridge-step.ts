@@ -52,6 +52,7 @@ export interface BridgeStep {
   contacts?: boolean | undefined // its Contacts lent, the same way
   browsing?: boolean | undefined // its browsing history lent, to the Bridge's browsing reader
   ai?: boolean | undefined // its AI work lent (its ChatGPT and claude.ai titles from the history)
+  later?: string | undefined // its browsing went on: its home made up again from this folder
 }
 
 // What the stand-in for Alpha's helper answers, where answers are not replayed: one event, never
@@ -218,9 +219,18 @@ export async function bridgeStep(
       `lent its ${r === 'browsing' ? 'browsing history' : r === 'ai-work' ? 'AI work' : r.replace(/^./, (c) => c.toUpperCase())}`,
     )
   }
+  // days on, the computer's browsing went on: what its browsers hold now, from another recorded
+  // folder of the journey's
+  if (step.later) {
+    recordedHome(join(answers, step.later), join(tmp, 'computer'))
+    said.push(`its browsing went on (${step.later})`)
+  }
   const read = [
-    ...(step.lend || !lent.length ? [world.connections.find('folder', folder)] : []),
+    ...(step.lend || (!lent.length && !step.later)
+      ? [world.connections.find('folder', folder)]
+      : []),
     ...lent.map((r) => world.connections.find(r, s.config.name)),
+    ...(step.later ? [world.connections.find('browsing', s.config.name)] : []),
   ]
   for (const k of read) if (k) await connectors.sync(k.id)
   const words = `${said.join(', ')}, then read it`

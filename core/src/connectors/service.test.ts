@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { browsing } from '@alpha/connector-computer'
 import { gmail } from '@alpha/connector-gmail'
 import { type Connector, MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -266,6 +267,41 @@ describe('a Gmail connection on recorded answers', () => {
     expect(() => new ConnectorService(world, { secrets, known: [gmail, gmail] })).toThrow(
       /loaded already/,
     )
+  })
+
+  // 23 Nov: after setup a computer's reader reads every day, only while its person keeps learning
+  it('reads a computer’s reader on the clock only where the keeps-learning wall lets it', async () => {
+    let reads = 0
+    // the Bridge's own reader, its read stood in for: nothing on this Mac is read
+    const reader: Connector = {
+      ...browsing,
+      sync: async () => {
+        reads++
+        return { rows: 0, sawNew: false }
+      },
+    }
+    const conn = world.connections.add('browsing', 'The Mac', null, 'Browsing', {
+      actor: { kind: 'system' },
+    })
+    world.connections.setState(conn.id, 'connected', null, 'Connected.', {
+      actor: { kind: 'system' },
+    })
+    let lets = false
+    const svc = new ConnectorService(world, {
+      secrets,
+      known: [reader],
+      keepsReading: (k) => k.id === conn.id && lets,
+    })
+    await svc.syncDue()
+    expect(reads).toBe(0)
+    lets = true
+    await svc.syncDue()
+    expect(reads).toBe(1)
+    // no wall given: never on the clock
+    await new ConnectorService(world, { secrets, known: [reader] }).syncDue(
+      Date.now() + 2 * 86_400_000,
+    )
+    expect(reads).toBe(1)
   })
 
   it('keeps a connection whose connector is not loaded, waiting, and reads it again once added', async () => {

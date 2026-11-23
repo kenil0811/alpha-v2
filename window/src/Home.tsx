@@ -8,6 +8,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardGrid, type GridCard } from './CardGrid.tsx'
 import { fromWhom, mainOf, NeedsYou } from './NeedsYou.tsx'
+import { OfferCard } from './OfferCard.tsx'
 import { shownScreens } from './plugin/screens.ts'
 import { ReadLine } from './ReadReport.tsx'
 import { StoryCard, stepsDone, useStory } from './story/StoryCard.tsx'
@@ -178,6 +179,9 @@ export function Home({
 
         {/* see what Alpha read: the live line while a read runs (proposed, 23 Nov) */}
         {!!stream?.reading.length && <ReadLine version={last} />}
+
+        {/* one extra permission, once its prerequisite is met (offers.yaml) */}
+        <OfferCard version={last} />
 
         {/* a plugin's row, while something of its waits for the person */}
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}

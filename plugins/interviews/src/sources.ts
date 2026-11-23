@@ -66,6 +66,34 @@ function top(rows: Row[], key: (r: Row) => string, n = 5): string[] {
     )
 }
 
+// A reader's rows are one to a site or an app, each with its own count: the most first, each with
+// its count and its row (23 Nov: counting rows put every one at 1, so "most used" was the first few
+// by the alphabet).
+function most(rows: Row[], name: string, count: string, unit: string, n = 5): string[] {
+  return [...rows]
+    .sort(
+      (a, b) =>
+        Number(b.values[count] ?? 0) - Number(a.values[count] ?? 0) ||
+        String(a.values[name]).localeCompare(String(b.values[name])),
+    )
+    .slice(0, n)
+    .map((r) => `${String(r.values[name])} (${Number(r.values[count] ?? 0)} ${unit}; row ${r.id})`)
+}
+
+// Which browsers the sites came from, each with how many: " from Arc (316) and Edge (266)".
+function fromBrowsers(rows: Row[]): string {
+  const by = new Map<string, number>()
+  for (const r of rows)
+    for (const b of String(r.values.Browsers ?? '')
+      .split(', ')
+      .filter(Boolean))
+      by.set(b, (by.get(b) ?? 0) + 1)
+  const said = [...by].sort((a, b) => b[1] - a[1]).map(([b, k]) => `${b} (${k})`)
+  return said.length
+    ? ` from ${said.length > 1 ? `${said.slice(0, -1).join(', ')} and ${said.at(-1)}` : said[0]}`
+    : ''
+}
+
 // A subject or a title as it comes back: no Re:, no numbers, no dates.
 const gist = (v: unknown) =>
   String(v ?? '')
@@ -79,7 +107,7 @@ function rowsSource(
   name: string,
   asks: string,
   reads: string,
-  where: { module: string; table: string; at?: string; keep?: (r: Row) => boolean },
+  where: Where,
   say: (rows: Row[], days: number) => string,
   none: string,
   connectors: string[],
@@ -111,12 +139,20 @@ function rowsSource(
   }
 }
 
-function rowsOf(
-  host: PluginHost,
-  where: { module: string; table: string; at?: string; keep?: (r: Row) => boolean },
-  days: number,
-): Row[] {
-  const all = host.rows(where.module, where.table).filter((r) => !where.keep || where.keep(r))
+// Where a source's rows are: a table of a module, and another beside it read with it (Safari's
+// sites beside the other browsers').
+interface Where {
+  module: string
+  table: string
+  also?: string
+  at?: string
+  keep?: (r: Row) => boolean
+}
+
+function rowsOf(host: PluginHost, where: Where, days: number): Row[] {
+  const all = [where.table, ...(where.also ? [where.also] : [])]
+    .flatMap((t) => host.rows(where.module, t))
+    .filter((r) => !where.keep || where.keep(r))
   return where.at ? all.filter((r) => within(r.values[where.at as string], days)) : all
 }
 
@@ -210,9 +246,12 @@ export const SOURCES: Source[] = [
     'Browsing',
     'may I read which sites you use, and on how many days?',
     'The sites your browsers open on your computer and on how many days, counted there by Alpha Bridge; only sites seen on two days or more reach Alpha.',
-    { module: 'Your work', table: 'Sites' },
+    { module: 'Your work', table: 'Sites', also: 'Safari sites' },
     (rows) =>
-      `${rows.length} sites. Most used: ${top(rows, (r) => String(r.values.Site ?? '')).join('; ')}.`,
+      [
+        `${rows.length} sites${fromBrowsers(rows)}.`,
+        `Most used: ${most(rows, 'Site', 'Days used', 'days').join('; ')}.`,
+      ].join('\n'),
     'Nothing has come from your computer’s browsing yet.',
     ['browsing'],
     true,
@@ -223,7 +262,11 @@ export const SOURCES: Source[] = [
     'may I read which apps you have, and when you last used them?',
     'The apps on your computer, with when each was last used and how often where it keeps that, read by Alpha Bridge.',
     { module: 'Your work', table: 'Apps' },
-    (rows) => `${rows.length} apps. ${top(rows, (r) => String(r.values.App ?? '')).join('; ')}.`,
+    (rows) =>
+      [
+        `${rows.length} apps.`,
+        `Most used: ${most(rows, 'App', 'Times used', 'times').join('; ')}.`,
+      ].join('\n'),
     'Nothing has come from your computer’s apps yet.',
     ['apps'],
     true,

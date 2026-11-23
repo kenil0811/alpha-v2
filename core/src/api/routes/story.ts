@@ -16,6 +16,7 @@ import type { Ctx } from '../ctx.ts'
 import { type Chapter, chaptersOf, storyView } from '../story.ts'
 import { storyScreens } from '../story-screens.ts'
 import type { ChapterScreen, StoryView } from '../story-types.ts'
+import { watchAfterSetup } from './observe.ts'
 
 // Whether Claude's own sign-in on this Mac holds, asked of Claude Code at most this often: it
 // starts a process each time.
@@ -95,7 +96,11 @@ export function registerStory(ctx: Ctx): void {
   // the chapter gone through: Done finishes the story
   const through = (key: string, how: 'done' | 'skipped') => {
     markChapter(world.db, user.id, key, how)
-    if (key === 'done') finishStory(world.db, user.id)
+    if (key === 'done') {
+      finishStory(world.db, user.id)
+      // watching their work: only past its wall (23 Nov, proposed)
+      watchAfterSetup(world, user)
+    }
     ctx.live()
   }
 

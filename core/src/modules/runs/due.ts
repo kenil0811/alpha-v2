@@ -24,7 +24,9 @@ export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promis
     }
     if (!judged) continue
     const { given, cursorTo } = judged
-    const out = await runner.runSchedule(a, undefined, given).catch(
+    // an agent's check is told the tick's time, so a look "three days after" counts by its clock
+    const handed = a.agent ? { ...given, now: new Date(nowMs).toISOString() } : given
+    const out = await runner.runSchedule(a, undefined, handed).catch(
       (err): RunOutcome => ({
         id: '',
         state: 'failed',

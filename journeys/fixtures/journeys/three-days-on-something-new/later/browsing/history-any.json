@@ -1,0 +1,25 @@
+{
+  "browser": "Chrome",
+  "visits": [
+    {
+      "url": "https://www.timbermart.example/orders",
+      "title": "Orders | Timber Mart",
+      "at": "2026-11-14T09:00:00Z"
+    },
+    {
+      "url": "https://permits.example/apply",
+      "title": "Building permit application",
+      "at": "2026-11-14T11:00:00Z"
+    },
+    {
+      "url": "https://permits.example/apply",
+      "title": "Building permit application",
+      "at": "2026-11-15T11:00:00Z"
+    },
+    {
+      "url": "https://www.timbermart.example/orders",
+      "title": "Orders | Timber Mart",
+      "at": "2026-11-15T09:00:00Z"
+    }
+  ]
+}

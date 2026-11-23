@@ -1,0 +1,17 @@
+name: edge-and-dia-history-are-read
+title: A person who browses in Edge and Dia lends their browsing, and Alpha reads both, naming each
+why: >
+  Vikas, 23 Nov: "Why didn't the onboarding flow read my Edge browser history?" and he works in Dia,
+  which Alpha never read. Edge was read; nothing on Get to know you said so. Dia had no place in
+  the readers' list. A made-up person's computer, its history recorded in Edge and in Dia, never
+  this Mac's.
+plugins: [interviews]
+fixtures: edge-and-dia-history-are-read
+steps:
+  - bridge: { lend: '{tmp}/Office' }
+  - bridge: { browsing: true }
+    checks:
+      - rows_in: { table: Sites, count: 2 }
+      - field: { table: Sites, key: harborsupply.example, field: Browsers, equals: Edge }
+      - field: { table: Sites, key: quotes.example, field: Browsers, equals: Dia }
+      - errors: 0

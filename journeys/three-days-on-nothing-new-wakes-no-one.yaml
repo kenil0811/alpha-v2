@@ -1,0 +1,26 @@
+name: three-days-on-nothing-new-wakes-no-one
+title: Three days after the owner finishes Set up Alpha, nothing new was read, so no one is woken and no card shows
+why: >
+  Vikas, 23 Nov: the review three days after setup only looks (code, no model) at what the daily
+  reading added; when nothing is new it wakes no one, leaves no task and shows no card. A made-up
+  bookkeeper who lets Alpha read nothing.
+plugins: [interviews]
+steps:
+  - story: { chapter: welcome }
+  - story: { chapter: workspace, body: { for: 'Just me, doing the books for a few shops.' } }
+  - story: { chapter: connect }
+  - story: { chapter: know, body: { off: [alpha] } }
+  - story: { chapter: people, skip: true }
+  - story: { chapter: learned, answers: [] }
+  - story: { chapter: done }
+    checks:
+      - story: { done: true, row: null }
+      - schedule: { agent: Interviewer, count: 2, check: true }
+      - errors: 0
+  - due: { days: 3 }
+    checks:
+      - last_run_words: { agent: Interviewer, matches: 'Nothing new' }
+      - story: { row: null }
+      - task: { title: A review after setup, count: 0 }
+      - needs_you: { count: 0 }
+      - errors: 0

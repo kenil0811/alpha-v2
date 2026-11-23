@@ -20,7 +20,7 @@ import { Logs } from './Logs.tsx'
 import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
 import { ReadReport } from './ReadReport.tsx'
-import { Standing } from './Rules.tsx'
+import { Standing, WatchWork } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
@@ -394,6 +394,7 @@ function RulesPart({ version, owner }: { version: number; owner: boolean }) {
           </Button>
         }
       >
+        <WatchWork />
         <WaitingRules version={version} />
         <Standing version={version} owner={owner} />
       </Section>

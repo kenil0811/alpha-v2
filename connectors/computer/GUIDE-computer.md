@@ -5,7 +5,7 @@ ticked them there. Each reads 90 days back, counts on the computer, and sends Al
 and the lines below; nothing else leaves the computer.
 
 - **Browsing** (Sites): each site the browsers on the computer opened on two days or more (Chrome,
-  Edge, Brave, Arc, Vivaldi, Chromium), with on how many days, when last, and a few page titles
+  Edge, Brave, Arc, Dia, Vivaldi, Chromium), with on how many days, when last, and a few page titles
   with addresses and numbers taken out.
 - **Apps** (Apps): the apps on the computer, with when each was last used and how often where the
   computer keeps that (a Mac does; Windows says only what is installed).

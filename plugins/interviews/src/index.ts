@@ -7,7 +7,7 @@
 // the plugin host, and removing this folder removes it whole; what it made stays as an ordinary
 // module.
 import type { Plugin } from '@alpha/plugin-sdk'
-import { settleStories } from './know.ts'
+import { keptReading, settleStories } from './know.ts'
 import { LearnedBody, learnedAct, learnedScreen } from './learned.ts'
 import { proposeTool } from './propose.ts'
 import { shortTool } from './short.ts'
@@ -19,6 +19,8 @@ export const plugin: Plugin = {
   kit: 'kit',
   register(host) {
     settleStories(host)
+    // after setup, Browsing and Apps read every day for what the person switched on (23 Nov)
+    host.keepsReading((person) => keptReading(host, person))
     host.tools('interviewer', [sourceTool(host), proposeTool(host), shortTool(host)])
     // What I learned, A few questions and Off your plate, after Invite team; what is connected is
     // read as they are drawn, so there is no step for allowing it

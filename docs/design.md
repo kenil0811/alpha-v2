@@ -353,6 +353,24 @@ Connecting a source is the permission to read it; what is connected is read in t
 What I learned fills in place. Every step can be skipped; a step on which nothing happened is
 marked skipped, never done, and the page always ends on something to do.
 
+**It keeps learning after setup** (proposed, Vikas 23 Nov; for Kenil's review). Once a person
+finishes Set up Alpha, Browsing and Apps are read every day through their Alpha Bridge, each only
+where they left it on in Get to know you (`host.keepsReading`; the core reads it on the clock only
+for a person whose story is finished, never one who declined before finishing, through a
+connection not paused, and AI work stays read at the interview alone). Three days after they
+finish, the Interviewer's second check, "A review after setup", looks once, in code, at whether a
+read since brought something new; only then is the Interviewer woken, its short interview opens
+What I learned again, and Home's one row says "A few more questions from Alpha", with a notice on
+the computer where Alpha's Mac app is not showing its own. Nothing new: no one is woken and no row
+shows. Watching the person's work (the front app and its window's title every few seconds, never a
+picture of the screen) sits behind a wall in code: only on a computer of theirs where Alpha Bridge
+stays connected, and only on their own yes, kept with when and taken back in Settings ›
+Permissions. The watcher itself is a stub that refuses until Kenil decides it. Extra permissions
+come in phases: each is offered only once its prerequisite is met, one at a time, never in Set up
+Alpha, as one optional Home card (`core/config/offers.yaml`, `core/src/offers.ts`): Safari, through
+Full Disk Access that Alpha Bridge opens and then sees by reading, once Safari is among the apps
+read and the Bridge is connected; watching, once the Bridge has stayed connected a week since setup.
+
 ## The window
 
 The rail has Home, Agents, Tasks and the modules, with Intelligence and Settings at its foot. The
