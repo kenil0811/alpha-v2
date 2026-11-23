@@ -4,9 +4,9 @@
 // run's steps arrive as they happen.
 import type { RuleView, RunView, ScheduleView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
-import { RunRow } from './Activity.tsx'
 import { AgentSchedulePage } from './AgentSchedules.tsx'
 import { api } from './api.ts'
+import { RunRow } from './Logs.tsx'
 import { openLink } from './opened.ts'
 import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'

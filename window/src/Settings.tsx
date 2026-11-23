@@ -1,14 +1,14 @@
 // Settings, a page of sections. Connections and Schedules are in their own files.
-import type { CardView, ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
+import type { ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
 import { Plus, SlidersHorizontal } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { AccountsSection, Foot } from './Accounts.tsx'
-import { Activity } from './Activity.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
+import { Logs } from './Logs.tsx'
 import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
 import { Standing } from './Rules.tsx'
@@ -65,7 +65,7 @@ const PAGES: { name: string; parts: [string, string][] }[] = [
   {
     name: 'Data',
     parts: [
-      ['activity', 'Activity'],
+      ['logs', 'Logs'],
       ['backup', 'Backup and restore'],
       ['files', 'Files'],
     ],
@@ -78,6 +78,7 @@ const MOVED: Record<string, string> = {
   permissions: 'rules',
   work: 'rules',
   data: 'backup',
+  activity: 'logs',
 }
 
 // how far below the scroll's top a part counts as the one in view: under the pinned tabs
@@ -87,12 +88,10 @@ export function Settings({
   tab,
   open,
   version,
-  cards,
 }: {
   tab: string | null
   open: string | null
   version: number
-  cards: CardView[]
 }) {
   const [view, setView] = useState<ConnectorsView | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -182,7 +181,7 @@ export function Settings({
       <Connections view={view} open={open} version={version} owner={!member} onChange={load} />
     ),
     rules: <RulesPart version={version} owner={!member} />,
-    activity: <Activity version={version} cards={cards} />,
+    logs: <Logs version={version} />,
     backup: <DataSection />,
     files: <KeptFiles version={version} module={open} />,
   }
@@ -336,12 +335,15 @@ function DataSection() {
   }
   if (!view)
     return (
-      <Section title="Data" about="Your backups.">
+      <Section title="Backup and restore" about="Your backups.">
         {problem ? <p className="text-ink-2 text-md">{problem}</p> : <Waiting className="p-0" />}
       </Section>
     )
   return (
-    <Section title="Data" about="Your last ten backups. Go back to any of them, or take one now.">
+    <Section
+      title="Backup and restore"
+      about="Your last ten backups. Go back to any of them, or take one now."
+    >
       <div>
         <Button
           size="sm"

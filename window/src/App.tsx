@@ -328,7 +328,7 @@ export function App() {
         return place.kind === 'schedule'
           ? { label: 'Automations', href: '#/settings/schedules' }
           : place.kind === 'run'
-            ? { label: 'Activity', href: '#/settings/activity' }
+            ? { label: 'Logs', href: '#/settings/logs' }
             : { label: 'Rules', href: '#/settings/rules' }
       // an agent's page is one of Agents › Setup
       case 'agent':
@@ -503,12 +503,7 @@ export function App() {
                       onName={setPersonName}
                     />
                   ) : place.at === 'settings' ? (
-                    <Settings
-                      tab={place.section}
-                      open={place.open}
-                      version={version}
-                      cards={stream?.cards ?? []}
-                    />
+                    <Settings tab={place.section} open={place.open} version={version} />
                   ) : moduleHereId ? (
                     <ModuleScreen
                       moduleId={moduleHereId}
