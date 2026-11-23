@@ -17,6 +17,7 @@ import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { CorePicture } from './ui/core-file.tsx'
 import { Answer, Question } from './ui/question.tsx'
+import { isYesNo, TickCross } from './ui/yes-no.tsx'
 import { answerWords } from './vocabulary.ts'
 import { WatchPage } from './WatchPage.tsx'
 
@@ -212,16 +213,24 @@ function CardBody({
         </div>
       )}
       <Actions>
-        {card.options.map((o, i) => (
-          <Button
-            key={o}
-            variant={i === 0 ? 'primary' : 'default'}
+        {isYesNo(card.options) ? (
+          <TickCross
+            value={null}
             disabled={busy}
-            onClick={() => answer(o)}
-          >
-            {optionWords(o)}
-          </Button>
-        ))}
+            onChange={(a) => void answer(a === 'yes' ? 'Yes' : 'No')}
+          />
+        ) : (
+          card.options.map((o, i) => (
+            <Button
+              key={o}
+              variant={i === 0 ? 'primary' : 'default'}
+              disabled={busy}
+              onClick={() => answer(o)}
+            >
+              {optionWords(o)}
+            </Button>
+          ))
+        )}
         {card.kind === 'permission' && (
           <Button variant="ghost" disabled={busy} onClick={() => onChange(card)}>
             Change something

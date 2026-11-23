@@ -6,7 +6,7 @@ import { cn } from './cn.ts'
 import { fitWords } from './fit.tsx'
 
 const button = cva(
-  'group/fit inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+  'group/fit inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border font-medium transition-colors press disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -58,7 +58,7 @@ export function IconButton({
       aria-label={label}
       data-tip={label}
       className={cn(
-        'grid size-7 shrink-0 place-items-center rounded-sm text-ink-3 transition-colors hover:bg-hover hover:text-ink disabled:opacity-50',
+        'grid size-7 shrink-0 place-items-center rounded-sm text-ink-3 press hover:bg-hover hover:text-ink disabled:opacity-50',
         className,
       )}
       {...props}

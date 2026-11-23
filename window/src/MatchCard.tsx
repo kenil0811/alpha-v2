@@ -8,6 +8,7 @@ import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
 import { Info } from './ui/info.tsx'
+import { TickCross } from './ui/yes-no.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
@@ -86,21 +87,13 @@ export function MatchCard({ card, match }: { card: CardView; match: MatchView })
               <Side s={p.b} />
             </div>
             <Actions>
-              <Button
-                size="sm"
-                variant="primary"
+              <TickCross
+                value={null}
+                yes="Merge"
+                no="Keep apart"
                 disabled={busy}
-                onClick={() => act(`/api/people/pairs/${p.id}`, { merge: true })}
-              >
-                Merge
-              </Button>
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() => act(`/api/people/pairs/${p.id}`, { merge: false })}
-              >
-                Keep apart
-              </Button>
+                onChange={(a) => act(`/api/people/pairs/${p.id}`, { merge: a === 'yes' })}
+              />
             </Actions>
           </div>
         ))}

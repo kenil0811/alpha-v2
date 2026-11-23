@@ -7,6 +7,7 @@ import { RUN_STATE } from './runState.ts'
 import { MOD } from './time.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
+import { CodeLine } from './ui/code-line.tsx'
 import { Cut, Cuts } from './ui/cut.tsx'
 import { Dot, SIGNAL_WORDS } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
@@ -19,6 +20,7 @@ import { SideItem, SideList } from './ui/side-list.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
+import { type Answer, TickCross } from './ui/yes-no.tsx'
 
 // a field's choices, as the parts page shows them
 const CHOICES = {
@@ -41,6 +43,7 @@ export function Parts() {
   const [view, setView] = useState<'table' | 'board'>('table')
   const [on, setOn] = useState(true)
   const [cut, setCut] = useState<'all' | 'failed'>('all')
+  const [answer, setAnswer] = useState<Answer>(null)
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
@@ -61,6 +64,15 @@ export function Parts() {
               <IconButton label="Mail">
                 <Mail className="size-4" />
               </IconButton>
+            </div>
+          </Section>
+          <Section
+            title="Yes and no, and what to paste"
+            about="One thing's yes and no is a tick and a cross; what to paste elsewhere sits in a line with its copy button."
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <TickCross value={answer} onChange={setAnswer} />
+              <CodeLine className="w-fit" text="claude setup-token" />
             </div>
           </Section>
           <Section title="Pills, chips and labels" about="States only in green, amber and red.">

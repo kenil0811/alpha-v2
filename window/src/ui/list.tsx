@@ -1,11 +1,24 @@
-// A list: rows in one bordered box, each with what it is, a line under it, and its actions.
-import type { ReactNode } from 'react'
+// A list: rows in one bordered box, each with what it is, a line under it, and its actions. A row
+// that arrives after the list first drew fades and rises in once; the rows it opened with never move.
+import { Children, createContext, type ReactNode, useContext, useEffect, useState } from 'react'
 import { cn } from './cn.ts'
 import { FRAME } from './frame.tsx'
 import { Info } from './info.tsx'
 
+const Drawn = createContext(false)
+
 export function List({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn(FRAME, 'overflow-hidden', className)}>{children}</div>
+  // drawn once it has shown rows: what loads into an empty list is not new
+  const [drawn, setDrawn] = useState(false)
+  const some = Children.toArray(children).length > 0
+  useEffect(() => {
+    if (some) setDrawn(true)
+  }, [some])
+  return (
+    <div className={cn(FRAME, 'overflow-hidden', className)}>
+      <Drawn.Provider value={drawn}>{children}</Drawn.Provider>
+    </div>
+  )
 }
 
 export function Row({
@@ -30,10 +43,13 @@ export function Row({
   className?: string | undefined
 }) {
   const name = cn('font-medium text-base text-ink', wrap ? 'break-words' : 'truncate')
+  // new to a list already drawn: it rises in once (kept from its first render)
+  const [fresh] = useState(useContext(Drawn))
   return (
     <div
       className={cn(
         'group/row border-hair border-t first:border-t-0',
+        fresh && 'rise-in',
         indent && 'bg-canvas',
         className,
       )}

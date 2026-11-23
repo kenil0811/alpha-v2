@@ -248,6 +248,21 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
     expect(read('Assistant.tsx')).not.toMatch(/Expand to half|Open the whole conversation/)
   })
 
+  it('L20: yes and no to one thing is the tick and the cross, never two worded buttons', () => {
+    // no file with a worded Approve button and a worded Decline one; a card's plain Yes and No
+    // reach their buttons only past isYesNo, which draws the tick and the cross
+    const worded = (word: string) => new RegExp(`>\\s*${word}\\s*<|^\\s*${word}\\s*$`, 'm')
+    const found: string[] = []
+    for (const file of sources(SRC)) {
+      const text = readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '')
+      if (worded('Approve').test(text) && worded('Decline').test(text))
+        found.push(relative(SRC, file))
+      if (/\{(?:answerWords|optionWords)\(o\)\}/.test(text) && !text.includes('isYesNo('))
+        found.push(relative(SRC, file))
+    }
+    expect(found).toEqual([])
+  })
+
   it('T2: no cards of counts on a table', () => {
     expect(existsSync(join(SRC, 'table', 'Metrics.tsx'))).toBe(false)
   })

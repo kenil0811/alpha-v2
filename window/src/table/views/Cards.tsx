@@ -147,7 +147,7 @@ export function GalleryView({
             type="button"
             id={`row-${r.id}`}
             onClick={() => onOpen(r.id)}
-            className={`${FRAME} flex flex-col gap-2 p-4 text-left hover:border-accent-line`}
+            className={`${FRAME} flex flex-col gap-2 p-4 text-left hover:border-accent-line lift`}
           >
             <span className="line-clamp-2 font-medium text-base text-ink">
               {titleOf(fields, r)}
