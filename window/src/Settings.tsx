@@ -1,15 +1,14 @@
 // Settings, a page of sections. Connections and Schedules are in their own files.
 import type { CardView, ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
 import { Check, SlidersHorizontal, Sparkles } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { AccountsSection, Foot } from './Accounts.tsx'
 import { Activity } from './Activity.tsx'
-import { AgentsSection } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
-import { Modules, when } from './Modules.tsx'
+import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
@@ -32,31 +31,58 @@ import { Confirm } from './ui/dialog.tsx'
 import { pastedKey, SecretField } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
+import { notify } from './ui/notice.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { SideItem, SideList } from './ui/side-list.tsx'
 import { Switch } from './ui/switch.tsx'
+import { Tabs } from './ui/tabs.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { WaitingRules } from './WaitingRules.tsx'
 
-// Settings: how Alpha runs, a list of sections on the left and one section at a time. The tabs
-// from Agents to How to work were Intelligence's; they sit here until their own homes (Governance,
-// the agents) take them.
-const TABS = [
-  ['model', 'LLM'],
-  ['data', 'Data'],
-  ['appearance', 'Appearance'],
-  ['permissions', 'Permissions'],
-  ['activity', 'Activity'],
-  ['people', 'People'],
-  ['connections', 'Connections'],
-  ['files', 'Files'],
-  ['agents', 'Agents'],
-  ['modules', 'Modules'],
-  ['schedules', 'Schedules'],
-  ['work', 'How to work'],
-] as const
+// Settings: four pages on the left; a page's parts run one under another in one scroll, their
+// names a row of tabs pinned at its top, following the scroll, a click on one scrolling to it
+// (Vikas, 23 Nov). A part's id is its address (#/settings/connections). Agents and modules have
+// their own Setup.
+const PAGES: { name: string; parts: [string, string][] }[] = [
+  {
+    name: 'General',
+    parts: [
+      ['appearance', 'Appearance'],
+      ['people', 'Members'],
+    ],
+  },
+  {
+    name: 'Intelligence',
+    parts: [
+      ['model', 'LLM'],
+      ['schedules', 'Automations'],
+      ['connections', 'Connections'],
+    ],
+  },
+  { name: 'Rules', parts: [['rules', 'Rules']] },
+  {
+    name: 'Data',
+    parts: [
+      ['activity', 'Activity'],
+      ['backup', 'Backup and restore'],
+      ['files', 'Files'],
+    ],
+  },
+]
+
+// Old addresses (bookmarks, links in cards) and the part they mean now.
+const MOVED: Record<string, string> = {
+  llm: 'model',
+  usage: 'model',
+  permissions: 'rules',
+  work: 'rules',
+  data: 'backup',
+}
+
+// how far below the scroll's top a part counts as the one in view: under the pinned tabs
+const UNDER_TABS = 64
 
 export function Settings({
   tab,
@@ -82,30 +108,78 @@ export function Settings({
   useEffect(() => {
     api.get<Me>('/api/me').then(setMe, () => undefined)
   }, [])
-  // a member does not see the owner's sections (Data, People); People only where people sign in
+  // a member does not see the owner's parts (backups, members); Members only where people sign in
   const member = me?.user.role === 'member'
-  const hidden = new Set(member ? ['data', 'people'] : me?.signIn ? [] : ['people'])
-  const tabs = (TABS as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
-  const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? TABS[0][0]
+  const hidden = new Set(member ? ['backup', 'people'] : me?.signIn ? [] : ['people'])
+  const pages = PAGES.map((p) => ({ ...p, parts: p.parts.filter(([id]) => !hidden.has(id)) }))
+  const asked = MOVED[tab ?? ''] ?? tab
+  const page = pages.find((p) => p.parts.some(([id]) => id === asked)) ?? pages[0]
+  const parts = page?.parts ?? []
+  const first = parts[0]?.[0] ?? ''
+  const askedPart = parts.some(([id]) => id === asked) ? (asked ?? first) : first
+
+  const scroller = useRef<HTMLDivElement>(null)
+  const [seen, setSeen] = useState(askedPart) // the part in view, for the tabs
+  // the tabs follow only the person's own scrolling: after a jump to a part (a tab, the address),
+  // the part asked for stays chosen even where the page cannot scroll it to the top
+  const byHand = useRef(false)
+  // the part chosen, named in the address without a jump, so a reload lands on it
+  const mark = useCallback((id: string) => {
+    setSeen(id)
+    history.replaceState(null, '', `#/settings/${id}`)
+  }, [])
+  const hand = () => {
+    byHand.current = true
+  }
+  const scrollTo = useCallback(
+    (id: string) => {
+      const box = scroller.current
+      const el = document.getElementById(`settings-${id}`)
+      mark(id)
+      byHand.current = false
+      if (box && el)
+        box.scrollTop +=
+          el.getBoundingClientRect().top - box.getBoundingClientRect().top - UNDER_TABS
+    },
+    [mark],
+  )
+  // the address's part, once its page has drawn (the parts above it load first)
+  const drawn = view !== null
+  useEffect(() => {
+    if (!drawn) return
+    // ponytail: one wait for the parts above to load; a part that loads later can push it down
+    const t = setTimeout(() => scrollTo(askedPart), 150)
+    return () => clearTimeout(t)
+  }, [drawn, askedPart, scrollTo])
+  // scrolling: the last part whose top has passed under the tabs, the last one at the foot
+  const spy = () => {
+    const box = scroller.current
+    if (!box || !byHand.current) return
+    const top = box.getBoundingClientRect().top + UNDER_TABS + 8
+    let now = first
+    for (const [id] of parts)
+      if ((document.getElementById(`settings-${id}`)?.getBoundingClientRect().top ?? top) <= top)
+        now = id
+    if (box.scrollTop + box.clientHeight >= box.scrollHeight - 4) now = parts.at(-1)?.[0] ?? now
+    if (now !== seen) mark(now)
+  }
+
   if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />
   const body: Record<string, ReactNode> = {
-    work: <HowToWork version={version} />,
-    agents: <AgentsSection version={version} />,
-    schedules: <Schedules version={version} />,
-    connections: <Connections view={view} open={open} version={version} onChange={load} />,
-    files: <KeptFiles version={version} module={open} />,
-    modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
-    permissions: <Permissions version={version} owner={!member} />,
+    appearance: <Appearance view={view} onChange={load} />,
+    people: <AccountsSection />,
     model: (
       <>
         <UsageSection />
         <ModelSection />
       </>
     ),
+    schedules: <Schedules version={version} />,
+    connections: <Connections view={view} open={open} version={version} onChange={load} />,
+    rules: <Permissions version={version} owner={!member} />,
     activity: <Activity version={version} cards={cards} />,
-    people: <AccountsSection />,
-    data: <DataSection />,
-    appearance: <Appearance view={view} onChange={load} />,
+    backup: <DataSection />,
+    files: <KeptFiles version={version} module={open} />,
   }
   // the bar holds Settings' icon tile and title
   const head = (
@@ -118,23 +192,63 @@ export function Settings({
       </div>
     </InBar>
   )
-  const go = (id: string) => {
-    window.location.hash = `#/settings/${id}`
-  }
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
-        {head}
-        <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-          <SideList label="Settings" className="max-md:flex-row max-md:flex-wrap">
-            {tabs.map(([id, name]) => (
-              <SideItem key={id} on={id === at} onClick={() => go(id)}>
-                {name}
-              </SideItem>
+    // biome-ignore lint/a11y/noStaticElementInteractions: it only notes that the person scrolls
+    <div
+      ref={scroller}
+      onScroll={spy}
+      onWheel={hand}
+      onTouchStart={hand}
+      onPointerDown={hand}
+      onKeyDown={hand}
+      className="h-full overflow-y-auto"
+    >
+      {head}
+      <div className="mx-auto grid max-w-page grid-cols-[170px_1fr] gap-7 px-8 pt-7 pb-12 max-md:grid-cols-1">
+        <SideList
+          label="Settings"
+          className="sticky top-7 max-md:static max-md:flex-row max-md:flex-wrap"
+        >
+          {pages.map((p) => (
+            <SideItem
+              key={p.name}
+              on={p === page}
+              onClick={() => {
+                const to = p.parts[0]?.[0]
+                if (p === page && to) scrollTo(to)
+                else if (to) window.location.hash = `#/settings/${to}`
+              }}
+            >
+              {p.name}
+            </SideItem>
+          ))}
+        </SideList>
+        <div className="flex min-w-0 flex-col">
+          {parts.length > 1 && (
+            <div className="sticky top-0 z-2 bg-canvas">
+              <Tabs
+                label={page?.name ?? 'Settings'}
+                under
+                tabs={parts.map(([id, name]) => ({
+                  key: id,
+                  href: `#/settings/${id}`,
+                  label: name,
+                  sel: id === seen,
+                  onPick: () => scrollTo(id),
+                }))}
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-12 pt-6">
+            {parts.map(([id]) => (
+              <div key={id} id={`settings-${id}`} className="flex flex-col gap-8">
+                {body[id]}
+              </div>
             ))}
-          </SideList>
-          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
+          </div>
         </div>
+      </div>
+      <div className="mx-auto max-w-page px-8 pb-12">
         <Foot me={me} />
       </div>
     </div>
@@ -164,6 +278,7 @@ function Permissions({ version, owner }: { version: number; owner: boolean }) {
         <WaitingRules version={version} />
         <Standing version={version} />
       </Section>
+      <HowToWork version={version} />
     </>
   )
 }
@@ -429,10 +544,16 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
   const tables = view.connections.flatMap((k) => k.tables)
   const shown = tables.some((t) => !t.hidden)
   const { busy, problem, act } = useAct(onChange)
-  const showTables = (on: boolean) =>
-    act(async () => {
+  const showTables = async (on: boolean) => {
+    const ok = await act(async () => {
       for (const t of tables) await api.post(`/api/tables/${t.id}/sidebar`, { shown: on })
     })
+    if (ok && !on)
+      notify({
+        words: 'Mail, events and contacts are out of the sidebar. Show them again in',
+        where: { label: 'Appearance', href: '#/settings/appearance' },
+      })
+  }
   return (
     <Section title="Appearance">
       <Refusal words={problem} />
