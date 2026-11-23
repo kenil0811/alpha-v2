@@ -121,13 +121,21 @@ export class SignIn {
         throw new Refused(`That is not a ${f.label}: it looks like ${f.example}.`)
     }
     const secret = (given.secret ?? '').trim()
-    if (secret) keepOut(secret)
     if (p.fields.secret) {
+      // the id pasted into both fields looks like a secret too (Intuit's are alike): said plainly
+      if (secret && secret === typed.app)
+        throw new Refused(
+          `That is the ${p.fields.app.label} again: paste the ${p.fields.secret.label} there.`,
+        )
       if (secret && !p.fields.secret.pattern.test(secret))
         throw new Refused(`That is not a ${p.fields.secret.label}.`)
       if (!secret && !(await this.options.secrets.get(SECRET(p.name))))
         throw new Refused(`${p.title}'s sign-in app needs its ${p.fields.secret.label}.`)
-      if (secret) await this.options.secrets.set(SECRET(p.name), secret)
+      // kept out of every journal line only once it is one, so a mistyped try leaves nothing behind
+      if (secret) {
+        keepOut(secret)
+        await this.options.secrets.set(SECRET(p.name), secret)
+      }
     }
     const app: SignInApp = {
       app: typed.app,

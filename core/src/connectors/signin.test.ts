@@ -385,6 +385,16 @@ describe('signing in with an app that has a secret (Intuit)', () => {
     expect(signIn.registered(madeUpIntuit())).toBe('http://localhost:4700/api/sign-in/back')
   })
 
+  it('says so when the Client ID is pasted as the secret too, and takes the right one after', async () => {
+    const { signIn } = setUp()
+    await expect(
+      signIn.setApp('intuit', { ...INTUIT_APP, secret: INTUIT_APP.app }, kenil()),
+    ).rejects.toThrow(/That is the Client ID again: paste the Client Secret there/)
+    expect(await secrets.get('sign-in-app-secret:intuit')).toBeNull()
+    await signIn.setApp('intuit', { ...INTUIT_APP, secret: INTUIT_SECRET }, kenil())
+    expect(signIn.app('intuit')).toEqual({ app: INTUIT_APP.app, secret: true })
+  })
+
   it('signs in with the secret and no PKCE, and keeps the company picked on the connection', async () => {
     const { signIn, service } = setUp()
     await signIn.setApp('intuit', { ...INTUIT_APP, secret: INTUIT_SECRET }, kenil())

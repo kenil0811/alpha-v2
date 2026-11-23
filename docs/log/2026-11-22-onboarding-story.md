@@ -189,3 +189,8 @@ On his word, setting up Avilo's Alpha again: everyone who signs in changes their
 Settings › People, with their current one and the new one twice; the browser they change it in
 stays signed in, every other one is signed out, and the journal says they changed it. A member's
 People shows only that; the owner's shows it above the people. Held under A6.
+
+A sign-in app's Save refused with "That line would carry a secret": the Client ID had gone into
+the Client Secret field too (Intuit's look alike), so the journal line naming the ID carried the
+"secret". It now says so ("That is the Client ID again"), and a secret is kept out of the journal
+only once it is checked and kept, so a mistyped try leaves nothing behind.
