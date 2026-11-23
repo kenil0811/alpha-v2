@@ -58,6 +58,7 @@ export function ShortList<T>({
   remove: {
     title: string
     yes: string
+    done: string // the notice once it is gone
     what: (item: T) => ReactNode
     run: (item: T) => Promise<unknown>
   }
@@ -141,11 +142,12 @@ export function ShortList<T>({
         open={!!asked}
         title={remove.title}
         yes={remove.yes}
+        done={{ words: remove.done }}
         busy={busy}
         onClose={() => setAsking(null)}
         onYes={() => {
           setAsking(null)
-          if (asked) void act(() => remove.run(asked), keyOf(asked))
+          return asked ? act(() => remove.run(asked), keyOf(asked)) : false
         }}
       >
         {asked ? remove.what(asked) : null}

@@ -309,7 +309,13 @@ function RulePage({ rule: r }: { rule: RuleView }) {
         yes={noticed ? 'Dismiss it' : 'Revoke it'}
         busy={busy}
         onClose={() => setAsking(false)}
-        onYes={() => act(() => api.post(`/api/rules/${r.id}/revoke`)).then(() => setAsking(false))}
+        done={{ words: noticed ? 'Dismissed.' : 'The rule is revoked.' }}
+        onYes={() =>
+          act(() => api.post(`/api/rules/${r.id}/revoke`)).then((ok) => {
+            setAsking(false)
+            return ok
+          })
+        }
       >
         “{r.words}” {noticed ? 'Alpha stops following it.' : 'stops holding.'}
       </Confirm>

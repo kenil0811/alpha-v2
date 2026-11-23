@@ -44,10 +44,11 @@ export function TokenForm({ has, onSaved }: { has: boolean; onSaved: (m: ModelVi
         open={removing}
         title="Delete the token?"
         yes="Delete the token"
+        done={{ words: 'The token is deleted.' }}
         busy={busy}
         onClose={() => setRemoving(false)}
         onYes={() =>
-          void act(async () => {
+          act(async () => {
             onSaved(await api.delete<ModelView>('/api/model/token'))
             setRemoving(false)
           })

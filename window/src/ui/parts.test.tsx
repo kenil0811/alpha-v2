@@ -17,7 +17,14 @@ describe('the shared parts', () => {
 
   it('asks before a delete in the one pop-up, Cancel first and the button naming what happens', () => {
     const html = renderToString(
-      <Confirm open title="Delete this row?" yes="Delete it" onYes={() => {}} onClose={() => {}}>
+      <Confirm
+        open
+        title="Delete this row?"
+        done={{ words: 'Done.' }}
+        yes="Delete it"
+        onYes={() => {}}
+        onClose={() => {}}
+      >
         It can’t be brought back.
       </Confirm>,
     )

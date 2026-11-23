@@ -369,10 +369,14 @@ export function AgentPage({
           title={`Delete ${a.name}?`}
           yes="Delete it"
           busy={busy}
+          done={{
+            words: `${a.name} is deleted. Its conversations are in`,
+            where: { label: 'Activity', href: '#/settings/activity' },
+          }}
           onClose={() => setAsking(false)}
           onYes={() => {
             setAsking(false)
-            act(async () => {
+            return act(async () => {
               await api.post(`/api/agents/${a.id}/remove`)
               gone.current = true
               // on Agents the list goes back to the Chief of staff by itself

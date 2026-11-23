@@ -81,8 +81,14 @@ export function TickedBar({
         open={removing}
         title={`Delete ${n === 1 ? 'this row' : `these ${n} rows`}?`}
         yes={`Delete ${n === 1 ? 'it' : 'them'}`}
+        done={{
+          words: `${n === 1 ? 'The row is' : `${n} rows are`} deleted. Bring ${n === 1 ? 'it' : 'them'} back from`,
+          where: { label: 'Activity', href: '#/settings/activity' },
+        }}
         onYes={async () => {
-          if (await onRemove()) setRemoving(false)
+          const ok = await onRemove()
+          if (ok) setRemoving(false)
+          return ok
         }}
         onClose={() => setRemoving(false)}
       >
