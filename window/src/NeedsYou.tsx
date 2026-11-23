@@ -59,6 +59,29 @@ export function fromWhom(cards: CardView[], signIns: SignIn[], agents: AgentView
 
 const many = (f: From) => f.cards.length + f.signIns.length
 
+// The card's main words for its width: the longest that waits, and whether anything sits under it
+// (its detail, choices, what it rests on, or a file, draft, match, review or browser step).
+export const mainOf = (from: From[]): { words: string; under: boolean } | undefined => {
+  const all = from.flatMap((f) => f.cards)
+  const long = all.reduce<CardView | undefined>(
+    (a, c) => (!a || c.words.length > a.words.length ? c : a),
+    undefined,
+  )
+  if (!long) return undefined
+  const { detail, options, restsOn, filing, draft, match, review, acting } = long
+  const under = !!(
+    detail ||
+    options.length ||
+    restsOn.length ||
+    filing ||
+    draft ||
+    match ||
+    review ||
+    acting
+  )
+  return { words: long.words, under }
+}
+
 export function NeedsYou({ from, onChange }: { from: From[]; onChange: (c: CardView) => void }) {
   const [chosen, setChosen] = useState<string | null>(null)
   const [at, setAt] = useState(0)

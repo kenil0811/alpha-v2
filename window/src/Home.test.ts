@@ -1,6 +1,6 @@
 import type { AgentView, CardView } from '@alpha/core/api'
 import { expect, it } from 'vitest'
-import { nearestWidth } from './CardGrid.tsx'
+import { fitWidth, nearestWidth } from './CardGrid.tsx'
 import { fromWhom } from './NeedsYou.tsx'
 import { listOf, nameOf } from './ui/question.tsx'
 
@@ -43,4 +43,13 @@ it('reads a detail made only of a list as things to pick, and names each by its 
   expect(items?.map(nameOf)).toEqual(['Maria Chen', 'Tom Alvarez'])
   expect(listOf('Two deals:\n- one\n- two')).toBeNull()
   expect(listOf('- only one')).toBeNull()
+})
+
+it('fits a card to its main words: two lines with something under them, three without', () => {
+  // a 1200px row: a quarter holds about 2 × 0.9 × 244 = 439px of words in two lines
+  expect(fitWidth(400, 2, 1200)).toBe('1/4')
+  expect(fitWidth(600, 2, 1200)).toBe('1/3')
+  expect(fitWidth(600, 3, 1200)).toBe('1/4')
+  expect(fitWidth(900, 2, 1200)).toBe('1/2')
+  expect(fitWidth(5000, 3, 1200)).toBe('1')
 })
