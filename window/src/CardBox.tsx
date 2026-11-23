@@ -1,11 +1,12 @@
 // A card that waits for the person: a question, a gate's yes, a file from the mail,
-// a draft, two who may be the same, rows to decide. The same card wherever it
+// a draft, two who may be the same, rows to decide, Alpha's guesses to check. The same card wherever it
 // shows: the stream, Home, and its own page (#/card/<id>), where a long
 // letter shows whole. Out of Conversation.tsx so that screen only shrinks (the window file wall).
 import type { CardView } from '@alpha/core/api'
 import { TriangleAlert } from 'lucide-react'
 import { useContext, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { CheckCard } from './CheckCard.tsx'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
 import { LiveSignIn } from './LiveSignIn.tsx'
@@ -110,6 +111,7 @@ function CardBody({
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
   if (card.review) return <ReviewCard card={card} review={card.review} />
+  if (card.check) return <CheckCard card={card} check={card.check} />
   const answer = async (a: string, andAlways = false) => {
     // a card that asks you onto an agent's page: its yes opens the page, and handing the page
     // back answers the card
