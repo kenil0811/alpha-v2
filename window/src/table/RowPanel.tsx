@@ -10,7 +10,8 @@ import { type DragEvent, useEffect, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
 import { RecordPages } from '../RecordPages.tsx'
-import { NewTask, TaskList } from '../Tasks.tsx'
+import { TaskList } from '../TaskLine.tsx'
+import { NewTask } from '../Tasks.tsx'
 import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
 import { cutTip } from '../ui/cut-tip.ts'
@@ -51,6 +52,7 @@ export function RowPanel({
       }
       onClose={onClose}
       full={`#/row/${row.id}`}
+      morph="record"
     >
       <RowBody {...rest} row={row} />
       <RecordPages row={row.id} />

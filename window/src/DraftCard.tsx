@@ -8,6 +8,7 @@ import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
+import { Decided, useDecide } from './ui/decided.tsx'
 import { Field } from './ui/field.tsx'
 
 export function DraftCard({ card, draft }: { card: CardView; draft: DraftView }) {
@@ -21,6 +22,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
   const [always, setAlways] = useState(false)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const { box, shown, decide } = useDecide(card.id)
   const changed =
     to.trim() !== draft.message.to.trim() ||
     subject.trim() !== draft.message.subject.trim() ||
@@ -29,7 +31,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
   const act = async (path: string, payload: unknown) => {
     setBusy(true)
     try {
-      await api.post(`/api/cards/${card.id}/${path}`, payload)
+      await decide(path === 'send', () => api.post(`/api/cards/${card.id}/${path}`, payload))
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That did not go through.')
       setBusy(false)
@@ -40,132 +42,138 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
     : null
 
   return (
-    <Card label="Goes outside Alpha" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
-      <div className="text-ink-3 text-sm">
-        {draft.schedule}'s {draft.kind}
-        {draft.about && (
-          <>
-            {' for '}
-            <a
-              className="text-ink-2 hover:underline"
-              href={`#/table/${draft.about.table}?only=${draft.about.row}`}
-            >
-              {draft.about.name}
-            </a>
-          </>
-        )}
-        {draft.note ? ` · ${draft.note}` : ''}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2 text-ink-3 text-sm">
-          <span className="w-14 shrink-0">To</span>
-          <Field
-            aria-label="To"
-            className="flex-1"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </div>
-        {draft.message.cc && (
-          <div className="flex items-center gap-2 text-ink-3 text-sm">
-            <span className="w-14 shrink-0">Cc</span>
-            <span className="text-ink-2">{draft.message.cc}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-2 text-ink-3 text-sm">
-          <span className="w-14 shrink-0">Subject</span>
-          <Field
-            aria-label="Subject"
-            className="flex-1"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          />
-        </div>
-        <textarea
-          aria-label="The email"
-          className={cn(
-            'w-full rounded-md border border-line bg-surface px-2.5 py-2 text-ink text-md outline-none focus:border-accent-line focus:ring-3 focus:ring-accent-soft',
-            // on the card's own page the letter has the room to read it whole
-            whole ? 'min-h-[50dvh]' : 'min-h-36',
-          )}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
-      </div>
-      {card.cannotUndo && (
-        <div className="flex items-center gap-1.5 text-sm text-warn">
-          <TriangleAlert className="size-3.5 shrink-0" />
-          {card.cannotUndo}
-        </div>
-      )}
-      {always && draft.always ? (
-        <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
-          <div className="text-ink text-md">{draft.always}?</div>
-          <div className="text-ink-3 text-sm">
-            This one goes now, and the next ones without asking you, each shown on Home. Revoke it
-            any time in Settings › Permissions.
-          </div>
-          <Actions>
-            <Button variant="primary" disabled={busy} onClick={() => act('send', { always: true })}>
-              Send it, and always
-            </Button>
-            <Button variant="ghost" onClick={() => setAlways(false)}>
-              Back
-            </Button>
-          </Actions>
-        </div>
-      ) : holding ? (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (reason) void act('hold', { reason, words })
-          }}
-        >
-          <div className="flex flex-wrap gap-1.5">
-            {draft.reasons.map((r) => (
-              <Button
-                key={r}
-                size="sm"
-                variant={reason === r ? 'primary' : 'default'}
-                onClick={() => setReason(r)}
+    <Decided box={box} shown={shown}>
+      <Card label="Goes outside Alpha" waits="Waits for you">
+        <div className="font-medium text-ink text-lg">{card.words}</div>
+        <div className="text-ink-3 text-sm">
+          {draft.schedule}'s {draft.kind}
+          {draft.about && (
+            <>
+              {' for '}
+              <a
+                className="text-ink-2 hover:underline"
+                href={`#/table/${draft.about.table}?only=${draft.about.row}`}
               >
-                {r}
-              </Button>
-            ))}
-          </div>
-          <div className="flex gap-2">
+                {draft.about.name}
+              </a>
+            </>
+          )}
+          {draft.note ? ` · ${draft.note}` : ''}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-ink-3 text-sm">
+            <span className="w-14 shrink-0">To</span>
             <Field
+              aria-label="To"
               className="flex-1"
-              value={words}
-              onChange={(e) => setWords(e.target.value)}
-              placeholder="Anything to add, for the schedule"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
             />
-            <Button type="submit" disabled={busy || !reason}>
+          </div>
+          {draft.message.cc && (
+            <div className="flex items-center gap-2 text-ink-3 text-sm">
+              <span className="w-14 shrink-0">Cc</span>
+              <span className="text-ink-2">{draft.message.cc}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-ink-3 text-sm">
+            <span className="w-14 shrink-0">Subject</span>
+            <Field
+              aria-label="Subject"
+              className="flex-1"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+          </div>
+          <textarea
+            aria-label="The email"
+            className={cn(
+              'w-full rounded-md border border-line bg-surface px-2.5 py-2 text-ink text-md outline-none focus:border-accent-line focus:ring-3 focus:ring-accent-soft',
+              // on the card's own page the letter has the room to read it whole
+              whole ? 'min-h-[50dvh]' : 'min-h-36',
+            )}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+        </div>
+        {card.cannotUndo && (
+          <div className="flex items-center gap-1.5 text-sm text-warn">
+            <TriangleAlert className="size-3.5 shrink-0" />
+            {card.cannotUndo}
+          </div>
+        )}
+        {always && draft.always ? (
+          <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
+            <div className="text-ink text-md">{draft.always}?</div>
+            <div className="text-ink-3 text-sm">
+              This one goes now, and the next ones without asking you, each shown on Home. Revoke it
+              any time in Settings › Permissions.
+            </div>
+            <Actions>
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={() => act('send', { always: true })}
+              >
+                Send it, and always
+              </Button>
+              <Button variant="ghost" onClick={() => setAlways(false)}>
+                Back
+              </Button>
+            </Actions>
+          </div>
+        ) : holding ? (
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (reason) void act('hold', { reason, words })
+            }}
+          >
+            <div className="flex flex-wrap gap-1.5">
+              {draft.reasons.map((r) => (
+                <Button
+                  key={r}
+                  size="sm"
+                  variant={reason === r ? 'primary' : 'default'}
+                  onClick={() => setReason(r)}
+                >
+                  {r}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Field
+                className="flex-1"
+                value={words}
+                onChange={(e) => setWords(e.target.value)}
+                placeholder="Anything to add, for the schedule"
+              />
+              <Button type="submit" disabled={busy || !reason}>
+                Decline
+              </Button>
+              <Button variant="ghost" onClick={() => setHolding(false)}>
+                Back
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <Actions>
+            <Button variant="primary" disabled={busy} onClick={() => act('send', { message })}>
+              {changed ? 'Send it as changed' : 'Send it'}
+            </Button>
+            <Button disabled={busy} onClick={() => setHolding(true)}>
               Decline
             </Button>
-            <Button variant="ghost" onClick={() => setHolding(false)}>
-              Back
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <Actions>
-          <Button variant="primary" disabled={busy} onClick={() => act('send', { message })}>
-            {changed ? 'Send it as changed' : 'Send it'}
-          </Button>
-          <Button disabled={busy} onClick={() => setHolding(true)}>
-            Decline
-          </Button>
-          {draft.always && !changed && (
-            <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
-              Always
-            </Button>
-          )}
-        </Actions>
-      )}
-      {problem && <div className="text-bad text-sm">{problem}</div>}
-    </Card>
+            {draft.always && !changed && (
+              <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
+                Always
+              </Button>
+            )}
+          </Actions>
+        )}
+        {problem && <div className="text-bad text-sm">{problem}</div>}
+      </Card>
+    </Decided>
   )
 }

@@ -3,8 +3,7 @@
 // for every row not yet decided. The card closes when each row has one. Where the card puts lines
 // for How to work, each line can be reworded first (Edit), so what is kept is in their words.
 // Each row is the tick, the cross and the chat icon: the chat opens a box whose words go to the
-// agent the card is from, the row marked with the middle choice ("Needs edits"); six rows a page
-// (23 Nov).
+// agent the card is from, the row marked with the middle choice ("Needs edits"); six rows a page.
 import type { CardView, ReviewView } from '@alpha/core/api'
 import { MessageSquareText } from 'lucide-react'
 import { useState } from 'react'

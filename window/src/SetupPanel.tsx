@@ -2,13 +2,16 @@
 // PDF reader downloaded, Gmail, Calendar and Contacts connected, Chrome there for sites the
 // person signs in to. On Home while something essential is not ready; always in Settings.
 import type { SetupView } from '@alpha/core/api'
-import { ChevronRight, LoaderCircle } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { DoneTick } from './ui/done-tick.tsx'
 import { Info } from './ui/info.tsx'
+import { celebrate } from './ui/motion.ts'
+import { Ring } from './ui/ring.tsx'
 import { Switch } from './ui/switch.tsx'
 
 const READY: Record<SetupView['readers']['browser'], string> = {
@@ -94,11 +97,22 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         'Only for sites you sign in to; Alpha opens them in Chrome for you to sign in yourself.',
     },
   ]
+  // the ring over the list, and one small burst the moment the last step is ready
+  const ready = items.filter((s) => s.done).length
+  const wasReady = useRef(ready)
+  useEffect(() => {
+    if (wasReady.current < items.length && ready === items.length) celebrate()
+    wasReady.current = ready
+  }, [ready, items.length])
   const waiting =
     (view.readers.browser !== 'ready' && view.readers.browser !== 'preparing') ||
     (view.readers.documents !== 'ready' && view.readers.documents !== 'preparing')
   return (
     <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-3 text-ink-2 text-md">
+        <Ring done={ready} of={items.length} />
+        {ready === items.length ? 'All set' : `${ready} of ${items.length} ready`}
+      </div>
       <div className="overflow-hidden rounded-lg border border-line bg-surface">
         {items.map((s) => (
           <div
@@ -112,11 +126,11 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
               )}
             >
               <DoneTick done={!!s.done} className="size-3" />
-              {s.busy && <LoaderCircle className="size-3 animate-spin text-ink-3" />}
+              {s.busy && <span className="size-1.5 rounded-full bg-accent face-pulse" />}
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5 font-medium text-ink">
-                {s.words}
+                {s.busy ? <Busy>{s.words}</Busy> : s.words}
                 {s.about && <Info help={s.about} />}
               </span>
               {s.sub && <span className="block text-ink-3 text-sm">{s.sub}</span>}

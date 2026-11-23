@@ -10,6 +10,7 @@ import { openLink } from './opened.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
 import { CoreImage } from './ui/core-file.tsx'
+import { Decided, useDecide } from './ui/decided.tsx'
 import { Field, Select } from './ui/field.tsx'
 
 const SURE: Record<FilingView['sure'], string> = {
@@ -34,13 +35,14 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const { box, shown, decide } = useDecide(card.id)
   const pdf = filing.mime === 'application/pdf' || /\.pdf$/i.test(filing.name)
   const changed = row !== (filing.row ?? '') || kind !== (filing.kind ?? '')
 
   const act = async (path: string, body: unknown) => {
     setBusy(true)
     try {
-      await api.post(`/api/cards/${card.id}/${path}`, body)
+      await decide(path === 'file', () => api.post(`/api/cards/${card.id}/${path}`, body))
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That did not go through.')
       setBusy(false)
@@ -60,205 +62,207 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
   }
 
   return (
-    <Card label="A file from your mail" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
-      <div className="text-ink-3 text-sm">
-        From {filing.from}: “{filing.subject}”
-        {filing.date ? `, ${new Date(filing.date).toLocaleDateString()}` : ''}
-      </div>
-      <div className="flex gap-3">
-        {pdf && (
-          <button
-            type="button"
-            data-tip="See the file"
-            className="w-28 shrink-0 overflow-hidden rounded-sm border border-line bg-surface"
-            onClick={() => openLink(`#/file/${filing.file}`)}
-          >
-            <CoreImage
-              path={`/api/files/${filing.file}/page/1`}
-              alt={`The first page of ${filing.name}`}
-              className="block w-full"
-            />
-          </button>
-        )}
-        <div className="flex min-w-0 flex-col gap-1.5 text-md">
-          <button
-            type="button"
-            className="truncate text-left text-ink hover:underline"
-            onClick={() => openLink(`#/file/${filing.file}`)}
-          >
-            {filing.name}
-          </button>
-          {filing.about && <div className="text-ink-2">{filing.about}</div>}
-          <div className="text-ink-3 text-sm">
-            {SURE[filing.sure]}
-            {filing.why ? `: ${filing.why}` : '.'}
+    <Decided box={box} shown={shown}>
+      <Card label="A file from your mail" waits="Waits for you">
+        <div className="font-medium text-ink text-lg">{card.words}</div>
+        <div className="text-ink-3 text-sm">
+          From {filing.from}: “{filing.subject}”
+          {filing.date ? `, ${new Date(filing.date).toLocaleDateString()}` : ''}
+        </div>
+        <div className="flex gap-3">
+          {pdf && (
+            <button
+              type="button"
+              data-tip="See the file"
+              className="w-28 shrink-0 overflow-hidden rounded-sm border border-line bg-surface"
+              onClick={() => openLink(`#/file/${filing.file}`)}
+            >
+              <CoreImage
+                path={`/api/files/${filing.file}/page/1`}
+                alt={`The first page of ${filing.name}`}
+                className="block w-full"
+              />
+            </button>
+          )}
+          <div className="flex min-w-0 flex-col gap-1.5 text-md">
+            <button
+              type="button"
+              className="truncate text-left text-ink hover:underline"
+              onClick={() => openLink(`#/file/${filing.file}`)}
+            >
+              {filing.name}
+            </button>
+            {filing.about && <div className="text-ink-2">{filing.about}</div>}
+            <div className="text-ink-3 text-sm">
+              {SURE[filing.sure]}
+              {filing.why ? `: ${filing.why}` : '.'}
+            </div>
           </div>
         </div>
-      </div>
-      {place && (
-        <div className="flex flex-wrap items-center gap-2">
-          {filing.places.length > 1 && (
+        {place && (
+          <div className="flex flex-wrap items-center gap-2">
+            {filing.places.length > 1 && (
+              <Select
+                aria-label="Which table"
+                value={table}
+                onChange={(e) => {
+                  const next = filing.places.find((p) => p.table === e.target.value)
+                  setTable(e.target.value)
+                  setRows(next?.rows ?? [])
+                  setRow('')
+                  setKind('')
+                }}
+              >
+                {filing.places.map((p) => (
+                  <option key={p.table} value={p.table}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            )}
             <Select
-              aria-label="Which table"
-              value={table}
-              onChange={(e) => {
-                const next = filing.places.find((p) => p.table === e.target.value)
-                setTable(e.target.value)
-                setRows(next?.rows ?? [])
-                setRow('')
-                setKind('')
-              }}
+              aria-label={`Which row of ${place.name}`}
+              className="min-w-48 flex-1"
+              value={row}
+              onChange={(e) => setRow(e.target.value)}
             >
-              {filing.places.map((p) => (
-                <option key={p.table} value={p.table}>
-                  {p.name}
+              <option value="">Pick a row of {place.name}</option>
+              {rows.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
                 </option>
               ))}
             </Select>
-          )}
-          <Select
-            aria-label={`Which row of ${place.name}`}
-            className="min-w-48 flex-1"
-            value={row}
-            onChange={(e) => setRow(e.target.value)}
-          >
-            <option value="">Pick a row of {place.name}</option>
-            {rows.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            aria-label="What kind of document"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-          >
-            <option value="">No kind given</option>
-            {place.kinds.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </Select>
-          <Button size="sm" variant="ghost" onClick={() => setLooking(!looking)}>
-            <Search className="size-3.25" />
-            Another row
-          </Button>
-        </div>
-      )}
-      {looking && (
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void find()
-          }}
-        >
-          <Field
-            className="flex-1"
-            value={words}
-            onChange={(e) => setWords(e.target.value)}
-            placeholder={`Words of the ${place?.name ?? 'row'} it goes on`}
-          />
-          <Button type="submit" size="sm">
-            Find
-          </Button>
-        </form>
-      )}
-      {!changed && filing.already.length > 0 && (
-        <div className="text-sm text-warn">
-          That row has a {filing.kind} already: {filing.already.join(', ')}.
-        </div>
-      )}
-      {always && filing.always ? (
-        <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
-          <div className="text-ink text-md">{filing.always}?</div>
-          <div className="text-ink-3 text-sm">
-            This one is filed now, and the next ones without asking you, each shown on Home. Revoke
-            it any time in Settings › Permissions.
+            <Select
+              aria-label="What kind of document"
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+            >
+              <option value="">No kind given</option>
+              {place.kinds.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </Select>
+            <Button size="sm" variant="ghost" onClick={() => setLooking(!looking)}>
+              <Search className="size-3.25" />
+              Another row
+            </Button>
           </div>
+        )}
+        {looking && (
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void find()
+            }}
+          >
+            <Field
+              className="flex-1"
+              value={words}
+              onChange={(e) => setWords(e.target.value)}
+              placeholder={`Words of the ${place?.name ?? 'row'} it goes on`}
+            />
+            <Button type="submit" size="sm">
+              Find
+            </Button>
+          </form>
+        )}
+        {!changed && filing.already.length > 0 && (
+          <div className="text-sm text-warn">
+            That row has a {filing.kind} already: {filing.already.join(', ')}.
+          </div>
+        )}
+        {always && filing.always ? (
+          <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
+            <div className="text-ink text-md">{filing.always}?</div>
+            <div className="text-ink-3 text-sm">
+              This one is filed now, and the next ones without asking you, each shown on Home.
+              Revoke it any time in Settings › Permissions.
+            </div>
+            <Actions>
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={() => act('file', { row, kind: kind || null, always: true })}
+              >
+                File it, and always
+              </Button>
+              <Button variant="ghost" onClick={() => setAlways(false)}>
+                Back
+              </Button>
+            </Actions>
+          </div>
+        ) : declining ? (
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void act('decline', { reason })
+            }}
+          >
+            <div className="flex flex-wrap gap-1.5">
+              {REASONS.map((r) => (
+                <Button
+                  key={r}
+                  size="sm"
+                  variant={reason === r ? 'primary' : 'default'}
+                  onClick={() => setReason(r)}
+                >
+                  {r}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Field
+                className="flex-1"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Why not, in a few words"
+              />
+              <Button type="submit" variant="warn" disabled={busy}>
+                Decline
+              </Button>
+              <Button variant="ghost" onClick={() => setDeclining(false)}>
+                Back
+              </Button>
+            </div>
+          </form>
+        ) : (
           <Actions>
             <Button
               variant="primary"
               disabled={busy}
-              onClick={() => act('file', { row, kind: kind || null, always: true })}
+              onClick={() => act('file', { row: row || null, kind: row ? kind || null : null })}
             >
-              File it, and always
+              {!row
+                ? 'Keep it in Alpha'
+                : !changed && filing.already.length
+                  ? 'File it beside'
+                  : 'File it'}
             </Button>
-            <Button variant="ghost" onClick={() => setAlways(false)}>
-              Back
-            </Button>
-          </Actions>
-        </div>
-      ) : declining ? (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void act('decline', { reason })
-          }}
-        >
-          <div className="flex flex-wrap gap-1.5">
-            {REASONS.map((r) => (
+            {!changed && filing.already.length > 0 && (
               <Button
-                key={r}
-                size="sm"
-                variant={reason === r ? 'primary' : 'default'}
-                onClick={() => setReason(r)}
+                disabled={busy}
+                onClick={() => act('file', { row, kind: kind || null, replace: true })}
               >
-                {r}
+                Replace it
               </Button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Field
-              className="flex-1"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Why not, in a few words"
-            />
-            <Button type="submit" variant="warn" disabled={busy}>
+            )}
+            <Button disabled={busy} onClick={() => setDeclining(true)}>
               Decline
             </Button>
-            <Button variant="ghost" onClick={() => setDeclining(false)}>
-              Back
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <Actions>
-          <Button
-            variant="primary"
-            disabled={busy}
-            onClick={() => act('file', { row: row || null, kind: row ? kind || null : null })}
-          >
-            {!row
-              ? 'Keep it in Alpha'
-              : !changed && filing.already.length
-                ? 'File it beside'
-                : 'File it'}
-          </Button>
-          {!changed && filing.already.length > 0 && (
-            <Button
-              disabled={busy}
-              onClick={() => act('file', { row, kind: kind || null, replace: true })}
-            >
-              Replace it
-            </Button>
-          )}
-          <Button disabled={busy} onClick={() => setDeclining(true)}>
-            Decline
-          </Button>
-          {filing.always && !changed && (
-            <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
-              Always
-            </Button>
-          )}
-        </Actions>
-      )}
-      {problem && <div className="text-bad text-sm">{problem}</div>}
-    </Card>
+            {filing.always && !changed && (
+              <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
+                Always
+              </Button>
+            )}
+          </Actions>
+        )}
+        {problem && <div className="text-bad text-sm">{problem}</div>}
+      </Card>
+    </Decided>
   )
 }

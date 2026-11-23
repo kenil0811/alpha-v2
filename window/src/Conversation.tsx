@@ -22,11 +22,13 @@ import {
   type Part,
   type Step,
 } from './stream.ts'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { CopyButton } from './ui/copy.tsx'
 import { CorePicture } from './ui/core-file.tsx'
 import { dropped } from './ui/drop-zone.tsx'
+import { useLeaving } from './ui/motion.ts'
 import { StreamedWords, Words } from './ui/words.tsx'
 import { WatchPage } from './WatchPage.tsx'
 
@@ -64,6 +66,11 @@ export function Conversation({
 }) {
   const items = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
+  // the cards it asked, one being answered kept drawn until it has left (ui/motion.ts)
+  const asked = useLeaving(
+    (stream?.asked ?? []).flatMap((id) => cards.get(id) ?? []),
+    (c) => c.id,
+  )
   const [dragging, setDragging] = useState(false)
   const [watching, setWatching] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -157,11 +164,9 @@ export function Conversation({
                 </div>
               )
             })}
-            {stream?.asked
-              .filter((id) => cards.has(id))
-              .map((id) => (
-                <CardBox key={id} id={id} card={cards.get(id) as CardView} onChange={changeCard} />
-              ))}
+            {asked.map((c) => (
+              <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
+            ))}
             {stream?.watch && (
               <div>
                 <Button size="sm" variant="ghost" onClick={() => setWatching(true)}>
@@ -178,9 +183,8 @@ export function Conversation({
               </div>
             )}
             {stream?.serving && (
-              <div className="flex items-center gap-1.5 text-ink-3 text-sm">
-                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                Working for {stream.serving}
+              <div className="text-sm">
+                <Busy>Working for {stream.serving}</Busy>
               </div>
             )}
           </div>
@@ -430,12 +434,13 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][numb
   if (!said)
     return (
       <div className="flex items-center gap-1.5 text-ink-3">
-        {waiting ? (
-          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-        ) : null}
         <span className="min-w-0">
           {head}
-          {waiting?.doing && <span className="block text-ink-3">{waiting.doing}</span>}
+          {waiting?.doing ? (
+            <Busy className="block">{waiting.doing}</Busy>
+          ) : (
+            waiting && <Busy className="block">Thinking</Busy>
+          )}
         </span>
         {mark}
         {waiting && (

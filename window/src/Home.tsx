@@ -2,16 +2,18 @@
 // answered right here), and today's tasks. The modules are in the rail; the conversation has its
 // own place in the rail and on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
-import { ArrowUp, KeyRound, LoaderCircle } from 'lucide-react'
+import { ArrowUp, KeyRound } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
 import { shownScreens } from './plugin/screens.ts'
 import { signInWith } from './SignInApps.tsx'
 import { StoryRow } from './story/StoryRow.tsx'
-import { TaskList } from './Tasks.tsx'
+import { TaskList } from './TaskLine.tsx'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { Group, Line } from './ui/groups.tsx'
+import { useLeaving } from './ui/motion.ts'
 import { Segmented } from './ui/segmented.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
@@ -79,7 +81,8 @@ export function Home({
   const all = stream?.cards ?? []
   const by = byAgent(all, agents)
   const one = by.length > 1 && by.some((a) => a.id === from) ? from : 'all'
-  const cards = one === 'all' ? all : all.filter((c) => c.agent === one)
+  // a card being answered stays drawn until it has left (ui/motion.ts)
+  const cards = useLeaving(one === 'all' ? all : all.filter((c) => c.agent === one), (c) => c.id)
   const signIns = one === 'all' ? (stream?.attention ?? []) : []
   const waiting = all.length + (stream?.attention ?? []).length
   const changeCard = (card: CardView) => {
@@ -105,9 +108,8 @@ export function Home({
         </div>
 
         {stream?.settingUp && (
-          <p className="flex items-center gap-2 text-ink-2 text-md">
-            <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
-            Setting up {stream.settingUp}
+          <p className="text-md">
+            <Busy>Setting up {stream.settingUp}</Busy>
           </p>
         )}
 
@@ -118,7 +120,7 @@ export function Home({
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}
 
         {/* only while something waits */}
-        {waiting > 0 && (
+        {(waiting > 0 || cards.length > 0) && (
           <Group title="Needs you" count={waiting}>
             {by.length > 1 && (
               <div>
@@ -240,6 +242,7 @@ function AskBox({
     <form onSubmit={send} className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pr-1.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
         <input
+          data-composer
           ref={area}
           value={words}
           onChange={(e) => setWords(e.target.value)}

@@ -1,6 +1,6 @@
 // Alpha's replies as the model writes them: Markdown, drawn as Claude Code draws it. No raw HTML.
 // A table stays in the column, and scrolls sideways when it does not fit.
-import { memo, type ReactNode, useEffect, useRef, useState } from 'react'
+import { Children, memo, type ReactNode, useEffect, useRef, useState } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { CopyButton } from './copy.tsx'
@@ -47,13 +47,43 @@ const PARTS: Components = {
   pre: ({ children }) => <Code>{children}</Code>,
 }
 
+// While a reply streams, each word fades in as it arrives. Words keep their place by position, so
+// only the new ones mount and fade; the ones already there stay still.
+function fading(children: ReactNode): ReactNode {
+  return Children.map(children, (c, i) =>
+    typeof c === 'string'
+      ? c.split(/(\s+)/).map((w, j) =>
+          /^\s*$/.test(w) ? (
+            w
+          ) : (
+            <span key={`${i}.${j}`} className="animate-word">
+              {w}
+            </span>
+          ),
+        )
+      : c,
+  )
+}
+const FADING: Components = {
+  ...PARTS,
+  p: ({ children }) => <p>{fading(children)}</p>,
+  li: ({ children }) => <li>{fading(children)}</li>,
+  strong: ({ children }) => <strong>{fading(children)}</strong>,
+  em: ({ children }) => <em>{fading(children)}</em>,
+  h1: ({ children }) => <h1>{fading(children)}</h1>,
+  h2: ({ children }) => <h2>{fading(children)}</h2>,
+  h3: ({ children }) => <h3>{fading(children)}</h3>,
+  h4: ({ children }) => <h4>{fading(children)}</h4>,
+  td: ({ children }) => <td>{fading(children)}</td>,
+}
+
 const PROSE =
   'flex min-w-0 flex-col gap-2.5 [&_a]:underline [&_a]:decoration-ink-3 [&_a]:underline-offset-2 [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-hover [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-px [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-md [&_h1]:mt-3 [&_h1]:font-sans [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:font-sans [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:font-sans [&_h3]:font-semibold [&_h4]:mt-2 [&_h4]:font-sans [&_h4]:font-semibold [&_ul]:list-disc [&_ul]:pl-7.5 [&_ol]:list-decimal [&_ol]:pl-7.5 [&_li]:my-0.5 [&_li]:pl-2 [&_blockquote]:border-line [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-ink-2 [&_hr]:border-hair [&_strong]:font-semibold'
 
-export const Words = memo(function Words({ text }: { text: string }) {
+export const Words = memo(function Words({ text, fade }: { text: string; fade?: boolean }) {
   return (
     <div className={PROSE}>
-      <Markdown remarkPlugins={[remarkGfm]} components={PARTS}>
+      <Markdown remarkPlugins={[remarkGfm]} components={fade ? FADING : PARTS}>
         {text}
       </Markdown>
     </div>
@@ -96,5 +126,5 @@ export function StreamedWords({ text, streaming }: { text: string; streaming: bo
       running.current = false
     }
   }, [text])
-  return <Words text={steady(text.slice(0, shown))} />
+  return <Words text={steady(text.slice(0, shown))} fade={streaming || shown < text.length} />
 }

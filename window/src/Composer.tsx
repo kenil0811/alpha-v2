@@ -6,6 +6,7 @@ import { type KeyboardEvent, type RefObject, useLayoutEffect, useRef, useState }
 import { ModelPicker } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import type { Module } from './stream.ts'
+import { Busy } from './ui/busy.tsx'
 import { IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { MenuItem, Popover } from './ui/popover.tsx'
@@ -203,6 +204,7 @@ export function Composer({
           }}
         />
         <textarea
+          data-composer
           ref={area}
           rows={1}
           value={words}
@@ -240,12 +242,7 @@ export function Composer({
       </div>
       <div className="flex min-h-6 items-center justify-between gap-3 px-2">
         <span className="flex min-w-0 items-center gap-2 text-ink-3 text-sm">
-          {running && (
-            <>
-              <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-ink-3" />
-              Working on it…
-            </>
-          )}
+          {running && <Busy>Working on it…</Busy>}
         </span>
         {agent && <ModelPicker agent={agent} />}
       </div>

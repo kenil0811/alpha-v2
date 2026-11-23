@@ -12,6 +12,7 @@ import { landingOf } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { useContextMenu } from './ui/popover.tsx'
 import { Renamable } from './ui/rename.tsx'
+import { Roll } from './ui/roll.tsx'
 
 export function Nav({
   href,
@@ -210,7 +211,7 @@ export function FixedItem({
 export function Badge({ n }: { n: number }) {
   return (
     <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
-      {n}
+      <Roll value={n} />
     </span>
   )
 }

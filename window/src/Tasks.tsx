@@ -4,25 +4,23 @@
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
 import type { KeptTable, TaskLineView, TaskView } from '@alpha/core/api'
-import { CircleDot, Clock, Repeat2, Trash2, X } from 'lucide-react'
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { CircleDot, Trash2 } from 'lucide-react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
 import { RepeatField, WhenField } from './TaskFields.tsx'
+import { STATES, TaskLine } from './TaskLine.tsx'
 import { TasksSetup } from './TasksSetup.tsx'
 import { TaskWorkLine } from './TaskThread.tsx'
 import { frameOf } from './table/frame.ts'
-import { dueWords, toLocalInput } from './time.ts'
+import { toLocalInput } from './time.ts'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
 import { DateField } from './ui/date-field.tsx'
 import { Confirm, Dialog } from './ui/dialog.tsx'
-import { DoneTick } from './ui/done-tick.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { More } from './ui/more.tsx'
-import { Pill } from './ui/pill.tsx'
-import { MenuItem, Popover } from './ui/popover.tsx'
+import { MenuItem } from './ui/popover.tsx'
 import { PageTitle } from './ui/rename.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
@@ -40,19 +38,6 @@ const LISTS: { value: List; label: string }[] = [
   { value: 'waiting', label: 'Waiting' },
   { value: 'done', label: 'Done' },
 ]
-
-const STATES: { value: TaskLineView['state']; label: string }[] = [
-  { value: 'todo', label: 'To do' },
-  { value: 'doing', label: 'In progress' },
-  { value: 'waiting', label: 'Waiting' },
-  { value: 'done', label: 'Done' },
-  { value: 'dropped', label: 'Dropped' },
-]
-
-const open = (t: TaskLineView) => t.state === 'todo' || t.state === 'doing' || t.state === 'waiting'
-
-const setState = (id: string, state: TaskLineView['state']) =>
-  api.post(`/api/tasks/${id}/state`, { state })
 
 export function Tasks({
   list,
@@ -187,125 +172,6 @@ export function NewTask({
       </div>
       {problem && <p className="text-bad text-sm">{problem}</p>}
     </form>
-  )
-}
-
-// A task's state as a circle; a click opens its five states, never closing it by itself.
-function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
-  const anchor = useRef<HTMLButtonElement>(null)
-  const [choosing, setChoosing] = useState(false)
-  const label = STATES.find((x) => x.value === t.state)?.label ?? t.state
-  const choose = (state: TaskLineView['state']) => {
-    setChoosing(false)
-    if (state !== t.state) setState(t.id, state).then(onChange, onChange)
-  }
-  return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        data-tip={`${label}: change it`}
-        aria-label={`${t.title}: ${label}. Change its state`}
-        aria-haspopup="menu"
-        onClick={() => setChoosing((c) => !c)}
-        className={cn(
-          'grid size-4.5 shrink-0 place-items-center rounded-full border transition-colors hover:border-accent',
-          t.state === 'done'
-            ? 'border-good bg-good text-surface'
-            : t.state === 'doing'
-              ? 'border-accent text-accent'
-              : t.state === 'waiting'
-                ? 'border-warn text-warn'
-                : t.state === 'dropped'
-                  ? 'border-line text-ink-3'
-                  : 'border-line',
-        )}
-      >
-        <DoneTick done={t.state === 'done'} className="size-3" />
-        {t.state === 'doing' && <span className="size-2 rounded-full bg-accent" />}
-        {t.state === 'waiting' && <Clock className="size-2.75" />}
-        {t.state === 'dropped' && <X className="size-2.75" />}
-      </button>
-      <Popover anchor={anchor} open={choosing} onClose={() => setChoosing(false)}>
-        {STATES.map((x) => (
-          <MenuItem key={x.value} checked={x.value === t.state} onClick={() => choose(x.value)}>
-            {x.label}
-          </MenuItem>
-        ))}
-      </Popover>
-    </>
-  )
-}
-
-function Meta({ t, place = true }: { t: TaskLineView; place?: boolean }) {
-  const bits: ReactNode[] = []
-  if (place && t.place.path.length)
-    bits.push(
-      <span key="p" className="truncate">
-        {t.place.path.join(' › ')}
-      </span>,
-    )
-  if (t.ownerKind !== 'person') bits.push(<span key="o">{t.owner}</span>)
-  if (t.children) bits.push(<span key="c">{`${t.childrenDone} of ${t.children} done`}</span>)
-  return bits.length ? (
-    <span className="flex min-w-0 items-center gap-2 truncate text-ink-3 text-sm">{bits}</span>
-  ) : null
-}
-
-function Due({ t }: { t: TaskLineView }) {
-  if (!t.due) return null
-  return (
-    <span
-      className={cn(
-        'flex shrink-0 items-center gap-1 text-sm tabular-nums',
-        t.overdue ? 'text-bad' : 'text-ink-3',
-      )}
-    >
-      {t.repeat && <Repeat2 className="size-3" aria-label={t.repeat} />}
-      {t.remindAt && <Clock className="size-3" aria-label="With a reminder" />}
-      {dueWords(t.due)}
-    </span>
-  )
-}
-
-function TaskLine({
-  t,
-  onChange,
-  place,
-}: {
-  t: TaskLineView
-  onChange: () => void
-  place?: boolean
-}) {
-  return (
-    <div className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover">
-      <Tick t={t} onChange={onChange} />
-      <a href={`#/tasks/${t.id}`} className="min-w-0 flex-1">
-        <span
-          className={cn(
-            'block truncate text-base',
-            open(t) ? 'text-ink' : 'text-ink-3 line-through',
-          )}
-        >
-          {t.priority === 'high' && <span className="mr-1.5 text-warn">●</span>}
-          {t.title}
-        </span>
-        <Meta t={t} place={place ?? true} />
-      </a>
-      {t.state === 'doing' && <Pill tone="accent">In progress</Pill>}
-      {t.state === 'waiting' && <Pill>Waiting</Pill>}
-      <Due t={t} />
-    </div>
-  )
-}
-
-export function TaskList({ lines, onChange }: { lines: TaskLineView[]; onChange: () => void }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
-      {lines.map((t) => (
-        <TaskLine key={t.id} t={t} onChange={onChange} />
-      ))}
-    </div>
   )
 }
 

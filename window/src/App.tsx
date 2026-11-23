@@ -18,7 +18,6 @@ import { Bar } from './Bar.tsx'
 import { CardPage } from './CardPage.tsx'
 import { ComputerPage } from './ComputerPage.tsx'
 import { Conversation } from './Conversation.tsx'
-import type { Mood } from './Face.tsx'
 import { FileView } from './FileView.tsx'
 import { Find } from './Find.tsx'
 import { Home } from './Home.tsx'
@@ -26,6 +25,7 @@ import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { applyLive, clearLive } from './live.ts'
 import { ModuleScreen } from './Module.tsx'
+import { useMood } from './mood.ts'
 import { NewModule } from './NewModule.tsx'
 import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
 import { splitBeside } from './opened.ts'
@@ -49,6 +49,7 @@ import { titleOf } from './table/values.ts'
 import { useTableLoad } from './table-load.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
 import { inside, landingOf } from './tree.ts'
+import { crossFade } from './ui/motion.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { useWorkspaceHere, WorkspaceContext } from './Workspace.tsx'
@@ -141,7 +142,7 @@ export function App() {
   useEffect(() => {
     if (!askable) setAsking(false)
   }, [askable, setAsking])
-  const mood: Mood = stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'
+  const mood = useMood(stream, !!busyTurn)
   // the agent the assistant shows, kept per person; the Chief of staff when it has gone
   const agents = useAgents(version)
   // the workspace tile: one name and picture for the Alpha, and what is new in Activity
@@ -237,7 +238,11 @@ export function App() {
     const onHash = () => {
       const h = forward(window.location.hash)
       if (h !== window.location.hash) window.history.replaceState(null, '', h)
-      setPlace(placeOf(h))
+      const next = placeOf(h)
+      // a new screen cross-fades in; a change within one (a row beside, a tab) just happens
+      const screen = (p: Place) => `${p.at}:${'id' in p ? p.id : ''}`
+      if (screen(next) === screen(placeRef.current)) setPlace(next)
+      else crossFade(() => setPlace(next))
     }
     onHash()
     window.addEventListener('hashchange', onHash)
