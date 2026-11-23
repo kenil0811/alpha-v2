@@ -11,7 +11,13 @@ import { SignIn } from '../connectors/signin.ts'
 import { Engine } from '../engine/engine.ts'
 import { ModelRoute } from '../engine/route.ts'
 import type { PluginChapter } from '../plugins/plugins.ts'
-import { workspaceFor, workspaceName, workspaceSite } from '../world/workspace.ts'
+import {
+  nameOfDomain,
+  workspaceFor,
+  workspaceName,
+  workspaceSite,
+  workspaceUse,
+} from '../world/workspace.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 import { buildServer, type ServerOptions } from './server.ts'
@@ -124,12 +130,20 @@ describe('Set up Alpha', () => {
     const app = as()
     await post(app, '/api/story/welcome')
     const screen = (await app.inject({ url: '/api/story/workspace', headers: AS })).json()
-    expect(screen).toMatchObject({ guess: 'harborbooks.example', name: null, site: null })
+    // the name guessed from the domain, shown to change, never an empty box
+    expect(screen).toMatchObject({
+      guess: 'harborbooks.example',
+      suggested: 'Harborbooks',
+      name: null,
+      site: null,
+    })
     await post(app, '/api/story/workspace', {
       name: 'Harbor Books',
       for: 'Our bookshop: me and two staff.',
       site: 'harborbooks.example',
+      use: 'business',
     })
+    expect(workspaceUse(world.db)).toBe('business')
     expect(workspaceName(world.db)).toBe('Harbor Books')
     expect(workspaceFor(world.db)).toBe('Our bookshop: me and two staff.')
     expect(workspaceSite(world.db)).toBe('https://harborbooks.example/')
@@ -271,6 +285,11 @@ describe('Set up Alpha', () => {
     expect(again).toMatchObject({ declined: false, done: false, fresh: false, at: 'workspace' })
     expect(again.chapters[0]).toMatchObject({ key: 'welcome', state: 'done' })
   })
+})
+
+it('names a workspace from a mail domain', () => {
+  expect(nameOfDomain('harbor-reno.com')).toBe('Harbor Reno')
+  expect(nameOfDomain('lakesidedental.co.uk')).toBe('Lakesidedental')
 })
 
 describe('a plugin’s chapters', () => {

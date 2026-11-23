@@ -32,14 +32,16 @@ export interface ClaudeScreen extends Screen {
   how: 'token' | 'signin' // a server takes a token; a Mac signs in in the browser
   set: boolean // Alpha reaches Claude now
   steps: string[] // what to do, in order
+  command: string | null // what to run in Terminal, on a server, shown to copy
 }
 
 export interface WorkspaceScreen extends Screen {
   key: 'workspace'
   name: string | null
+  suggested: string | null // the name guessed from the owner's own mail domain
   picture: boolean
-  for: string | null // who the work is for, in the owner's own words
-  kinds: string[] // the words offered for it, with a box for any other
+  for: string | null // who the work is for, in the owner's own words (not asked on the first run)
+  use: 'business' | 'personal' | null // a business may need its admin's approval later
   site: string | null // the site given
   guess: string | null // the site guessed from the email's domain, never a mail provider's
 }

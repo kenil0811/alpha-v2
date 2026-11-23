@@ -21,6 +21,7 @@ import {
   ImagePlus,
   KeyRound,
   Lock,
+  Pencil,
   Plug,
   ShieldCheck,
   UserRound,
@@ -30,11 +31,13 @@ import { api } from '../api.ts'
 import { underWay } from '../NewModule.tsx'
 import { SCREENS } from '../plugin/screens.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
-import { Button } from '../ui/button.tsx'
+import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
+import { CodeLine } from '../ui/code-line.tsx'
 import { CopyButton } from '../ui/copy.tsx'
 import { Field } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
+import { type Answer, YesNo } from '../ui/yes-no.tsx'
 import { squared } from '../Workspace.tsx'
 import { Connect } from './connect.tsx'
 import type { Next } from './next.ts'
@@ -120,7 +123,8 @@ function Welcome({ screen, next }: Props & { screen: WelcomeScreen }) {
   )
 }
 
-function Steps({ steps }: { steps: string[] }) {
+// What to do, in order; a command to run shown under the first step, with its copy button.
+function Steps({ steps, code }: { steps: string[]; code?: string | null }) {
   return (
     <ol className="flex flex-col gap-3">
       {steps.map((words, i) => (
@@ -128,7 +132,10 @@ function Steps({ steps }: { steps: string[] }) {
           <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent-soft font-semibold text-accent text-sm">
             {i + 1}
           </span>
-          <span className="pt-0.5 text-ink-2">{words}</span>
+          <span className="flex min-w-0 flex-col gap-2 pt-0.5 text-ink-2">
+            {words}
+            {i === 0 && code && <CodeLine text={code} className="self-start" />}
+          </span>
         </li>
       ))}
     </ol>
@@ -163,7 +170,7 @@ function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
     )
   return (
     <div className="flex flex-col gap-6">
-      <Steps steps={screen.steps} />
+      <Steps steps={screen.steps} code={screen.command} />
       {screen.how === 'token' ? (
         <Field
           className="w-full"
@@ -190,14 +197,14 @@ function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
 }
 
 function Workspace({ screen, next }: Props & { screen: WorkspaceScreen }) {
-  const [name, setName] = useState(screen.name ?? '')
+  const [name, setName] = useState(screen.name ?? screen.suggested ?? '')
+  const [naming, setNaming] = useState(!screen.name && !screen.suggested)
   const [picture, setPicture] = useState<string | null>(null)
-  const [words, setWords] = useState(screen.for ?? '')
+  const [use, setUse] = useState(screen.use)
+  // the guessed site: asked once, the tick taking it, the cross leaving a box for their own
+  const [isSite, setIsSite] = useState<Answer>(screen.site ? 'no' : null)
   const [site, setSite] = useState(screen.site ?? '')
-  // the guessed site: asked once, Yes taking it, No leaving a box for their own
-  const [asked, setAsked] = useState<'yes' | 'no' | null>(screen.site ? 'no' : null)
   const file = useRef<HTMLInputElement>(null)
-  const guessed = !!screen.guess && asked === null
   useEffect(
     () =>
       next({
@@ -205,17 +212,13 @@ function Workspace({ screen, next }: Props & { screen: WorkspaceScreen }) {
         ready: true,
         body: () => ({
           name: name.trim() || null,
-          for: words.trim() || null,
-          site: (asked === 'yes' ? screen.guess : site.trim()) || null,
+          site: (isSite === 'yes' ? screen.guess : site.trim()) || null,
+          use,
           ...(picture ? { picture } : {}),
         }),
       }),
-    [name, words, site, asked, picture, screen.guess, next],
+    [name, site, isSite, use, picture, screen.guess, next],
   )
-  // a word picked fills the box, unless the person has written their own there
-  const pick = (kind: string) => {
-    if (!words.trim() || screen.kinds.includes(words.trim())) setWords(kind)
-  }
   return (
     <div className="flex flex-col gap-7">
       <div className="flex items-center gap-3">
@@ -232,14 +235,24 @@ function Workspace({ screen, next }: Props & { screen: WorkspaceScreen }) {
             <ImagePlus className="size-4.5" />
           )}
         </button>
-        <Field
-          className="flex-1"
-          aria-label="Workspace name"
-          placeholder="Your workspace’s name"
-          value={name}
-          maxLength={80}
-          onChange={(e) => setName(e.target.value)}
-        />
+        {naming ? (
+          <Field
+            className="flex-1"
+            aria-label="Your organization’s name"
+            placeholder="Your organization’s name"
+            value={name}
+            maxLength={80}
+            autoFocus={!!screen.suggested}
+            onChange={(e) => setName(e.target.value)}
+          />
+        ) : (
+          <p className="flex min-w-0 flex-1 items-center gap-1.5 text-lg text-ink">
+            <span className="truncate">{name}</span>
+            <IconButton label="Change the name" onClick={() => setNaming(true)}>
+              <Pencil className="size-3.5" />
+            </IconButton>
+          </p>
+        )}
         <input
           ref={file}
           type="file"
@@ -252,60 +265,45 @@ function Workspace({ screen, next }: Props & { screen: WorkspaceScreen }) {
           }}
         />
       </div>
-      <div className="flex flex-col gap-2.5">
-        <p className="font-semibold text-ink-2 text-sm">Who is the work for?</p>
-        <div className="flex flex-wrap gap-1.5">
-          {screen.kinds.map((k) => (
+      {screen.guess && isSite !== 'no' ? (
+        <div className="flex min-h-8 flex-wrap items-center gap-3">
+          <span className="text-ink">Is {screen.guess} your organization’s website?</span>
+          <YesNo value={isSite} yes="Yes" no="No" onChange={setIsSite} />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <p className="font-semibold text-ink-2 text-sm">Your organization’s website</p>
+          <Field
+            aria-label="Your organization’s website"
+            placeholder="example.com, if it has one"
+            value={site}
+            onChange={(e) => setSite(e.target.value)}
+          />
+        </div>
+      )}
+      <div className="flex flex-col gap-2">
+        <p className="font-semibold text-ink-2 text-sm">Is this for a business, or personal?</p>
+        <div className="flex gap-1.5">
+          {(['business', 'personal'] as const).map((u) => (
             <button
-              key={k}
+              key={u}
               type="button"
-              onClick={() => pick(k)}
+              aria-pressed={use === u}
+              onClick={() => setUse(u)}
               className={cn(
                 'h-7.5 rounded-full border px-3 text-md transition-colors',
-                words.trim() === k
+                use === u
                   ? 'border-accent bg-accent text-accent-ink'
                   : 'border-line bg-surface text-ink-2 hover:border-accent-line hover:text-accent',
               )}
             >
-              {k}
+              {u === 'business' ? 'Business' : 'Personal'}
             </button>
           ))}
         </div>
-        <Field
-          aria-label="Who the work is for"
-          placeholder="In your own words: our bookshop, me and two staff"
-          value={words}
-          maxLength={300}
-          onChange={(e) => setWords(e.target.value)}
-        />
-      </div>
-      <div className="flex min-h-15 flex-col gap-2.5">
-        <p className="font-semibold text-ink-2 text-sm">Your website</p>
-        {guessed ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-ink">Is {screen.guess} your website?</span>
-            <Button size="sm" onClick={() => setAsked('yes')}>
-              Yes
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setAsked('no')}>
-              No
-            </Button>
-          </div>
-        ) : asked === 'yes' ? (
-          <p className="flex items-center gap-2 text-ink">
-            <Check className="size-4 text-good" /> {screen.guess}
-            <Button size="sm" variant="ghost" onClick={() => setAsked('no')}>
-              Change
-            </Button>
-          </p>
-        ) : (
-          <Field
-            aria-label="Your website"
-            placeholder="yourwebsite.com, if you have one"
-            value={site}
-            onChange={(e) => setSite(e.target.value)}
-          />
-        )}
+        <p className="text-ink-3 text-sm">
+          A business may need its admin’s approval later, to connect what the firm owns.
+        </p>
       </div>
     </div>
   )

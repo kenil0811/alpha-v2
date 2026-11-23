@@ -9,11 +9,13 @@ import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import {
+  nameOfDomain,
   setWorkspace,
   workspaceFor,
   workspaceName,
   workspacePicture,
   workspaceSite,
+  workspaceUse,
 } from '../world/workspace.ts'
 import type { Ctx } from './ctx.ts'
 import { connectTiles } from './story-connect.ts'
@@ -33,15 +35,13 @@ export interface StoryRoom {
   linkFor: (link: string) => string // a one-time link as the person will open it
 }
 
-// The three promises on Welcome (call 25): the never-use list in one sentence, no list or switch.
+// The three promises on Hello (call 25), in plain words, no app terms (proposed, Vikas 23 Nov): the
+// never-use list in one sentence, no list or switch.
 export const PROMISES = [
-  'I read only what you connect and allow.',
-  'I never keep banking, health, passwords, legal matters, dating or personal money.',
-  'Nothing about you is kept without your Keep.',
+  'I only look at what you give me permission to.',
+  'I never keep anything about banking, health, passwords, legal matters or personal money.',
+  'Nothing about you is saved without your approval.',
 ]
-
-// The words offered for who the work is for, with a box for any other (call 20).
-const KINDS = ['A firm', 'A practice', 'A shop', 'A team', 'Just me']
 
 export function storyScreens(ctx: Ctx, room: StoryRoom) {
   const { world, engine, user, options, views } = ctx
@@ -106,7 +106,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         ? {
             key: 'welcome',
             title: 'Welcome',
-            says: `Hi ${first()}. I’m Alpha. I take on the work you repeat by hand. Let’s set me up.`,
+            says: `Hi ${first()}, I’m Alpha. I’m here to take the repetitive work off your plate.`,
             promises: PROMISES,
             workspace: null,
             addedBy: null,
@@ -114,7 +114,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         : {
             key: 'welcome',
             title: 'Welcome',
-            says: `Welcome to ${workspace()}, ${first()}. ${owner()?.name ?? 'The owner'} added you.`,
+            says: `Hi ${first()}, welcome to ${workspace()}. ${owner()?.name ?? 'The owner'} invited you.`,
             promises: PROMISES,
             workspace: workspace(),
             addedBy: owner()?.name ?? null,
@@ -122,28 +122,33 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     claude: async (): Promise<ClaudeScreen> => ({
       key: 'claude',
       title: 'Claude',
-      says: 'First, I need a mind to think with.',
+      says: 'Now let me connect to Claude, the mind I think with.',
       how: room.onServer ? 'token' : 'signin',
       set: await room.modelSet(),
       steps: room.onServer
         ? [
-            'On your own computer, install Claude Code, then run claude setup-token in Terminal.',
-            'Sign in with the Claude account whose plan Alpha should use.',
-            'It prints a token starting sk-ant-: paste it here. Alpha keeps it sealed on this server.',
+            'On your own computer, install Claude Code, then run this in Terminal:',
+            'Sign in with the Claude account whose plan I should use.',
+            'It prints a token starting sk-ant-: paste it here. I keep it sealed on this server.',
           ]
         : [
-            'Press Sign in: your browser opens Claude’s own sign-in.',
-            'Sign in with the Claude account whose plan Alpha should use, then come back here.',
+            'Press Sign in and finish with the Claude account whose plan I should use, then come back here.',
           ],
+      command: room.onServer ? 'claude setup-token' : null,
     }),
     workspace: async (): Promise<WorkspaceScreen> => ({
       key: 'workspace',
-      title: 'Your workspace',
-      says: 'Whose work will I be doing?',
+      title: 'About you',
+      says: 'First, a little about you.',
       name: workspaceName(world.db),
+      // the name guessed from the person's own mail domain, shown to change, never an empty box
+      suggested: (() => {
+        const g = guess()
+        return g ? nameOfDomain(g) : null
+      })(),
       picture: !!workspacePicture(world.db),
       for: workspaceFor(world.db),
-      kinds: KINDS,
+      use: workspaceUse(world.db),
       site: workspaceSite(world.db),
       guess: guess(),
     }),
@@ -152,18 +157,18 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     computer: async (): Promise<ConnectScreen> => ({
       key: 'computer',
       title: 'Your computer',
-      says: 'Shall I look at your computer too?',
+      says: 'Shall I look at your computer too? Only what you choose.',
       tiles: connectTiles(ctx, room.onServer).filter((t) => t.kind === 'computer'),
     }),
     connect: async (): Promise<ConnectScreen> => ({
       key: 'connect',
       title: 'Your accounts',
-      says: 'Show me where your work happens.',
+      says: 'Where does your work happen? Connect what you’d like me to read.',
       tiles: connectTiles(ctx, room.onServer).filter((t) => t.kind !== 'computer'),
     }),
     people: async (): Promise<PeopleScreen> => ({
       key: 'people',
-      title: 'Your people',
+      title: 'Invite team',
       says: 'Who else works with you?',
       people: others().map((a) => ({ id: a.id, name: a.name, email: a.email, state: a.state })),
       sees: 'Each one opens their link, chooses a password, then goes through a shorter setup of their own: what is here, and connecting their own mail and calendar.',
@@ -242,6 +247,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
           picture: z.string().max(200_000).nullable().optional(),
           for: z.string().max(1000).nullable().optional(),
           site: z.string().max(400).nullable().optional(),
+          use: z.enum(['business', 'personal']).nullable().optional(),
         })
         .parse(body ?? {})
       setWorkspace(world.db, b, actor)
