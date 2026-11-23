@@ -95,7 +95,7 @@ describe('Set up Alpha', () => {
     expect(wrong.json().problem).toMatch(/did not answer.*Invalid bearer token/)
     expect(route.hasToken).toBe(false)
     expect((await post(app, '/api/story/claude', { token: 'hello' })).json().problem).toMatch(
-      /not a Claude token/,
+      /not a Claude code/,
     )
     const right = await post(app, '/api/story/claude', { token: TOKEN })
     expect(right.statusCode).toBe(200)

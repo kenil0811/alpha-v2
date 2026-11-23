@@ -157,18 +157,15 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       key: 'claude',
       title: 'Claude',
       says: 'Now let me connect to Claude, the mind I think with.',
-      how: room.onServer ? 'token' : 'signin',
+      // one way on this Mac and online alike: the code Claude Code prints, pasted (Vikas, 23 Nov)
+      how: 'token',
       set: await room.modelSet(),
-      steps: room.onServer
-        ? [
-            'On your own computer, install Claude Code, then run this in Terminal:',
-            'Sign in with the Claude account whose plan I should use.',
-            'It prints a token starting sk-ant-: paste it here. I keep it sealed on this server.',
-          ]
-        : [
-            'Press Sign in and finish with the Claude account whose plan I should use, then come back here.',
-          ],
-      command: room.onServer ? 'claude setup-token' : null,
+      steps: [
+        'Install Claude Code on your computer, then run this in Terminal:',
+        'Sign in with the Claude account whose plan I should use.',
+        'It prints a code starting sk-ant-: paste it here. I keep it sealed.',
+      ],
+      command: 'claude setup-token',
     }),
     workspace: async (): Promise<WorkspaceScreen> => ({
       key: 'workspace',
@@ -288,17 +285,13 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       const b = z.object({ token: z.string().max(400).optional() }).parse(body ?? {})
       const route = engine.route
       if (!route) throw new Refused('The route is not set up in this core.')
-      if (!room.onServer || b.token === undefined) {
+      if (b.token === undefined) {
         if (await room.modelSet()) return {}
-        throw new Refused(
-          room.onServer
-            ? 'Paste the token claude setup-token printed.'
-            : 'Claude is not signed in yet: press Sign in, finish in your browser, then Continue.',
-        )
+        throw new Refused('Paste the code claude setup-token printed.')
       }
       const token = b.token.trim()
       if (!isClaudeToken(token))
-        throw new Refused('That is not a Claude token: it starts with sk-ant-.')
+        throw new Refused('That is not a Claude code: it starts with sk-ant-.')
       // the live check: Claude answered with this token before it is kept (call 7)
       const why = options.claudeAnswers ? await options.claudeAnswers(token) : null
       if (why) throw new Refused(`Claude did not answer with that token: ${why}`)

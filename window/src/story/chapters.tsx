@@ -19,7 +19,6 @@ import {
   EyeOff,
   Hammer,
   ImagePlus,
-  KeyRound,
   Lock,
   Pencil,
   Plug,
@@ -155,26 +154,20 @@ function Steps({ steps, code }: { steps: string[]; code?: string | null }) {
   )
 }
 
-function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
+// Claude is connected one way on this Mac and online alike: the code claude setup-token prints,
+// pasted here (Vikas, 23 Nov)
+function Claude({ screen, next }: Props & { screen: ClaudeScreen }) {
   const [token, setToken] = useState('')
-  const signIn = useAct()
-  // on a Mac, watch for Claude's own sign-in finishing in the browser
-  useEffect(() => {
-    if (screen.how !== 'signin' || screen.set) return
-    const t = setInterval(reload, 3000)
-    return () => clearInterval(t)
-  }, [screen.how, screen.set, reload])
   useEffect(() => {
     if (screen.set) next({ label: 'Continue', ready: true })
-    else if (screen.how === 'token')
+    else
       next({
         label: 'Check and save',
         busy: 'Checking with Claude',
         ready: !!token.trim(),
         body: () => ({ token: token.trim() }),
       })
-    else next({ label: 'Continue', ready: false })
-  }, [screen.set, screen.how, token, next])
+  }, [screen.set, token, next])
   if (screen.set)
     return (
       <p className="flex items-center gap-2 text-good">
@@ -184,27 +177,15 @@ function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
   return (
     <div className="flex flex-col gap-6">
       <Steps steps={screen.steps} code={screen.command} />
-      {screen.how === 'token' ? (
-        <Field
-          className="w-full"
-          type="password"
-          autoComplete="off"
-          aria-label="Claude token"
-          placeholder="Paste the token"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
-      ) : (
-        <div className="flex items-center gap-3">
-          <Button
-            disabled={signIn.busy}
-            onClick={() => void signIn.act(() => api.post('/api/setup/signin'))}
-          >
-            <KeyRound className="size-3.5" /> Sign in
-          </Button>
-          <Refusal words={signIn.problem} />
-        </div>
-      )}
+      <Field
+        className="w-full"
+        type="password"
+        autoComplete="off"
+        aria-label="Claude code"
+        placeholder="Paste the code, sk-ant-…"
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+      />
     </div>
   )
 }
