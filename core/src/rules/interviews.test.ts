@@ -1,14 +1,18 @@
-// Interviews (docs/rules.md, I1 to I4): what the Interviewer proposes cites what it rests on, its
+// Interviews (docs/rules.md, I1 to I6): what the Interviewer proposes cites what it rests on, its
 // numbers come from code or are marked estimated with their basis, a source the person skipped is
 // never read or cited, and what they dropped or declined never comes back. Tried through its own
 // tools, as its desk is given them, on the rule world with the interviews plugin switched on and a
 // made-up mailbox; the person's answers are given on the cards themselves. Never the model.
+import { join } from 'node:path'
 import type { Connector } from '@alpha/connector-sdk'
+import { watchAfterSetup } from '../api/routes/observe.ts'
 import { landIn, tableOf } from '../connectors/places.ts'
 import type { ToolEntry } from '../engine/registry.ts'
 import type { Here } from '../engine/tools/common.ts'
 import { Reviews } from '../modules/reviews.ts'
 import { switchOn } from '../plugins/plugins.ts'
+import { giveLeave } from '../world/observe.ts'
+import { declineStory, finishStory } from '../world/story.ts'
 import { rule } from './rule.ts'
 import type { RuleWorld } from './world.ts'
 
@@ -386,3 +390,59 @@ rule('I4', 'a line or proposal the person dropped or declined never comes back',
     },
   },
 })
+
+const PLUGIN = join(import.meta.dirname, '..', '..', '..', 'plugins', 'interviews')
+
+// I5 and I6 (proposed, Vikas 23 Nov): after setup, what keeps being read and when watching may start.
+rule('I5', 'after setup, only a finished person’s switched-on readers keep reading', {
+  cases: {
+    'nothing reads on the clock before the story is finished, nor what was switched off': async (
+      w,
+    ) => {
+      const { plugins } = await switchOn(['interviews'], {
+        world: w.world,
+        user: w.user,
+        home: w.home,
+        region: () => null,
+        ask: async () => ({ answer: null }),
+        connectors: null,
+      })
+      const know = await import(join(PLUGIN, 'src', 'know.ts'))
+      know.keepStory({ dir: join(w.home, 'plugins', 'interviews') }, w.user.id, {
+        found: [
+          { key: 'browsing', name: 'Browsing', on: true, words: '' },
+          { key: 'apps', name: 'Apps', on: false, words: '' },
+        ],
+      })
+      const before = plugins.keepsReading(w.user.id, 'browsing')
+      declineStory(w.world.db, w.user.id)
+      const declined = plugins.keepsReading(w.user.id, 'browsing')
+      finishStory(w.world.db, w.user.id)
+      return (
+        !before &&
+        !declined &&
+        plugins.keepsReading(w.user.id, 'browsing') &&
+        !plugins.keepsReading(w.user.id, 'apps')
+      )
+    },
+  },
+})
+
+rule(
+  'I6',
+  'watching a person’s work starts only on their yes, where Alpha stays on their computer',
+  {
+    cases: {
+      'without the yes, or without a connected computer, it never starts': async (w) => {
+        let started = 0
+        const start = () => {
+          started++
+        }
+        const noYes = watchAfterSetup(w.world, w.user, start)
+        giveLeave(w.world.db, w.user.id)
+        const noComputer = watchAfterSetup(w.world, w.user, start)
+        return /not said yes/.test(noYes) && /Alpha Bridge/.test(noComputer) && started === 0
+      },
+    },
+  },
+)

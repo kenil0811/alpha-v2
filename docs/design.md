@@ -336,6 +336,20 @@ kit is Your work, a managed module holding each person's report (Workflows, thei
 Proposals) and the About you lines put to them, and it carries the Interviewer, an agent titled
 "Learns how you work and what would help".
 
+**It keeps learning after setup** (proposed, Vikas 23 Nov; for Kenil's review). Once a person
+finishes Set up Alpha, Browsing and Apps are read every day through their Alpha Bridge, each only
+where they left it on in Get to know you (`host.keepsReading`; the core reads it on the clock only
+for a person whose story is finished, never one who declined before finishing, through a
+connection not paused, and AI work stays read at the interview alone). Three days after they
+finish, the Interviewer's second check, "A review after setup", looks once, in code, at whether a
+read since brought something new; only then is the Interviewer woken, its short interview opens
+What I learned again, and Home's one row says "A few more questions from Alpha", with a notice on
+the computer where Alpha's Mac app is not showing its own. Nothing new: no one is woken and no row
+shows. Watching the person's work (the front app and its window's title every few seconds, never a
+picture of the screen) sits behind a wall in code: only on a computer of theirs where Alpha Bridge
+stays connected, and only on their own yes, kept with when and taken back in Settings ›
+Permissions. The watcher itself is a stub that refuses until Kenil decides it.
+
 ## The window
 
 The rail has Home, Agents, Tasks and the modules, with Intelligence and Settings at its foot. The

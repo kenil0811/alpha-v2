@@ -103,6 +103,8 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | I2 | The report's numbers come from code: how often from the rows that are each one time, counted over the days read; how long from the person's answer; hours a month from the two. Where one is not to hand it may be estimated, and is kept as estimated with what it rests on, as are the hours it makes | 19 Nov | test |
 | I3 | A source the person switched off in Set up Alpha's Get to know you is never read and never cited; sources are switched on there alone, never asked for on a card in a chat | 19 Nov, 22 Nov | test |
 | I4 | A line the person dropped, or a proposal they declined (by its name or what it does), is never proposed again, in a chat or in Set up Alpha's What I learned | 19 Nov, 22 Nov | test |
+| I5 | After setup, a computer's reader (Browsing, Apps) is read on the clock only for a person who finished Set up Alpha, only where they left it on in Get to know you, through a connection not paused; one switched off, never read, or declined before finishing never starts. The review three days after setup looks in code and wakes the Interviewer only when a read since brought something new, once per setup (proposed, Vikas 23 Nov; for Kenil's review) | 23 Nov | test |
+| I6 | Watching a person's work runs only on a computer of theirs where Alpha Bridge stays connected and only on their own yes, kept with who and when and taken back in Settings › Permissions; without both it never starts (proposed, Vikas 23 Nov; for Kenil's review) | 23 Nov | test |
 
 ## Plugins
 

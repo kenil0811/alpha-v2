@@ -31,6 +31,7 @@ import { registerFiles } from './routes/files.ts'
 import { registerKits } from './routes/kits.ts'
 import { registerMe } from './routes/me.ts'
 import { registerModules } from './routes/modules.ts'
+import { registerObserve } from './routes/observe.ts'
 import { registerPeople } from './routes/people.ts'
 import { registerReadNow } from './routes/readnow.ts'
 import { registerRows } from './routes/rows.ts'
@@ -221,6 +222,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerSession(ctx)
   registerMe(ctx)
   registerStory(ctx)
+  registerObserve(ctx)
   registerDay(ctx)
   registerStream(ctx)
   registerCards(ctx)

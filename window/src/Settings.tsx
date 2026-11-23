@@ -11,7 +11,7 @@ import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
 import { Modules, when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
-import { AskSites, Standing } from './Rules.tsx'
+import { AskSites, Standing, WatchWork } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
@@ -161,6 +161,7 @@ function Permissions({ version, owner }: { version: number; owner: boolean }) {
         about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule applies once you save it on its card."
       >
         {owner && <AskSites />}
+        <WatchWork />
         <WaitingRules version={version} />
         <Standing version={version} />
       </Section>

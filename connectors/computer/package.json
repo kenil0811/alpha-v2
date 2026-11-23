@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./paths": "./src/paths.ts",
+    "./observe": "./src/observe.ts",
     "./read": "./src/read.ts",
     "./recorded": "./src/recorded.ts"
   },

@@ -48,6 +48,55 @@ export function AskSites() {
   )
 }
 
+// Whether Alpha may watch the person's own work (the front app and its window's title, never a
+// screenshot), their yes kept with when, taken back here. It runs only where Alpha Bridge stays
+// connected on their computer; the switch says when that is not so (proposed, 23 Nov).
+interface Watch {
+  leave: { by: string; at: string } | null
+  problem: string | null
+}
+export function WatchWork() {
+  const [w, setW] = useState<Watch | null>(null)
+  const { busy, problem, act } = useAct()
+  useEffect(() => {
+    api.get<Watch>('/api/observe').then(setW, () => setW(null))
+  }, [])
+  if (!w) return null
+  const name = 'Let Alpha watch my work'
+  return (
+    <List>
+      <Row
+        wrap
+        title={name}
+        about="Which app is in front and its window's title, every few seconds, on your computer; never a picture of your screen. Only while Alpha Bridge stays connected there. Off takes it back."
+        sub={
+          problem ??
+          (w.leave
+            ? `You said yes on ${new Date(w.leave.at).toLocaleDateString()}.${w.problem ? ` ${w.problem}` : ''}`
+            : null)
+        }
+        actions={
+          <Switch
+            checked={!!w.leave}
+            disabled={busy}
+            label={name}
+            named
+            onChange={(v) =>
+              act(async () => {
+                setW(
+                  await (v
+                    ? api.post<Watch>('/api/observe', {})
+                    : api.delete<Watch>('/api/observe')),
+                )
+              })
+            }
+          />
+        }
+      />
+    </List>
+  )
+}
+
 // The rules: every allow and deny across Alpha, yours and what Alpha noticed, each
 // with where it holds and how often it was used; a revoked one stays listed as history. A rule's
 // page revokes it, or approves or dismisses what Alpha noticed. Shown under Permissions.
