@@ -496,6 +496,12 @@ td.ak-tone-bad {
 
 /* The document look (<meta name="alpha-look" content="document">): the window's own width and
    theme (Kenil, 16 Nov), printed on white; small section labels, soft tiles, bare tables. */
+/* on its paper in the window as when printed: white, and a long word breaks before it runs past
+   its box (Vikas, 23 Nov) */
+body.ak-doc {
+  background: var(--surface);
+  overflow-wrap: break-word;
+}
 .ak-desk {
   padding: 18px 28px 0;
 }
