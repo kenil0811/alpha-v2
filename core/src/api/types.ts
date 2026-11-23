@@ -254,6 +254,7 @@ export interface ModuleSummary {
   parent: string | null // the module it sits inside
   number: string | null // its address, 1 or 1.2 inside module 1
   people: boolean // People and Organizations are its tabs (module.yaml people: true)
+  hidden: boolean // kept off the rail for everyone (module.yaml hidden: true)
   pages: PageSummary[]
   tables: TableSummary[]
 }

@@ -254,6 +254,7 @@ export function makeViews(ctx: BaseCtx) {
       parent: m.parent,
       number: moduleNumber(world.db, m.id),
       people: livesPeople(m),
+      hidden: manifestSays(m, 'hidden'),
       pages: pagesFor(world, m),
       tables: world.shape
         .tables(m.id)
