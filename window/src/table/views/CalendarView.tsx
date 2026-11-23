@@ -5,7 +5,7 @@
 // words over it (T5).
 import type { RowView, TableView as TableData, ViewConfig } from '@alpha/core/api'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { cn } from '../../ui/cn.ts'
 import { cutTip } from '../../ui/cut-tip.ts'
@@ -17,6 +17,8 @@ import { DOT, titleOf } from '../values.ts'
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 const DAY = 86_400_000
 const HOUR = 48 // the height of an hour in a week or a day, in pixels
+const CHIP = 24 // a row's line in a month's day, with the gap above it, in pixels
+const DAY_TOP = 60 // a month's day's date and its "n more", with its padding
 type Span = 'month' | 'week' | 'day'
 
 // Monday of the week a day is in.
@@ -201,6 +203,19 @@ function Month({
   const days = Array.from({ length: 42 }, (_, i) => plusDays(first, i))
   const weeks = days[35]?.getMonth() === month.getMonth() ? 6 : 5
   const today = dayKey(new Date())
+  // every week of the month on one screen, no scrolling (Vikas, 23 Nov): a day shows the rows its
+  // height holds, never fewer than one, with the date and "n more" on lines of their own
+  const grid = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(3)
+  useEffect(() => {
+    const g = grid.current
+    if (!g) return
+    const size = () => setFit(Math.max(1, Math.floor((g.clientHeight / weeks - DAY_TOP) / CHIP)))
+    size()
+    const watch = new ResizeObserver(size)
+    watch.observe(g)
+    return () => watch.disconnect()
+  }, [weeks])
   return (
     <>
       <div className="grid grid-cols-7 border-line border-b text-ink-3 text-sm">
@@ -211,8 +226,9 @@ function Month({
         ))}
       </div>
       <div
-        className="grid min-h-0 flex-1 grid-cols-7 overflow-y-auto rounded-b-lg border-line border-r border-l bg-surface"
-        style={{ gridTemplateRows: `repeat(${weeks}, minmax(104px, 1fr))` }}
+        ref={grid}
+        className="grid min-h-0 flex-1 grid-cols-7 overflow-hidden rounded-b-lg border-line border-r border-l bg-surface"
+        style={{ gridTemplateRows: `repeat(${weeks}, minmax(0, 1fr))` }}
       >
         {days.slice(0, weeks * 7).map((d) => {
           const here = byDay.get(dayKey(d)) ?? []
@@ -221,7 +237,7 @@ function Month({
             <div
               key={dayKey(d)}
               className={cn(
-                'flex min-w-0 flex-col gap-1 border-hair border-b border-l p-1.5 first:border-l-0 [&:nth-child(7n+1)]:border-l-0',
+                'flex min-h-0 min-w-0 flex-col gap-1 overflow-hidden border-hair border-b border-l p-1.5 first:border-l-0 [&:nth-child(7n+1)]:border-l-0',
                 !inMonth && 'bg-canvas',
               )}
             >
@@ -240,16 +256,16 @@ function Month({
               >
                 {d.getDate()}
               </button>
-              {here.slice(0, 3).map((p) => (
+              {here.slice(0, fit).map((p) => (
                 <Chip key={p.row.id} p={p} names={names} toneOf={toneOf} onOpen={onOpen} time />
               ))}
-              {here.length > 3 && (
+              {here.length > fit && (
                 <button
                   type="button"
                   onClick={() => onDay(d)}
                   className="px-1.5 text-left text-ink-3 text-xs hover:text-ink"
                 >
-                  {here.length - 3} more
+                  {here.length - fit} more
                 </button>
               )}
             </div>
