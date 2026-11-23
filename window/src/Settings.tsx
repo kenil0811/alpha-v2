@@ -5,6 +5,7 @@ import type {
   Health,
   Me,
   ModelView,
+  StoryView,
   UpdateView,
 } from '@alpha/core/api'
 import { Plus, SlidersHorizontal } from 'lucide-react'
@@ -22,6 +23,7 @@ import { Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
+import { SET_UP } from './story/address.ts'
 import { TokenForm } from './TokenForm.tsx'
 import {
   applyTextSize,
@@ -58,6 +60,7 @@ const PAGES: { name: string; parts: [string, string][] }[] = [
     parts: [
       ['appearance', 'Appearance'],
       ['people', 'Members'],
+      ['setup', 'Set up Alpha'],
       ['alpha', 'Alpha'],
     ],
   },
@@ -182,6 +185,7 @@ export function Settings({
   if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />
   const body: Record<string, ReactNode> = {
     appearance: <Appearance view={view} onChange={load} />,
+    setup: <SetUpPart version={version} />,
     alpha: <AlphaPart me={me} />,
     people: <AccountsSection />,
     usage: <UsageSection />,
@@ -263,6 +267,45 @@ export function Settings({
         </div>
       </div>
     </div>
+  )
+}
+
+// Set up Alpha, to go through again or carry on (Vikas, 23 Nov; it was on the workspace tile's
+// menu): how many steps are done, and the story opened where it is, or from the start once done.
+function SetUpPart({ version }: { version: number }) {
+  const [story, setStory] = useState<StoryView | null>(null)
+  useEffect(() => {
+    if (version >= 0) api.get<StoryView>('/api/story').then(setStory, () => undefined)
+  }, [version])
+  if (!story) return null
+  const done = story.chapters.filter((c) => c.state === 'done').length
+  return (
+    <Section title="Set up Alpha">
+      <List>
+        <Row
+          title={`${done} of ${story.chapters.length} steps done`}
+          actions={
+            <Button
+              size="sm"
+              onClick={() => {
+                const go = () => {
+                  window.location.hash = SET_UP
+                }
+                // a finished one starts again (the core's reopen); one under way carries on
+                if (story.done)
+                  void api
+                    .post('/api/story/reopen')
+                    .catch(() => undefined)
+                    .finally(go)
+                else go()
+              }}
+            >
+              {story.done ? 'Set up again' : 'Carry on'}
+            </Button>
+          }
+        />
+      </List>
+    </Section>
   )
 }
 
