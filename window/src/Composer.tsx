@@ -205,6 +205,7 @@ export function Composer({
           }}
         />
         <textarea
+          data-composer
           ref={area}
           rows={1}
           value={words}

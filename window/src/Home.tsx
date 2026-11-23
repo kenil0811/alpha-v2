@@ -218,6 +218,7 @@ function AskBox({
     <form onSubmit={send} className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pr-1.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
         <input
+          data-composer
           ref={area}
           value={words}
           onChange={(e) => setWords(e.target.value)}
