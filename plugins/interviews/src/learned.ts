@@ -32,7 +32,8 @@ export function learnedScreen(host: PluginHost, who: Who, step: Step = 'learned'
   startReading(host, who)
   const st = storyOf(host, who.id)
   const busy = st.drafting || st.reading
-  const read = st.found.some((f) => f.on)
+  // Alpha's own setup is always there: only something the person connected counts as read
+  const read = st.found.some((f) => f.on && f.key !== 'alpha')
   const questions = mine(host, 'Questions', who)
   const open = questions.filter((q) => !String(q.values.Answer ?? '').trim())
   const next = open[0]
@@ -58,6 +59,8 @@ export function learnedScreen(host: PluginHost, who: Who, step: Step = 'learned'
       plate: 'Here’s what I could take off your plate.',
     }[step],
     empty,
+    // nothing is connected, so the step has nothing to show: the window passes it by (no empty step)
+    nothing: !busy && !read,
     drafting: busy,
     problem: st.problem,
     // what was read, as Get to know you showed it, while the draft is written

@@ -125,6 +125,7 @@ export interface DoneScreen extends Screen {
 // A chapter a plugin adds: its own screen's fields beside these, drawn by its own window part.
 export interface PluginScreen extends Screen {
   plugin: string
+  nothing?: boolean // nothing to show: the window skips the step rather than draw it empty
   [field: string]: unknown
 }
 

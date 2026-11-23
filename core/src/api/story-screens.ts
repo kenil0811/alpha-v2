@@ -8,6 +8,7 @@ import { isClaudeToken } from '../engine/route.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import { businessCase } from '../world/shape/manifest.ts'
+import { progressOf } from '../world/story.ts'
 import {
   nameOfDomain,
   setWorkspace,
@@ -237,6 +238,12 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         'The tables here are everyone’s: what you add, everyone here can see, and what they add, you can.',
     }),
     done: async (): Promise<DoneScreen> => {
+      // a plugin offered what to build only if one of its steps was gone through, not passed by
+      const offered =
+        room.plugins &&
+        (options.chapters ?? []).some(
+          (c) => progressOf(world.db, user.id).chapters[c.key] === 'done',
+        )
       const connected = connections()
         .filter((k) => k.state === 'connected')
         .map((k) => `${k.title}, ${k.account}${k.landed.length ? `: ${k.landed.join(', ')}` : ''}`)
@@ -245,7 +252,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         title: 'Done',
         says: connected.length
           ? 'You’re all set. Here’s what I’m working with.'
-          : room.plugins
+          : offered
             ? 'You’re all set.'
             : 'You’re all set. Here’s what I could take off your plate.',
         connected,
@@ -256,8 +263,8 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
           : user.role === 'owner'
             ? 'Nothing is connected yet, so I’ll wait for you. Connect your mail or calendar any time in Settings.'
             : 'Nothing of yours is connected yet. Connect your mail or calendar any time in Settings.',
-        // without the interview to offer what to build, one box for something they repeat
-        repeat: !room.plugins,
+        // without the interview's offer of what to build, one box for something they repeat
+        repeat: !offered,
       }
     },
   }

@@ -198,6 +198,12 @@ function StepPart({
     if (!out.on) load()
   }
   const doneSaying = useCallback(() => setSaid(true), [])
+  // a step with nothing to show is passed by, never drawn empty
+  const nothing = !!screen && 'nothing' in screen && screen.nothing === true
+  useEffect(() => {
+    if (here && nothing) go(true)
+  }, [here, nothing])
+  if (nothing) return null
   // Hello has nothing to skip, Claude can't be skipped while no model is set, and Done is the
   // way out
   const skippable =
