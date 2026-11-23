@@ -34,6 +34,7 @@ import { readThrough } from './reads.ts'
 import { rulesFor } from './rules.ts'
 import { describeConnections, entriesOf } from './served.ts'
 import type { SignIn } from './signin.ts'
+import { count, readLine, type Tally, tallyWords, totals } from './tally.ts'
 
 export interface ServiceOptions {
   secrets: SecretStore
@@ -169,13 +170,16 @@ export class ConnectorService {
       land: (tableName, items, options) => {
         const t = tableOf(this.world, c, tableName)
         if (!t) throw new Problem(`The table ${tableName} is not there.`)
-        return this.world.records.land(
+        const out = this.world.records.land(
           t.id,
           items,
           { connector: c.manifest.name, account: conn.account },
           { actor },
           options,
         )
+        const skipped = items.length - out.added - out.changed - out.same
+        this.count(conn.id, t.id, t.name, { ...out, read: items.length, skipped })
+        return out
       },
       gone: (tableName, keys, options) => {
         const t = tableOf(this.world, c, tableName)
@@ -202,6 +206,7 @@ export class ConnectorService {
       keepFile: (name, bytes, mime) => {
         const known = this.world.files.file(hashOf(bytes))
         takeIn(this.world, bytes, name, mime, { actor })
+        this.count(conn.id, 'files', 'Files', { read: 1, ...(known ? { same: 1 } : { added: 1 }) })
         return { isNew: !known }
       },
       journal: (words, data) => {
@@ -213,14 +218,21 @@ export class ConnectorService {
         })
       },
       // counted for the read under way, and said on the connection when it ends (rules N1)
-      leftOut: (_table, count) => {
-        this.left.set(conn.id, (this.left.get(conn.id) ?? 0) + count)
+      leftOut: (table, n) => {
+        const t = table === 'files' ? null : tableOf(this.world, c, table)
+        this.count(conn.id, t?.id ?? table, t?.name ?? 'Files', { read: n, leftOut: n })
       },
     }
   }
 
-  // What each read under way left out as on the never-use list, by its connection.
-  private left = new Map<string, number>()
+  // What each read under way brought, by its connection (tally.ts): live in What Alpha read while
+  // it runs, then kept on its journal line.
+  private tallies = new Map<string, Tally>()
+  private count(id: string, table: string, name: string, c: Parameters<typeof count>[3]) {
+    count(this.tallies.get(id) ?? this.tallies.set(id, {}).get(id) ?? {}, table, name, c)
+  }
+  tallyOf = (id: string): Tally | null =>
+    this.running.has(id) ? (this.tallies.get(id) ?? {}) : null
 
   // A tool's call, by its effect: one that changes something is never tried again when its fate
   // is unknown; a read keeps its retries.
@@ -365,8 +377,6 @@ export class ConnectorService {
     })
   }
 
-  // One sync of one connection at a time: a second ask waits for the one running. A failure says
-  // what the person can do.
   // The connections being read right now, for Home's Running list (a read shows in Activity
   // only once it ends, and a long one would look like nothing happening).
   reading(): { connection: string; title: string; account: string }[] {
@@ -384,6 +394,7 @@ export class ConnectorService {
     })
   }
 
+  // One sync of one connection at a time: a second ask waits for the one running.
   sync(id: string): Promise<void> {
     const running = this.running.get(id)
     if (running) return running
@@ -413,17 +424,19 @@ export class ConnectorService {
     const started = Date.now()
     // each read is a line for Activity: how long it took and whether it brought anything
     const read = (state: 'ok' | 'failed', words: string, quiet: boolean) =>
-      this.world.line({
-        actor: { kind: 'connector', id: c.manifest.name },
-        kind: 'connection_read',
+      readLine(this.world, c.manifest.name, c.manifest.title, conn, {
+        ms: Date.now() - started,
+        state,
+        quiet,
         words,
-        data: { connection: id, name: c.manifest.title, ms: Date.now() - started, state, quiet },
+        tally: this.tallies.get(id) ?? {},
       })
-    this.left.set(id, 0)
+    this.tallies.set(id, {})
     try {
       landIn(this.world, c)
       const result = await c.sync(this.call(c, conn))
-      const leftOut = this.left.get(id) ?? 0
+      const tally = this.tallies.get(id) ?? {}
+      const { leftOut, skipped } = totals(tally)
       const health = judgeHealth(
         { rows: conn.lastRows, lastNewAt: conn.lastNewAt },
         result,
@@ -445,14 +458,8 @@ export class ConnectorService {
         { actor: { kind: 'connector', id: c.manifest.name } },
         leftOut,
       )
-      const left = leftOut ? ` Left out ${leftOut} on the never-use list.` : ''
-      read(
-        'ok',
-        result.sawNew
-          ? `Read ${conn.account}: something new.${left}`
-          : `Read ${conn.account}: nothing new.${left}`,
-        !result.sawNew,
-      )
+      // a read that left something out or passed something over is never folded away
+      read('ok', tallyWords(conn.account, tally), !result.sawNew && !leftOut && !skipped)
     } catch (err) {
       if (err instanceof Problem && err.kind === 'away') return waits(this.world, c, conn)
       this.tried.set(id, Date.now())

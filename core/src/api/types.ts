@@ -29,6 +29,7 @@ export type {
   ModuleFileView,
   RowFileView,
 } from './file-types.ts'
+export type { LearnedView, ReadReportView, ReadSourceView, ReadTableView } from './read-types.ts'
 
 import type { ViewOf } from './me-types.ts'
 
