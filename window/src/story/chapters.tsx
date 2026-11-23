@@ -41,6 +41,7 @@ import { type Answer, YesNo } from '../ui/yes-no.tsx'
 import { squared } from '../Workspace.tsx'
 import { Connect } from './connect.tsx'
 import type { Next } from './next.ts'
+import { Repeat } from './repeat.tsx'
 
 export type { Next } from './next.ts'
 
@@ -436,8 +437,11 @@ function Done({ screen, next }: Props & { screen: DoneScreen }) {
           sub="Added to this workspace"
         />
       ))}
-      {!screen.connected.length && !builds.length && !screen.people.length && (
-        <li className="text-ink-3">{screen.none}</li>
+      {screen.none && <li className="text-ink-2">{screen.none}</li>}
+      {screen.repeat && (
+        <li className="pt-4">
+          <Repeat />
+        </li>
       )}
     </ul>
   )

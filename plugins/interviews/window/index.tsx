@@ -18,6 +18,7 @@ import {
   openModule,
   Pill,
   Refusal,
+  Repeat,
   type Screen,
   Section,
   startBuild,
@@ -213,7 +214,7 @@ function Plate(p: ChapterProps) {
         <LoaderCircle className="size-4 animate-spin" /> Working out what I could do for you
       </p>
     )
-  if (!flows.length) return <Repeat built={() => p.act({ built: true })} />
+  if (!flows.length) return <Repeat done={() => p.act({ built: true })} />
   return (
     <div className="flex flex-col gap-2">
       {flows.map((w) => (
@@ -230,47 +231,6 @@ function Plate(p: ChapterProps) {
       ))}
       <Refusal words={doing.problem} />
     </div>
-  )
-}
-
-// One thing the person repeats, in their words, for the Module builder.
-function Repeat({ built }: { built: () => Promise<void> }) {
-  const [words, setWords] = useState('')
-  const [sent, setSent] = useState(false)
-  const doing = useAct()
-  if (sent)
-    return (
-      <p className="flex items-center gap-2 text-ink-2">
-        <Check className="size-4 text-good" /> I’m on it. You’ll find it being built on Home.
-      </p>
-    )
-  return (
-    <form
-      className="flex flex-col gap-2"
-      onSubmit={(e) => {
-        e.preventDefault()
-        void doing.act(async () => {
-          await startBuild(askFor(words.trim(), []))
-          await built()
-          setSent(true)
-        })
-      }}
-    >
-      <p className="text-ink-2">Tell me one thing you repeat, and I’ll take it on.</p>
-      <div className="flex gap-2">
-        <Field
-          className="flex-1"
-          aria-label="Something you repeat"
-          placeholder="Every Friday I chase unpaid invoices by email"
-          value={words}
-          onChange={(e) => setWords(e.target.value)}
-        />
-        <Button type="submit" disabled={doing.busy || !words.trim()}>
-          Build it
-        </Button>
-      </div>
-      <Refusal words={doing.problem} />
-    </form>
   )
 }
 

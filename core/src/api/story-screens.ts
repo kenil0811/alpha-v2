@@ -33,6 +33,7 @@ export interface StoryRoom {
   modelSet: () => Promise<boolean>
   onServer: boolean // a server takes Claude as a token; a Mac signs in in the browser
   linkFor: (link: string) => string // a one-time link as the person will open it
+  plugins: boolean // a plugin has steps in this person's story (the interview's Off your plate)
 }
 
 // The three promises on Hello (call 25), in plain words, no app terms (proposed, Vikas 23 Nov): the
@@ -202,20 +203,39 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         key: 'done',
         title: 'Done',
         says: connected.length
-          ? 'I’m ready. Here’s where I’ll start.'
-          : 'I’m ready. I’ll start with what you connect.',
+          ? 'You’re all set. Here’s what I’m working with.'
+          : room.plugins
+            ? 'You’re all set.'
+            : 'You’re all set. Here’s what I could take off your plate.',
         connected,
         people: user.role === 'owner' ? others().map((a) => a.name) : [],
-        none:
-          user.role === 'owner'
-            ? 'You can connect things and add people any time in Settings.'
-            : 'You can connect your own any time in Settings.',
+        // said plainly where nothing is connected: what Alpha waits on
+        none: connected.length
+          ? ''
+          : user.role === 'owner'
+            ? 'Nothing is connected yet, so I’ll wait for you. Connect your mail or calendar any time in Settings.'
+            : 'Nothing of yours is connected yet. Connect your mail or calendar any time in Settings.',
+        // without the interview to offer what to build, one box for something they repeat
+        repeat: !room.plugins,
       }
     },
   }
 
   // What each act does with what the person gave; the story moves on after it.
+  // nothing: nothing happened on the step, so it is marked skipped, never done
   const acts: Record<string, (body: unknown) => Promise<Record<string, unknown>>> = {
+    computer: async () => ({
+      nothing:
+        !world.computers.of(user.id).length &&
+        !world.connections
+          .list()
+          .some((k) => k.connector === 'folder' && k.madeBy === `person:${user.id}`),
+    }),
+    connect: async () => ({
+      nothing: !world.connections
+        .list()
+        .some((k) => k.connector !== 'folder' && k.madeBy === `person:${user.id}`),
+    }),
     claude: async (body) => {
       const b = z.object({ token: z.string().max(400).optional() }).parse(body ?? {})
       const route = engine.route
@@ -268,7 +288,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         const made = world.accounts.add(p.name, p.email, ctx.asPerson)
         return { name: p.name, link: room.linkFor(made.link) }
       })
-      return { links }
+      return { links, nothing: !others().length }
     },
   }
 

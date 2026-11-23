@@ -15,6 +15,7 @@ export { startAsk } from '../ask.ts'
 // a module built from what the person asked, by the Module builder, as New module does
 export { askFor, giveBuilder as startBuild } from '../NewModule.tsx'
 export type { Next } from '../story/next.ts'
+export { Repeat } from '../story/repeat.tsx'
 export { Refusal, useAct } from '../ui/act.tsx'
 export { Button, IconButton } from '../ui/button.tsx'
 export { Actions, Card } from '../ui/card.tsx'

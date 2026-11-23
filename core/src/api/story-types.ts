@@ -115,7 +115,8 @@ export interface DoneScreen extends Screen {
   key: 'done'
   connected: string[]
   people: string[] // who the owner added
-  none: string // what to say where nothing is there yet: the owner's and a member's differ
+  none: string // what to say where nothing is connected: the owner's and a member's differ
+  repeat: boolean // a box for something they repeat, where no plugin offers what to build
 }
 
 // A chapter a plugin adds: its own screen's fields beside these, drawn by its own window part.

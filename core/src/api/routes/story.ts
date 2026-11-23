@@ -52,6 +52,7 @@ export function registerStory(ctx: Ctx): void {
   const room = (req: { protocol: string; headers: { host?: string | undefined } }) => ({
     modelSet,
     onServer,
+    plugins: (options.chapters ?? []).some((c) => c.who === 'everyone' || user.role === 'owner'),
     linkFor: (link: string) =>
       `${options.publicAddress ?? `${req.protocol}://${req.headers.host}`}/?link=${encodeURIComponent(link)}`,
   })
@@ -139,13 +140,14 @@ export function registerStory(ctx: Ctx): void {
     const { chapter: key } = z.object({ chapter: z.string().max(60) }).parse(req.params)
     const chapter = await reachable(key)
     if (chapter.plugin) {
-      const out = await chapter.plugin.act(input(req))
-      if (out.on) through(key, 'done')
+      const { nothing, ...out } = await chapter.plugin.act(input(req))
+      if (out.on) through(key, nothing ? 'skipped' : 'done')
       return { ...out, story: await view() }
     }
     const { acts } = storyScreens(ctx, room(req))
-    const out = (await acts[key]?.(req.body)) ?? {}
-    through(key, 'done')
+    // a step on which nothing happened is skipped, never ticked done
+    const { nothing, ...out } = (await acts[key]?.(req.body)) ?? {}
+    through(key, nothing ? 'skipped' : 'done')
     return { ...out, story: await view() }
   })
 

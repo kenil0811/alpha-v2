@@ -272,6 +272,25 @@ describe('Set up Alpha', () => {
     expect(s.chapters[0]).toMatchObject({ key: 'welcome', state: 'done' })
   })
 
+  it('never ticks a step done when nothing happened on it, and ends on something to do', async () => {
+    await route.setToken(TOKEN, owner.id)
+    const app = as()
+    for (const c of ['welcome', 'workspace', 'computer', 'connect', 'people'])
+      await post(app, `/api/story/${c}`)
+    const s = await story(app)
+    const state = (k: string) => s.chapters.find((c) => c.key === k)?.state
+    expect([state('workspace'), state('computer'), state('connect'), state('people')]).toEqual([
+      'done',
+      'skipped',
+      'skipped',
+      'skipped',
+    ])
+    const done = (await app.inject({ url: '/api/story/done', headers: AS })).json()
+    expect(done).toMatchObject({ repeat: true, connected: [] })
+    expect(done.says).not.toMatch(/start with what you connect/)
+    expect(done.none).toMatch(/Nothing is connected yet/)
+  })
+
   it('takes the row off Home on Decline, and opens from the start again on Reopen', async () => {
     const app = as()
     await post(app, '/api/story/welcome')
