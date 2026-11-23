@@ -1,10 +1,10 @@
 // A module's page: its file in a sandboxed frame that can reach nothing but this
 // window. The window answers the page's questions from the core (its module's rows, read-only),
 // sends it the window's look, sizes the frame to it, opens what the page asks to open, and prints
-// it to a PDF with the page's choices.
+// it to a PDF with the page's choices. A document is shown as it prints: on its paper (Sheet).
 import type { ModuleView, PageSummary, TableView as TableData } from '@alpha/core/api'
 import { Download } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { SourcePanel } from './table/SourcePanel.tsx'
@@ -92,7 +92,12 @@ export function PageView({
     )
   }, [base, record])
 
-  const send = () => frame.current?.contentWindow?.postMessage({ alpha: 'theme', ...look() }, '*')
+  // a document is drawn on its paper in the kit's own print look, never the window's
+  const doc = !!html && /<meta\s+name=["']alpha-look["']\s+content=["']document["']/i.test(html)
+  const wide = !!html && /<meta\s+name=["']alpha-print["']\s+content=["']landscape["']/i.test(html)
+  const send = () => {
+    if (!doc) frame.current?.contentWindow?.postMessage({ alpha: 'theme', ...look() }, '*')
+  }
   useEffect(() => {
     if (version >= 0) frame.current?.contentWindow?.postMessage({ alpha: 'refresh' }, '*')
   }, [version])
@@ -199,8 +204,17 @@ export function PageView({
     }
   }
 
-  // a document uses the window's whole width, its Download PDF at the right edge
-  const wide = !!html && /<meta\s+name=["']alpha-look["']\s+content=["']document["']/i.test(html)
+  const drawn = html && (
+    <iframe
+      ref={frame}
+      title={page.title}
+      sandbox="allow-scripts"
+      srcDoc={html}
+      onLoad={send}
+      className="block w-full border-0"
+      style={{ height }}
+    />
+  )
   const opened = source && {
     row: source.table.rows.find((r) => r.id === source.row),
     field: source.table.fields.find((f) => f.slug === source.field),
@@ -209,7 +223,7 @@ export function PageView({
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className={cn('flex items-center gap-3 px-7 pt-4', !wide && 'max-w-page')}>
+        <div className={cn('flex items-center gap-3 px-7 pt-4', !doc && 'max-w-page')}>
           <span className="min-w-0 flex-1 truncate text-ink-3 text-sm">
             {problem ?? (html ? '' : 'Loading the page…')}
           </span>
@@ -218,17 +232,7 @@ export function PageView({
             {printing ? 'Making the PDF…' : 'Download PDF'}
           </Button>
         </div>
-        {html && (
-          <iframe
-            ref={frame}
-            title={page.title}
-            sandbox="allow-scripts"
-            srcDoc={html}
-            onLoad={send}
-            className="block w-full border-0"
-            style={{ height }}
-          />
-        )}
+        {doc ? <Sheet wide={wide}>{drawn}</Sheet> : drawn}
       </div>
       {source && opened?.row && opened.field && (
         <SourcePanel
@@ -245,6 +249,37 @@ export function PageView({
           onClose={() => setSource(null)}
         />
       )}
+    </div>
+  )
+}
+
+// A document's paper as the core prints it (connector-sdk's browser.ts): A4, its margins, laid out
+// at the width it prints at, so what shows is the PDF (Vikas, 23 Nov). The sheet shrinks to the
+// pane's width as a PDF viewer fits a page; nothing runs past its box.
+const MM = 96 / 25.4
+
+function Sheet({ wide, children }: { wide: boolean; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const paper = (wide ? 297 : 210) * MM
+  useEffect(() => {
+    const room = box.current
+    if (!room) return
+    // less px-4 a side; a pane not laid out yet (a hidden tab) keeps the last
+    const fit = () => room.clientWidth && setScale(Math.min(1, (room.clientWidth - 32) / paper))
+    fit()
+    const watch = new ResizeObserver(fit)
+    watch.observe(room)
+    return () => watch.disconnect()
+  }, [paper])
+  return (
+    <div ref={box} className="px-4 py-5">
+      <div
+        className="mx-auto rounded-sm bg-paper shadow-pop ring-1 ring-line"
+        style={{ width: paper, padding: `${14 * MM}px ${12 * MM}px`, zoom: scale }}
+      >
+        {children}
+      </div>
     </div>
   )
 }

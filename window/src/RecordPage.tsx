@@ -25,6 +25,7 @@ export interface Block {
   short?: ReactNode // its start, on Summary; none: only its tab, always in the tab row (a module's page)
   full?: ReactNode // the whole of it, on its tab; none: Summary shows all of it, and it has no tab
   wide?: boolean // the whole width on Summary (the note)
+  bare?: boolean // on its tab, itself with no title of its own: its tab names it (a report)
 }
 
 export function RecordPage({
@@ -117,7 +118,9 @@ export function RecordPage({
             Ask about this
           </Button>
         </div>
-        {open ? (
+        {open?.bare ? (
+          open.full
+        ) : open ? (
           <Section title={open.title} {...(open.about ? { about: open.about } : {})}>
             {open.full}
           </Section>
