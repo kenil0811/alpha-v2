@@ -1,4 +1,4 @@
-// Settings › Permissions, the rules: the one switch at the top, and every rule below it.
+// Settings › Rules: every rule in one list, the standing choice its first row with a switch.
 import type { KeptTable, RowView } from '@alpha/core/api'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
@@ -6,67 +6,54 @@ import { startAsk } from './ask.ts'
 import { openLink } from './opened.ts'
 import { TableView } from './TableView.tsx'
 import { useAct } from './ui/act.tsx'
-import { List, Row } from './ui/list.tsx'
+import { notify } from './ui/notice.tsx'
 import { Switch } from './ui/switch.tsx'
 
-// Whether agents and their scripts ask before a new site, by a switch: off on a fresh install.
-export function AskSites() {
-  const [on, setOn] = useState<boolean | null>(null)
-  const { busy, problem, act } = useAct()
-  useEffect(() => {
-    api.get<{ on: boolean }>('/api/rules/ask-before-sites').then(
-      (r) => setOn(r.on),
-      () => setOn(null),
-    )
-  }, [])
-  if (on === null) return null
-  const name = 'Ask before agents open a new website'
-  return (
-    <List>
-      <Row
-        wrap
-        title={name}
-        about="Off, agents and what they run on a schedule open any website. On, an agent opens a link it was shown or a site on its list without asking you, and asks before a link it wrote itself to another site, since what is in an address reaches that site."
-        sub={problem}
-        actions={
-          <Switch
-            checked={on}
-            disabled={busy}
-            label={name}
-            named
-            onChange={(v) =>
-              act(async () => {
-                setOn(
-                  (await api.post<{ on: boolean }>('/api/rules/ask-before-sites', { on: v })).on,
-                )
-              })
-            }
-          />
-        }
-      />
-    </List>
-  )
-}
+// the standing choice's row (the core's rules list): turned On or Off, the owner's; never a page
+const ASK_SITES = 'ask-before-sites'
 
-// The rules: every allow and deny across Alpha, yours and what Alpha noticed, each
-// with where it holds and how often it was used; a revoked one stays listed as history. A rule's
-// page revokes it, or approves or dismisses what Alpha noticed. Shown under Permissions.
-export function Standing({ version }: { version: number }) {
+// The rules: every allow and deny across Alpha, yours and what Alpha noticed, each with where it
+// holds and how often it was used; a revoked one stays listed as history. A rule's page revokes
+// it, or approves or dismisses what Alpha noticed. Whether agents ask before a new website is the
+// list's first row (Vikas, 23 Nov).
+export function Standing({ version, owner }: { version: number; owner: boolean }) {
   const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
     api.get<KeptTable>('/api/kept/rules').then(setData, () => setData(null))
   }, [])
+  const { busy, act } = useAct(load)
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
   if (!data) return null
+  const asks = data.rows.find((r) => r.id === ASK_SITES)?.values.state === 'On'
+  const turn = async (on: boolean) => {
+    const ok = await act(() => api.post('/api/rules/ask-before-sites', { on }))
+    // turned off, it says so, with the way back (Vikas, 23 Nov)
+    if (ok && !on)
+      notify({
+        words: 'Agents no longer ask before a new website. Turn it on again in',
+        where: { label: 'Rules', href: '#/settings/rules' },
+      })
+  }
   return (
     <Embedded
       data={data}
       open={(id) => {
-        openLink(`#/rule/${id}`)
+        if (id !== ASK_SITES) openLink(`#/rule/${id}`)
+        else if (owner) void turn(!asks)
       }}
       onNew={() => startAsk('From now on, ')}
+      rowAction={(r: RowView) =>
+        r.id === ASK_SITES && (
+          <Switch
+            checked={asks}
+            disabled={busy || !owner}
+            label="Ask before agents open a new website"
+            onChange={(on) => void turn(on)}
+          />
+        )
+      }
     />
   )
 }

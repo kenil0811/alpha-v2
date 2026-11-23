@@ -177,7 +177,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
           <div className="text-ink text-md">{filing.always}?</div>
           <div className="text-ink-3 text-sm">
             This one is filed now, and the next ones without asking you, each shown on Home. Revoke
-            it any time in Settings › Permissions.
+            it any time in Settings › Rules.
           </div>
           <Actions>
             <Button

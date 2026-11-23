@@ -1,16 +1,17 @@
 // Settings, a page of sections. Connections and Schedules are in their own files.
 import type { CardView, ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
-import { SlidersHorizontal } from 'lucide-react'
+import { Plus, SlidersHorizontal } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { AccountsSection, Foot } from './Accounts.tsx'
 import { Activity } from './Activity.tsx'
 import { api, Problem, wordsOf } from './api.ts'
+import { startAsk } from './ask.ts'
 import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
 import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
-import { AskSites, Standing } from './Rules.tsx'
+import { Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
@@ -180,7 +181,7 @@ export function Settings({
     connections: (
       <Connections view={view} open={open} version={version} owner={!member} onChange={load} />
     ),
-    rules: <Permissions version={version} owner={!member} />,
+    rules: <RulesPart version={version} owner={!member} />,
     activity: <Activity version={version} cards={cards} />,
     backup: <DataSection />,
     files: <KeptFiles version={version} module={open} />,
@@ -259,18 +260,23 @@ export function Settings({
   )
 }
 
-// Permissions: what Alpha does without asking because the person said Always, then how they asked
-// things to be done.
-function Permissions({ version, owner }: { version: number; owner: boolean }) {
+// Rules, one page (Vikas, 23 Nov): New rule, what waits for a yes, every rule in one list (the
+// standing choice its first row), then how the person asked things to be done.
+function RulesPart({ version, owner }: { version: number; owner: boolean }) {
   return (
     <>
       <Section
         title="Rules"
-        about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule applies once you save it on its card."
+        about="What Alpha may and may not do, yours and what it noticed. New rule starts the conversation; a rule applies once you save it on its card."
+        action={
+          <Button size="sm" onClick={() => startAsk('From now on, ')}>
+            <Plus className="size-3.5" />
+            New rule
+          </Button>
+        }
       >
-        {owner && <AskSites />}
         <WaitingRules version={version} />
-        <Standing version={version} />
+        <Standing version={version} owner={owner} />
       </Section>
       <HowToWork version={version} />
     </>
