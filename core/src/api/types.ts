@@ -21,6 +21,8 @@ export interface UpdateView {
 
 export type { ActingView, CardView, CheckView, ReviewView } from './card-types.ts'
 export type {
+  AccountLine,
+  AccountsView,
   BridgeDownload,
   ComputerPageView,
   ComputersView,
@@ -28,6 +30,7 @@ export type {
   ConnectionView,
   ConnectorsView,
   ConnectorView,
+  ExcludedView,
   ReadByView,
   SignInAppView,
 } from './connector-types.ts'

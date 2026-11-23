@@ -48,7 +48,7 @@ function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => voi
       act={
         !open && (
           <Button size="sm" variant={a.set ? 'ghost' : 'default'} onClick={() => setOpen(true)}>
-            {a.set ? 'Change' : 'Set up'}
+            {a.alpha ? 'Use your own' : a.set ? 'Change' : 'Set up'}
           </Button>
         )
       }
@@ -79,8 +79,9 @@ export function AppSetup({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const [id, setId] = useState(a.set?.app ?? '')
-  const [directory, setDirectory] = useState(a.set?.directory ?? '')
+  // Alpha's own app is not the firm's to edit: the boxes start empty for one of its own
+  const [id, setId] = useState(a.alpha ? '' : (a.set?.app ?? ''))
+  const [directory, setDirectory] = useState(a.alpha ? '' : (a.set?.directory ?? ''))
   const [secret, setSecret] = useState('')
   const { busy, problem, act } = useAct()
   const save = async (e: FormEvent) => {
@@ -101,7 +102,7 @@ export function AppSetup({
   const ready =
     !!id.trim() &&
     (!a.fields.directory || !!directory.trim()) &&
-    (!a.fields.secret || !!a.set?.secret || !!secret.trim())
+    (!a.fields.secret || (!a.alpha && !!a.set?.secret) || !!secret.trim())
   return (
     <form onSubmit={save} className="flex flex-col gap-4">
       <ol className="flex flex-col gap-3">
@@ -154,7 +155,7 @@ export function AppSetup({
             <SecretField
               id={`${a.provider}-secret`}
               value={secret}
-              placeholder={a.set?.secret ? 'Kept. Type a new one to replace it' : ''}
+              placeholder={!a.alpha && a.set?.secret ? 'Kept. Type a new one to replace it' : ''}
               onChange={(e) => setSecret(e.target.value)}
             />
           </label>

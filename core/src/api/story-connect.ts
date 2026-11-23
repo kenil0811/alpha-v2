@@ -8,23 +8,21 @@ import { tableOf } from '../connectors/places.ts'
 import { connectorsOf } from '../modules/runs/walls.ts'
 import type { Connection } from '../world/connections.ts'
 import type { Table } from '../world/shape/index.ts'
-import { appsLeftOut } from '../world/story.ts'
+import { accountsExcluded, appsLeftOut } from '../world/story.ts'
+import type { AccountLine, AccountsView, ExcludedView } from './connector-types.ts'
 import type { Ctx } from './ctx.ts'
 import type { AppFound, ConnectTile, TileConnection } from './story-types.ts'
 
 const MAIL = ['outlook', 'gmail']
 const HERE = ['calendar', 'contacts'] // a Mac's own, on Alpha's own Mac
+// the connectors whose accounts are lines (Vikas, 23 Nov): a provider's family on one line
+const FAMILY: Record<string, string> = { outlook: 'microsoft', gmail: 'google', google: 'google' }
+const FAMILY_TITLE: Record<string, string> = { microsoft: 'Microsoft', google: 'Google' }
 
-// What each mail tile reads, in one line, and more in its ⓘ.
-const READS: Record<string, string> = {
-  outlook: 'Mail from the last 90 days, your calendar and contacts',
-  gmail: 'Mail from the last 90 days',
-  google: 'Your Google calendar and contacts',
-}
 const MAIL_NOTE =
   'Alpha keeps each mail’s sender, subject and date, and reads a message’s words only when you ask about it.'
 
-// Gmail's app password, guided on its tile (call 9), Google's own pages opening in a new tab.
+// Gmail's app password, guided where it is added, Google's own pages opening in a new tab.
 const GMAIL_STEPS = [
   {
     words: 'Turn on 2-Step Verification for your Google account.',
@@ -37,38 +35,157 @@ const GMAIL_STEPS = [
   { words: 'Paste the 16 letters it shows below, with your address.', url: null },
 ]
 
+// Who connected a connection, as the person reads it.
+function byOf(ctx: Ctx, k: Connection): string {
+  const [kind, id] = k.madeBy.split(/:(.*)/s)
+  if (kind !== 'person') return 'Alpha'
+  return id === ctx.user.id ? 'You' : (ctx.world.user(id ?? '')?.name ?? 'Someone')
+}
+
+// What a connection holds, counted by code: a mail connector's in mails, another's by its table.
+function landedOf(ctx: Ctx, k: Connection): string[] {
+  const { world, engine } = ctx
+  const c = engine.connectors?.find(k.connector)
+  if (!c || k.state !== 'connected') return []
+  return c.tables.flatMap((spec) => {
+    const t = tableOf(world, c, spec.name)
+    if (!t) return []
+    const n = world.records.count(t.id)
+    const what = c.manifest.icon === 'mail' ? 'mails' : t.name.toLowerCase()
+    return [`${n} ${n === 1 ? what.replace(/s$/, '') : what}`]
+  })
+}
+
+// The connectors read as account lines: the providers' families, and any other mail.
+const isLine = (ctx: Ctx, connector: string) =>
+  !!FAMILY[connector] ||
+  (ctx.engine.connectors?.find(connector)?.manifest.icon === 'mail' &&
+    ctx.engine.connectors?.find(connector)?.manifest.auth !== 'path')
+
+// Every account the person reads, one line each (theirs alone with `mine`, as Connect shows
+// them), and what they excluded; each provider's one sign-in and how it stands.
+export function accountsView(ctx: Ctx, mine: boolean): AccountsView {
+  const { world, engine, user } = ctx
+  const loaded = (name: string) => engine.connectors?.find(name)
+  const signIn = engine.connectors?.signIn
+  const conns = world.connections
+    .list()
+    .filter((k) => isLine(ctx, k.connector) && (!mine || k.madeBy === `person:${user.id}`))
+  const lines = new Map<string, AccountLine>()
+  for (const k of conns) {
+    const provider = FAMILY[k.connector] ?? k.connector
+    const key = `${provider}:${k.account.trim().toLowerCase()}`
+    const c = loaded(k.connector)
+    const line = lines.get(key) ?? {
+      key,
+      provider,
+      title: FAMILY_TITLE[provider] ?? c?.manifest.title ?? k.connector,
+      account: k.account,
+      state: 'connected' as AccountLine['state'],
+      problem: null,
+      landed: [],
+      reads: [],
+      by: byOf(ctx, k),
+      connections: [],
+      adds: [],
+    }
+    line.connections.push({
+      id: k.id,
+      connector: k.connector,
+      auth: c?.manifest.auth ?? 'secret',
+      state: k.state,
+    })
+    line.landed.push(...landedOf(ctx, k))
+    line.reads.push(
+      k.connector === 'google'
+        ? 'Calendar and contacts'
+        : k.connector === 'outlook'
+          ? 'Mail, calendar and contacts'
+          : 'Mail',
+    )
+    // the line's state: one that asks something of the person, then one disconnected, then a
+    // first read running
+    const s: AccountLine['state'] = ['needs_sign_in', 'broken', 'waiting'].includes(k.state)
+      ? 'failed'
+      : k.state === 'paused'
+        ? 'off'
+        : k.lastSyncAt
+          ? 'connected'
+          : 'reading'
+    const rank = ['connected', 'reading', 'off', 'failed']
+    if (rank.indexOf(s) > rank.indexOf(line.state)) {
+      line.state = s
+      line.problem = s === 'failed' || s === 'off' ? k.health : null
+    }
+    lines.set(key, line)
+  }
+  const google = {
+    loaded: !!loaded('google') || !!loaded('gmail'),
+    ready: !!loaded('google') && !!signIn?.app('google'),
+    mail: !!loaded('gmail'),
+  }
+  for (const line of lines.values())
+    if (line.provider === 'google') {
+      const has = (n: string) => line.connections.some((x) => x.connector === n)
+      if (google.mail && !has('gmail')) line.adds.push('mail')
+      if (google.ready && !has('google')) line.adds.push('calendar')
+    }
+  const excluded: ExcludedView[] = [
+    ...accountsExcluded(world.db, user.id).map((a) => ({
+      kind: 'account' as const,
+      provider: a.provider,
+      name: a.account,
+      title: FAMILY_TITLE[a.provider] ?? loaded(a.provider)?.manifest.title ?? a.provider,
+    })),
+    ...appsLeftOut(world.db, user.id).map((name) => ({
+      kind: 'app' as const,
+      provider: 'app',
+      name,
+      title: 'App',
+    })),
+  ]
+  return {
+    lines: [...lines.values()],
+    excluded,
+    google,
+    microsoft: {
+      loaded: !!loaded('outlook'),
+      ready: !!loaded('outlook') && !!signIn?.app('microsoft'),
+      consent: signIn?.consent('microsoft') ?? null,
+    },
+    other: (engine.connectors?.known() ?? [])
+      .filter((c) => !FAMILY[c.manifest.name] && isLine(ctx, c.manifest.name))
+      .filter((c) => !engine.connectors?.onComputer(c))
+      .map((c) => c.manifest.name),
+    appPassword: GMAIL_STEPS,
+    owner: user.role === 'owner',
+    ownerName: world.users().find((u) => u.role === 'owner')?.name ?? 'the owner',
+  }
+}
+
+// A line's connectors that a person deletes or restores: a provider's family by its address.
+export function lineConnections(ctx: Ctx, provider: string, account: string): Connection[] {
+  return ctx.world.connections
+    .list()
+    .filter(
+      (k) =>
+        (FAMILY[k.connector] ?? k.connector) === provider &&
+        k.account.trim().toLowerCase() === account.trim().toLowerCase(),
+    )
+}
+
 export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
   const { world, engine, user } = ctx
   const owner = user.role === 'owner'
   const loaded = (name: string) => engine.connectors?.find(name)
   const mine = (k: Connection) => k.madeBy === `person:${user.id}`
-  const by = (k: Connection) => {
-    const [kind, id] = k.madeBy.split(/:(.*)/s)
-    if (kind !== 'person') return 'Alpha'
-    return id === user.id ? 'You' : (world.user(id ?? '')?.name ?? 'Someone')
-  }
-  // what a connection holds, counted by code: a mail connector's in mails
-  const landed = (k: Connection): string[] => {
-    const c = loaded(k.connector)
-    if (!c || k.state !== 'connected') return []
-    return c.tables.flatMap((spec) => {
-      const t = tableOf(world, c, spec.name)
-      if (!t) return []
-      const n = world.records.count(t.id)
-      return [
-        c.manifest.icon === 'mail'
-          ? `${n} ${n === 1 ? 'mail' : 'mails'}`
-          : `${n} ${n === 1 ? 'row' : 'rows'} in ${t.name}`,
-      ]
-    })
-  }
   const line = (k: Connection): TileConnection => ({
     id: k.id,
     connector: k.connector,
     account: k.account,
     state: k.state,
-    by: by(k),
-    landed: landed(k),
+    by: byOf(ctx, k),
+    landed: landedOf(ctx, k),
   })
   const all = world.connections.list()
   const of = (names: string[], everyone: boolean) =>
@@ -88,36 +205,24 @@ export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
     ...t,
   })
 
-  // a provider's sign-in app is the owner's to set up (call 10): until it is, a member's tile
-  // says it waits on them, with nothing to press
-  const signIn = engine.connectors?.signIn
-  const ownerName = world.users().find((u) => u.role === 'owner')?.name ?? 'the owner'
-  const waitsOnApp = (name: string): string | null => {
-    const o = loaded(name)?.manifest.oauth
-    if (owner || !o || !signIn || signIn.app(o.provider)) return null
-    const p = signIn.providers().find((x) => x.name === o.provider)
-    return `Waits on ${ownerName} to set up ${p?.title ?? 'its'} sign-in`
-  }
-
+  // mail, calendar and contacts: every account one line, added from one Add (Vikas, 23 Nov),
+  // drawn by the window from accountsView; its connections here carry what landed, counted
   const tiles: ConnectTile[] = []
-  for (const name of MAIL) {
-    const c = loaded(name)
-    if (!c) continue
-    const waits = waitsOnApp(name)
+  const lineNames = (engine.connectors?.known() ?? [])
+    .map((c) => c.manifest.name)
+    .filter((n) => isLine(ctx, n))
+  if (lineNames.length)
     tiles.push(
       tile({
-        key: name,
-        kind: 'connector',
-        title: c.manifest.title,
-        reads: READS[name] ?? `Read from ${c.manifest.title}`,
+        key: 'accounts',
+        kind: 'accounts',
+        title: 'Mail, calendar and contacts',
+        reads: 'Your Google, Microsoft and other mail accounts',
         note: MAIL_NOTE,
-        connectors: waits ? [] : [name],
-        steps: name === 'gmail' ? GMAIL_STEPS : [],
-        connections: of([name], false),
-        waits,
+        connectors: lineNames,
+        connections: of(lineNames, false),
       }),
     )
-  }
 
   // calendar and contacts: a Mac's own here, Outlook's with its mail, a computer's through Alpha
   // Bridge; and what has landed in Alpha's own Calendar and Network
@@ -137,21 +242,6 @@ export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
       waits: server ? 'Come with Outlook or Alpha Bridge' : null,
     }),
   )
-  if (loaded('google')) {
-    const waits = waitsOnApp('google')
-    tiles.push(
-      tile({
-        key: 'google',
-        kind: 'connector',
-        title: 'Google',
-        reads: READS.google ?? 'Your Google calendar and contacts',
-        connectors: waits ? [] : ['google'],
-        connections: of(['google'], false),
-        waits,
-      }),
-    )
-  }
-
   // the person's computer: Alpha Bridge on a server, folders by their path on Alpha's own Mac
   // what else Alpha Bridge reads, beyond a folder and a Mac's calendar and contacts
   const readers = (engine.connectors?.known() ?? [])

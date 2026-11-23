@@ -16,6 +16,7 @@ import {
   type SecretStore,
   type SignInApp,
 } from '@alpha/connector-sdk'
+import type { SignInIds } from '../config.ts'
 import type { Connection } from '../world/connections.ts'
 import { one, run, tx } from '../world/db.ts'
 import { type Actor, append, keepOut, letGo } from '../world/journal.ts'
@@ -38,6 +39,25 @@ export interface SignInOptions {
   back: () => string // where the provider sends the person: the core's own address, with its port
   providers?: Record<string, Provider>
   now?: () => number
+  alpha?: () => SignInIds // Alpha's own sign-in apps (core/config/signin.yaml), read on use
+}
+
+// Alpha's own app for a provider, from the config: Microsoft's on the common authority, so work,
+// school and personal accounts all sign in; Google's with the secret Google gives a desktop client,
+// which its token address asks for. None while either is empty: the firm's own app, as before.
+export function alphaApp(
+  ids: SignInIds | undefined,
+  provider: string,
+): (SignInApp & { secretValue?: string }) | null {
+  if (provider === 'microsoft' && ids?.microsoft.client_id.trim())
+    return { app: ids.microsoft.client_id.trim(), directory: 'common' }
+  if (provider === 'google' && ids?.google.client_id.trim() && ids.google.client_secret.trim())
+    return {
+      app: ids.google.client_id.trim(),
+      secret: true,
+      secretValue: ids.google.client_secret.trim(),
+    }
+  return null
 }
 
 interface Pending {
@@ -95,14 +115,41 @@ export class SignIn {
     return u.toString()
   }
 
-  // The organisation's sign-in app for a provider, once IT set it up.
+  // The sign-in app for a provider: the organisation's own once IT set it up, else Alpha's own
+  // where it is registered.
   app(provider: string): SignInApp | null {
+    const own = this.ownApp(provider)
+    if (own) return own
+    const a = this.alphaOf(provider)
+    if (!a) return null
+    const { secretValue: _kept, ...app } = a
+    return app
+  }
+
+  private ownApp(provider: string): SignInApp | null {
     const v = one<{ value: string }>(
       this.world.db,
       'SELECT value FROM meta WHERE key = ?',
       KEY(provider),
     )
     return v ? (JSON.parse(v.value) as SignInApp) : null
+  }
+
+  private alphaOf(provider: string) {
+    return alphaApp(this.options.alpha?.(), provider)
+  }
+
+  // Whether a provider signs in with Alpha's own app: nothing for the firm to register.
+  alpha(provider: string): boolean {
+    return !this.ownApp(provider) && !!this.alphaOf(provider)
+  }
+
+  // Where a business's admin approves Alpha's own app for everyone there, once: only for Alpha's
+  // app (a firm's own is approved in its own setup sheet).
+  consent(provider: string): string | null {
+    const p = (this.options.providers ?? PROVIDERS)[provider]
+    const app = this.alpha(provider) ? this.app(provider) : null
+    return p?.consent && app ? p.consent(app) : null
   }
 
   // The app as IT copies it: its id, its organisation where the provider has one, and its secret
@@ -371,7 +418,9 @@ export class SignIn {
     // but to the provider
     let basic: string | null = null
     if (p.secretIn === 'basic') {
-      const secret = await this.options.secrets.get(SECRET(p.name))
+      const secret = this.alpha(p.name)
+        ? (this.alphaOf(p.name)?.secretValue ?? null)
+        : await this.options.secrets.get(SECRET(p.name))
       if (!secret)
         throw new Problem(
           `${p.title}'s sign-in app has no ${p.fields.secret?.label ?? 'secret'} kept: set it again in Sign-in apps.`,
@@ -415,6 +464,11 @@ export class SignIn {
 
   private problem(p: Provider, e: ProviderError): Problem {
     const x = p.explain(e)
-    return new Problem(x.words, x.kind === 'app' ? 'other' : x.kind)
+    // Alpha's own app has no setup sheet: the business's admin approves it with its link
+    const words =
+      x.kind === 'waiting' && this.consent(p.name)
+        ? `Your organisation asks its admin to approve Alpha first: send them the admin approval link from Connections.`
+        : x.words
+    return new Problem(words, x.kind === 'app' ? 'other' : x.kind)
   }
 }

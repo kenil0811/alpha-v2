@@ -66,6 +66,9 @@ export interface Provider {
   always: readonly string[]
   // where IT manages the app
   console: string
+  // where a business's admin approves an app for everyone in it at once, for an app used across
+  // many organisations (Microsoft's admin consent)
+  consent?(app: SignInApp): string
   sheet(back: string, organisation: string): SheetStep[]
   explain(e: ProviderError): Explained
 }
@@ -121,6 +124,8 @@ export const microsoft: Provider = {
   ],
   always: ['offline_access'],
   console: 'https://entra.microsoft.com',
+  consent: (a) =>
+    `https://login.microsoftonline.com/organizations/adminconsent?client_id=${encodeURIComponent(a.app)}`,
   sheet: (back, organisation) => [
     {
       words:

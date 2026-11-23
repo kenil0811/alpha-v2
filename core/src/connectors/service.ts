@@ -298,9 +298,7 @@ export class ConnectorService {
       )
     if (c.manifest.auth === 'secret' && !secret?.trim())
       throw new Refused(`${c.manifest.title} needs its ${c.manifest.secret?.label ?? 'password'}.`)
-    const ref = ['secret', 'oauth'].includes(c.manifest.auth)
-      ? `${name}:${account.trim().toLowerCase()}`
-      : null
+    const ref = refOf(c, account)
     if (ref && secret && c.manifest.auth === 'secret')
       await this.options.secrets.set(ref, secret.trim())
     const conn = this.world.connections.add(name, account, ref, c.manifest.title, {
@@ -366,6 +364,37 @@ export class ConnectorService {
   failed(id: string, err: unknown): void {
     const conn = this.world.connections.get(id)
     if (conn) this.fail(this.connector(conn.connector), conn, err)
+  }
+
+  // Disconnect: the kept sign-in or password goes and reads stop, the connection stays, paused and
+  // saying so, until the person reconnects it (paused, so Home asks for no sign-in).
+  async signOut(id: string, user: string): Promise<void> {
+    const conn = this.world.connections.get(id)
+    if (!conn) throw new Refused('That connection is not there.')
+    if (conn.secretRef) await this.options.secrets.delete(conn.secretRef)
+    this.signIn?.forget(id)
+    const title = this.find(conn.connector)?.manifest.title ?? conn.connector
+    this.world.connections.setState(
+      id,
+      'paused',
+      SIGNED_OUT,
+      `Disconnected ${title} for ${conn.account}.`,
+      {
+        actor: { kind: 'person', id: user },
+        user,
+      },
+    )
+  }
+
+  // An account brought back from Excluded: there again, disconnected, ready to sign in again.
+  async restore(name: string, account: string, user: string): Promise<Connection> {
+    const c = this.connector(name)
+    const conn = this.world.connections.add(name, account, refOf(c, account), c.manifest.title, {
+      actor: { kind: 'person', id: user },
+      user,
+    })
+    await this.signOut(conn.id, user)
+    return this.world.connections.get(conn.id) as Connection
   }
 
   async disconnect(id: string, user: string): Promise<void> {
@@ -603,3 +632,12 @@ export class ConnectorService {
 function hashOf(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex')
 }
+
+// What a disconnected connection says: reconnecting it is the person's.
+export const SIGNED_OUT = 'Disconnected: reconnect to read it again.'
+
+// Where a connection's secret or sign-in is kept, for a connector that keeps one.
+const refOf = (c: Connector, account: string): string | null =>
+  ['secret', 'oauth'].includes(c.manifest.auth)
+    ? `${c.manifest.name}:${account.trim().toLowerCase()}`
+    : null

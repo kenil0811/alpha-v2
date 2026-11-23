@@ -25,6 +25,7 @@ import { chaptersOf, storyView } from './story.ts'
 import { appsAmong } from './story-connect.ts'
 import { byHand } from './story-screens.ts'
 import type { ConnectScreen, StoryView } from './story-types.ts'
+import type { AccountsView } from './types.ts'
 
 const AS = { host: '127.0.0.1:4700', 'x-alpha-token': 't', 'x-alpha-cli': '1' }
 const TOKEN = `sk-ant-oat01-${'a'.repeat(40)}`
@@ -58,6 +59,27 @@ describe('Set up Alpha', () => {
   const post = (app: ReturnType<typeof as>, url: string, payload: unknown = {}) =>
     app.inject({ method: 'POST', url, headers: AS, payload: payload as object })
   const keys = (s: StoryView) => s.chapters.map((c) => c.key)
+  const serverFor = (e: Engine, user: User) =>
+    buildServer({ engine: e, user, token: 't', ports: [4700], signIn: { days: 30 } })
+  // a made-up mail connector of the name given, landing nothing
+  const mailConnector = (name: string, auth: 'oauth' | 'secret') =>
+    ({
+      manifest: {
+        name,
+        title: name,
+        auth,
+        icon: 'mail',
+        ...(auth === 'oauth'
+          ? { oauth: { provider: 'microsoft', scopes: ['Mail.Read'] } }
+          : { secret: { label: 'App password', help: 'Its app password.' } }),
+        account: { label: 'Address' },
+        pace: { perMinute: 60 },
+      },
+      guide: 'Mail.',
+      module: 'Mail',
+      tables: [],
+      tools: {},
+    }) as unknown as Connector
 
   it('gives the owner of a fresh server its whole story, Claude second while no model is set', async () => {
     const s = await story(as())
@@ -208,21 +230,8 @@ describe('Set up Alpha', () => {
     expect(hers.tiles.map((t) => t.key)).toEqual(['calendar'])
   })
 
-  it('has a member’s mail tile wait on the owner while the sign-in app is not set up', async () => {
-    const outlook = {
-      manifest: {
-        name: 'outlook',
-        title: 'Outlook',
-        auth: 'oauth',
-        oauth: { provider: 'microsoft', scopes: ['Mail.Read'] },
-        account: { label: 'Work address' },
-        pace: { perMinute: 60 },
-      },
-      guide: 'Mail.',
-      module: 'Mail',
-      tables: [],
-      tools: {},
-    } as unknown as Connector
+  it('has a member wait on the owner while no Microsoft sign-in is ready', async () => {
+    const outlook = mailConnector('outlook', 'oauth')
     const secrets = new MemorySecrets()
     const signIn = new SignIn(world, { secrets, back: () => 'http://localhost:4700/back' })
     const connectors = new ConnectorService(world, { secrets, known: [outlook], signIn })
@@ -231,24 +240,83 @@ describe('Set up Alpha', () => {
       actor: { kind: 'person', id: owner.id },
       user: owner.id,
     })
-    const tile = async (user: User) =>
+    const view = async (user: User) =>
       (
-        await buildServer({
-          engine: withMail,
-          user,
-          token: 't',
-          ports: [4700],
-          signIn: { days: 30 },
-        }).inject({ url: '/api/story/connect', headers: AS })
-      )
-        .json()
-        .tiles.find((t: { key: string }) => t.key === 'outlook')
-    // the owner sets the app up on their tile; a member waits on them, with nothing to press
-    expect(await tile(owner)).toMatchObject({ connectors: ['outlook'], waits: null })
-    expect(await tile(world.user(priya.id) as User)).toMatchObject({
-      connectors: [],
-      waits: 'Waits on Kenil Shah to set up Microsoft sign-in',
+        await serverFor(withMail, user).inject({ url: '/api/connect/accounts?mine=1', headers: AS })
+      ).json() as AccountsView
+    // one Mail, calendar and contacts tile in Connect, drawn from the lines
+    const tiles = (
+      await serverFor(withMail, owner).inject({ url: '/api/story/connect', headers: AS })
+    ).json().tiles as { key: string }[]
+    expect(tiles[0]?.key).toBe('accounts')
+    expect(await view(owner)).toMatchObject({
+      owner: true,
+      microsoft: { loaded: true, ready: false },
     })
+    expect(await view(world.user(priya.id) as User)).toMatchObject({
+      owner: false,
+      ownerName: 'Kenil Shah',
+      microsoft: { ready: false, consent: null },
+    })
+  })
+
+  it('lists two Gmail accounts as two lines; Delete excludes one, Restore brings it back disconnected', async () => {
+    const gmail = mailConnector('gmail', 'secret')
+    const secrets = new MemorySecrets()
+    const connectors = new ConnectorService(world, { secrets, known: [gmail] })
+    const withMail = new Engine(world, { route, connectors })
+    await withMail.connect(owner, 'gmail', 'ana@harborbooks.example', 'abcd efgh ijkl mnop')
+    await withMail.connect(owner, 'gmail', 'ben@gmail.example', 'abcd efgh ijkl mnop')
+    const app = serverFor(withMail, owner)
+    const view = async () =>
+      (await app.inject({ url: '/api/connect/accounts', headers: AS })).json() as AccountsView
+    const first = await view()
+    expect(first.lines.map((l) => [l.provider, l.account])).toEqual([
+      ['google', 'ana@harborbooks.example'],
+      ['google', 'ben@gmail.example'],
+    ])
+    expect(first.lines[0]?.reads).toEqual(['Mail'])
+
+    // Disconnect: the line stays, off, its password gone
+    const ben = first.lines[1]?.connections[0]?.id ?? ''
+    await post(app, `/api/connections/${ben}/disconnect`)
+    expect((await view()).lines[1]).toMatchObject({ state: 'off' })
+    expect(await secrets.get('gmail:ben@gmail.example')).toBeNull()
+
+    // Delete: gone from the lines, kept under Excluded
+    await post(app, '/api/connect/accounts/delete', {
+      provider: 'google',
+      account: 'ben@gmail.example',
+    })
+    const after = await view()
+    expect(after.lines.map((l) => l.account)).toEqual(['ana@harborbooks.example'])
+    expect(after.excluded).toEqual([
+      { kind: 'account', provider: 'google', name: 'ben@gmail.example', title: 'Google' },
+    ])
+
+    // Restore: back as a line, disconnected, and off Excluded
+    await post(app, '/api/connect/excluded/restore', {
+      kind: 'account',
+      provider: 'google',
+      name: 'ben@gmail.example',
+    })
+    const back = await view()
+    expect(back.excluded).toEqual([])
+    expect(back.lines.find((l) => l.account === 'ben@gmail.example')).toMatchObject({
+      state: 'off',
+    })
+
+    // an app left out is under Excluded too, and Restore lists it again
+    await post(app, '/api/story/apps/remove', { name: 'Dropbox' })
+    expect((await view()).excluded).toEqual([
+      { kind: 'app', provider: 'app', name: 'Dropbox', title: 'App' },
+    ])
+    await post(app, '/api/connect/excluded/restore', {
+      kind: 'app',
+      provider: 'app',
+      name: 'Dropbox',
+    })
+    expect((await view()).excluded).toEqual([])
   })
 
   it('opens a member’s link on their Welcome, and their password is its Start', async () => {

@@ -242,6 +242,19 @@ in is as the person, so Alpha reaches only what they can. Each action says wheth
 taken back, so Revert can cover what left Alpha. Packs from outside are signed with Kenil's key and
 checked at every start.
 
+**One sign-in per provider** (proposed, Vikas 23 Nov; for Kenil's review). Alpha owns one sign-in
+app per provider, named in `core/config/signin.yaml`: Microsoft's a multi-tenant public client
+(PKCE, no secret) on the `common` authority, so work, school and personal accounts just sign in,
+and a business that blocks people approving apps gets one admin approval link (Microsoft's admin
+consent address for Alpha's app) to send its admin; Google's one desktop client for Calendar and
+Contacts. While an id there is empty, or the firm has set up its own app, the firm's own app is
+used as before. Gmail's mail scope is restricted by Google (a yearly security review), so mail
+stays on an app password, offered on the same Google account's line, until that review passes.
+Every account is one line, in Connect and in Settings › Connections alike, added from one Add
+(Google, Microsoft or other mail, business or personal), as many as the person wishes. Disconnect
+pauses a line and drops its kept sign-in; Delete removes it and keeps it, per person, under
+Excluded with the apps they left out, where Restore brings an account back disconnected.
+
 Gmail, Outlook (mail, calendar and contacts), Google (Calendar and Contacts, through the firm's own Google app), QuickBooks (reads only, through the firm's own Intuit app, kept by the module that reads through it), files and the Mac's own apps ship; LinkedIn is added by hand. Every calendar and address book lands in the one Events and the one Contacts table (`connector-sdk/src/shared-tables.ts`, a table naming its module), as Gmail and Outlook share Mail. Those are Alpha's own **Calendar** and **People** (`core/kits/`, installed at every start, first in the rail under Tasks, Kenil 16 Nov): Calendar opens on a calendar of Events by month, week or day; People's module is named Network; its tabs are People and Organizations; Contacts is People's own source and never a tab (Kenil, 22 Nov). A module of their name that only a connector made is adopted, its rows kept; one the person made is left alone. On a hosted Alpha,
 connectors run on the server unless they physically cannot, and those run on the person's own
 computer through the Bridge. Each manifest says where it runs (`runs: server`, `computer` or

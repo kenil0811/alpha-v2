@@ -1,9 +1,11 @@
-// Settings' Connections: a small card per connector with its accounts, then this computer's own
-// (its browser, PDF reader, Chrome, staying awake), the sign-in apps, and the folders. Connecting is the person's own act here: what they type goes to the Keychain, never to
+// Settings' Connections: every mail, calendar and contacts account one line with one Add, as
+// Connect has them, then a tile per other connector with its accounts, Excluded, the sign-in apps,
+// and the folders. Connecting is the person's own act here: what they type goes to the Keychain, never to
 // the model.
 import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'
 import { CalendarDays, Folder, Mail, Network, Plug, Trash2, UserRound } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
+import { AccountList, Excluded, useAccounts } from './AccountLines.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { Computers } from './Computers.tsx'
 import { ConnectionInTile, ConnectionLine, useConnection } from './ConnectionLine.tsx'
@@ -44,7 +46,16 @@ export function Connections({
 }) {
   // a connector that names a place on a computer (a folder) is on that computer's page; every
   // other is a tile under Connections
-  const accounts = view.connectors.filter((c) => c.auth !== 'path')
+  // mail, calendar and contacts are account lines with one Add, as in Set up Alpha's Connect
+  // (AccountLines.tsx); every other connector a tile
+  const lines = useAccounts(false)
+  const isLine = (c: ConnectorView) =>
+    ['outlook', 'gmail', 'google'].includes(c.name) || c.icon === 'mail'
+  const accounts = view.connectors.filter((c) => c.auth !== 'path' && !isLine(c))
+  const again = () => {
+    onChange()
+    lines.load()
+  }
   // asked to connect a folder (a module's setup): Alpha's own computer's page, where one is added
   const here = view.connectors.some((c) => c.auth === 'path' && c.name === open && !c.onComputer)
   useEffect(() => {
@@ -58,6 +69,11 @@ export function Connections({
         title="Connections"
         about="Your accounts and this computer, read by Alpha; what you type stays in the Keychain."
       >
+        {view.connectors.some(isLine) && lines.view && (
+          <div className="rounded-lg border border-line bg-surface px-4 py-3">
+            <AccountList view={lines.view} connectors={view} onChange={again} />
+          </div>
+        )}
         <div className={STATE_CARDS}>
           {accounts.map((c) => (
             <ConnectorTile
@@ -88,6 +104,7 @@ export function Connections({
             The connection added from {f.folder.split('/').pop()} didn't load: {f.why}
           </div>
         ))}
+        {lines.view && <Excluded items={lines.view.excluded} onChange={again} />}
       </Section>
       <SignInApps apps={view.signInApps} onChange={onChange} />
       <Sites version={version} />
@@ -273,11 +290,13 @@ function DeleteConnector({
 export function ConnectForm({
   connector: c,
   appSet,
+  account: given,
   onDone,
   onCancel,
 }: {
   connector: ConnectorView
   appSet: boolean | null
+  account?: string // the address it is for, when it is known (Reconnect, Add mail on a line)
   onDone: () => void
   onCancel: () => void
 }) {
@@ -285,11 +304,12 @@ export function ConnectForm({
   const inBrowser = c.auth === 'browser'
   const asPerson = c.signsInWith ?? null
   const [account, setAccount] = useState(
-    system
-      ? (c.account.placeholder ?? c.account.label)
-      : inBrowser
-        ? (c.account.placeholder ?? c.name)
-        : '',
+    given ??
+      (system
+        ? (c.account.placeholder ?? c.account.label)
+        : inBrowser
+          ? (c.account.placeholder ?? c.name)
+          : ''),
   )
   const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
