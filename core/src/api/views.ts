@@ -5,6 +5,7 @@ import { config } from '../config.ts'
 import { actingView } from '../engine/acting.ts'
 import { startOf } from '../engine/task-runs.ts'
 import { cardAgent } from '../modules/agent-marks.ts'
+import { guesses, TO_CHECK } from '../modules/reviews.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { readSchedule, type Schedule } from '../modules/schedules.ts'
 import { fromView } from '../modules/shipped.ts'
@@ -23,9 +24,11 @@ import { taskOfTurn } from '../world/tasks/index.ts'
 import type { View } from '../world/views.ts'
 import { activityView } from './activity-view.ts'
 import type { BaseCtx } from './ctx.ts'
+import { fieldViews } from './routes/rows.ts'
 import type {
   AboutRows,
   CardView,
+  CheckView,
   ModuleSummary,
   RowView,
   SavedView,
@@ -56,6 +59,17 @@ export function tableSummary(world: BaseCtx['world'], t: Table): TableSummary {
 export function makeViews(ctx: BaseCtx) {
   const { world, engine, user } = ctx
 
+  const checkView = (id: string): CheckView | null => {
+    const t = world.shape.table(id)
+    if (!t) return null
+    const lines = guesses(world, t)
+    const named = new Set(lines.map((l) => l.field))
+    return {
+      table: t.id,
+      fields: t.fields.filter((f) => named.has(f.name)).map(fieldViews(world.shape)),
+      lines,
+    }
+  }
   // A card as the window shows it; a file from the mail with its place and the rows to pick.
   const cardOut = (c: Card): CardView => ({
     ...cardView(c),
@@ -63,6 +77,7 @@ export function makeViews(ctx: BaseCtx) {
     draft: engine.hands?.drafts?.view(c) ?? null,
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
     review: engine.hands?.runner?.reviews.view(c) ?? null,
+    check: c.call?.tool === TO_CHECK ? checkView((c.call.input as { table: string }).table) : null,
     acting: actingView(world, c),
     // what a schedule's run raised: Home shows it under Schedules (Vikas, 23 Nov)
     schedule: c.run

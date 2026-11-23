@@ -10,7 +10,7 @@ export interface Health {
   build: string | null // the window this core serves: a window on another build reloads
 }
 
-export type { ActingView, CardView, ReviewView } from './card-types.ts'
+export type { ActingView, CardView, CheckView, ReviewView } from './card-types.ts'
 export type {
   BridgeDownload,
   ComputerPageView,

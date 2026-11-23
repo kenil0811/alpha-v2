@@ -1,6 +1,6 @@
 // A card's shape for the window (split from types.ts for its wall): what waits for the person, and
 // what each kind of card shows beside its words.
-import type { DraftView, FilingView, MatchView } from './types.ts'
+import type { DraftView, FieldView, FilingView, MatchView } from './types.ts'
 
 export interface CardView {
   id: string
@@ -25,6 +25,7 @@ export interface CardView {
   draft?: DraftView | null // a schedule's email for the person's yes
   match?: MatchView | null // people or companies that may be one, side by side
   review?: ReviewView | null // rows a schedule puts to the person, a choice on each
+  check?: CheckView | null // Alpha's guesses in one table, each kept or changed
   acting?: ActingView | null // a step in the browser that waits for the person's yes
 }
 
@@ -44,4 +45,19 @@ export interface ReviewView {
   rows: { id: string; name: string; note: string | null; value: string | null }[]
   open: number // rows not yet decided
   edits?: string // a field the person may reword on a row before deciding it (a line for How to work)
+}
+
+// Alpha's guesses in one table (assumed, estimated), read from the table as the card shows: each
+// with the words it rests on, and its field so a change is read for its kind.
+export interface CheckView {
+  table: string
+  fields: FieldView[]
+  lines: {
+    row: string
+    name: string
+    field: string
+    value: unknown
+    kind: 'assumed' | 'estimated'
+    why: string
+  }[]
 }
