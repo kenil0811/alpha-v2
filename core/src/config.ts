@@ -48,10 +48,12 @@ const Limits = z.object({
   journeys_at_once: z.number().int().min(1),
   question_characters: z.number().int().min(1),
   parts_shown: z.number().int().min(1),
-  minutes_saved: z.object({
-    task_done: z.number().min(0).optional(),
-    ask_answered: z.number().min(0).optional(),
-  }),
+  minutes_saved: z
+    .object({
+      task_done: z.number().min(0).optional(),
+      ask_answered: z.number().min(0).optional(),
+    })
+    .default({}),
 })
 
 const Words = z.object({

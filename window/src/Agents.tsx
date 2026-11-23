@@ -19,6 +19,7 @@ import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
+import { Roll } from './ui/roll.tsx'
 import { Section } from './ui/section.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
@@ -399,6 +400,12 @@ const hm = (min: number) => {
 // What it saved this week, Monday to today, a small bar a day; none when it finished nothing.
 function TimeSaved({ saved }: { saved: TimeSavedView }) {
   const top = Math.max(1, ...saved.days)
+  // it rolls up from nothing and its bars grow as it first shows (motion, 23 Nov)
+  const [grown, setGrown] = useState(false)
+  useEffect(() => {
+    const f = requestAnimationFrame(() => setGrown(true))
+    return () => cancelAnimationFrame(f)
+  }, [])
   return (
     <Section
       title="Time saved this week"
@@ -407,9 +414,7 @@ function TimeSaved({ saved }: { saved: TimeSavedView }) {
       <div className="flex items-end gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span data-roll className="font-serif text-2xl text-ink tabular-nums">
-              {hm(saved.minutes)}
-            </span>
+            <Roll value={hm(grown ? saved.minutes : 0)} className="font-serif text-2xl text-ink" />
             {saved.source === 'estimated' && <Pill>Estimated</Pill>}
           </div>
           <p className="text-ink-3 text-sm">{saved.how}</p>
@@ -419,9 +424,9 @@ function TimeSaved({ saved }: { saved: TimeSavedView }) {
             <span
               key={WEEK[i]}
               data-tip={`${WEEK[i]}: ${hm(m)}`}
-              className="w-2.5 rounded-sm bg-sunk"
+              className="w-2.5 rounded-sm bg-sunk transition-[height] duration-320 ease-spring"
               style={{
-                height: `${Math.max(8, (m / top) * 100)}%`,
+                height: `${grown ? Math.max(8, (m / top) * 100) : 8}%`,
                 ...(m ? { background: fill(0) } : {}),
               }}
             />
