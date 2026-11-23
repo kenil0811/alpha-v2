@@ -16,6 +16,8 @@ import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { CorePicture } from './ui/core-file.tsx'
 import { Decided, useDecide } from './ui/decided.tsx'
+import { Arrivals } from './ui/list.tsx'
+import { useLeaving } from './ui/motion.ts'
 import { Answer, Question } from './ui/question.tsx'
 import { isYesNo, YesNo } from './ui/yes-no.tsx'
 import { answerWords } from './vocabulary.ts'
@@ -73,6 +75,25 @@ export const GATE: Record<string, string> = {
 
 // How an option reads on its button: a plain Yes is Approve, a plain No is Decline.
 const optionWords = answerWords
+
+// Cards in a list: one being answered stays drawn until it has left (ui/motion.ts), and a card new
+// to the list rises in once.
+export function Cards({
+  cards,
+  onChange,
+}: {
+  cards: readonly CardView[]
+  onChange: (c: CardView) => void
+}) {
+  const shown = useLeaving(cards, (c) => c.id)
+  return (
+    <Arrivals>
+      {shown.map((c) => (
+        <CardBox key={c.id} id={c.id} card={c} onChange={onChange} />
+      ))}
+    </Arrivals>
+  )
+}
 
 export function CardBox({
   id,

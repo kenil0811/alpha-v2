@@ -5,7 +5,7 @@ import { cn } from './cn.ts'
 
 export function Busy({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span aria-busy="true" className={cn('shimmer', className)}>
+    <span role="status" className={cn('shimmer', className)}>
       {children}
     </span>
   )

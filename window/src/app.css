@@ -649,7 +649,6 @@
 @keyframes word-in {
   from {
     opacity: 0;
-    filter: blur(3px);
   }
 }
 @keyframes tick-draw {
@@ -743,11 +742,11 @@
   filter: var(--map-icon);
 }
 
-/* Screens cross-fade, and a record grows out of its row (ui/motion.ts): short, on the curves above */
+/* A record grows out of its row (ui/motion.ts), short, on the curves above; the rest of the screen
+   does not fade (ui-rules L23) */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 200ms;
-  animation-timing-function: var(--ease-soft);
+  animation: none;
 }
 ::view-transition-group(record) {
   animation-duration: 320ms;

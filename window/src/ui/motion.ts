@@ -147,9 +147,10 @@ function transition(update: () => void): ViewTransition {
 const canMorph = () =>
   typeof document !== 'undefined' && 'startViewTransition' in document && !reduced()
 
-// Opens what update() draws (a panel marked with this name) out of the row just pressed.
+// Opens what update() draws (a panel marked with this name) out of the row just pressed; opened
+// any other way (the keyboard, an address), it just opens.
 export function grow(update: () => void, name = 'record') {
-  const from = pressed?.closest<HTMLElement>(ROW) ?? null
+  const from = justPressed(1000) ? (pressed?.closest<HTMLElement>(ROW) ?? null) : null
   grewFrom = from
   if (!from || !canMorph()) return update()
   from.style.viewTransitionName = name
@@ -173,12 +174,6 @@ export function shrink(update: () => void, name = 'record') {
     .then(() => {
       to.style.viewTransitionName = ''
     })
-}
-
-// A move from one screen to the next: a short cross-fade, so the page never just swaps.
-export function crossFade(update: () => void) {
-  if (!canMorph()) return update()
-  transition(() => flushSync(update))
 }
 
 // ---- earned moments ----------------------------------------------------------------------------

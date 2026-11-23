@@ -1,6 +1,7 @@
 // Alpha's face: quiet, working, or something needs you. A stand-in until Alpha has a character.
 // Its moods: it listens while you type to it, glances about while it thinks, nods with a wide smile
-// when it has finished, tilts when it could not, and blinks back when clicked. With reduced motion it only changes expression.
+// when it has finished, tilts when it could not, and blinks back when clicked. With reduced motion
+// it only changes expression.
 import { useEffect, useRef, useState } from 'react'
 import { cn } from './ui/cn.ts'
 

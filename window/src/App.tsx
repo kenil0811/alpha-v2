@@ -49,7 +49,6 @@ import { titleOf } from './table/values.ts'
 import { useTableLoad } from './table-load.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
 import { inside, landingOf } from './tree.ts'
-import { crossFade } from './ui/motion.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { useWorkspaceHere, WorkspaceContext } from './Workspace.tsx'
@@ -238,11 +237,7 @@ export function App() {
     const onHash = () => {
       const h = forward(window.location.hash)
       if (h !== window.location.hash) window.history.replaceState(null, '', h)
-      const next = placeOf(h)
-      // a new screen cross-fades in; a change within one (a row beside, a tab) just happens
-      const screen = (p: Place) => `${p.at}:${'id' in p ? p.id : ''}`
-      if (screen(next) === screen(placeRef.current)) setPlace(next)
-      else crossFade(() => setPlace(next))
+      setPlace(placeOf(h))
     }
     onHash()
     window.addEventListener('hashchange', onHash)

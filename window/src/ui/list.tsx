@@ -6,16 +6,27 @@ import { Info } from './info.tsx'
 
 const Drawn = createContext(false)
 
-export function List({ children, className }: { children: ReactNode; className?: string }) {
-  // drawn once it has shown rows: what loads into an empty list is not new
+// Any list of things that arrive (rows, task lines, cards): drawn once it has shown some, so what
+// loads into an empty list is not new; what comes after rises in (useArrived).
+export function Arrivals({ children }: { children: ReactNode }) {
   const [drawn, setDrawn] = useState(false)
   const some = Children.toArray(children).length > 0
   useEffect(() => {
     if (some) setDrawn(true)
   }, [some])
+  return <Drawn.Provider value={drawn}>{children}</Drawn.Provider>
+}
+
+// Whether this thing arrived after its list first drew, kept from its first render.
+export function useArrived(): boolean {
+  const [fresh] = useState(useContext(Drawn))
+  return fresh
+}
+
+export function List({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div className={cn('overflow-hidden rounded-lg border border-line bg-surface', className)}>
-      <Drawn.Provider value={drawn}>{children}</Drawn.Provider>
+      <Arrivals>{children}</Arrivals>
     </div>
   )
 }
@@ -42,8 +53,8 @@ export function Row({
   className?: string | undefined
 }) {
   const name = cn('font-medium text-base text-ink', wrap ? 'break-words' : 'truncate')
-  // new to a list already drawn: it rises in once (kept from its first render)
-  const [fresh] = useState(useContext(Drawn))
+  // new to a list already drawn: it rises in once
+  const fresh = useArrived()
   return (
     <div
       className={cn(

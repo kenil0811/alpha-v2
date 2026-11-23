@@ -7,7 +7,7 @@ import { ArrowDown, Check, ChevronRight } from 'lucide-react'
 import { type DragEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { takeAsk } from './ask.ts'
-import { CardBox } from './CardBox.tsx'
+import { CardBox, Cards } from './CardBox.tsx'
 import { Composer } from './Composer.tsx'
 import { useFollow } from './follow.ts'
 import { type LiveParts, useLiveTurn } from './live.ts'
@@ -28,7 +28,6 @@ import { cn } from './ui/cn.ts'
 import { CopyButton } from './ui/copy.tsx'
 import { CorePicture } from './ui/core-file.tsx'
 import { dropped } from './ui/drop-zone.tsx'
-import { useLeaving } from './ui/motion.ts'
 import { StreamedWords, Words } from './ui/words.tsx'
 import { WatchPage } from './WatchPage.tsx'
 
@@ -66,11 +65,6 @@ export function Conversation({
 }) {
   const items = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
-  // the cards it asked, one being answered kept drawn until it has left (ui/motion.ts)
-  const asked = useLeaving(
-    (stream?.asked ?? []).flatMap((id) => cards.get(id) ?? []),
-    (c) => c.id,
-  )
   const [dragging, setDragging] = useState(false)
   const [watching, setWatching] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -164,9 +158,10 @@ export function Conversation({
                 </div>
               )
             })}
-            {asked.map((c) => (
-              <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
-            ))}
+            <Cards
+              cards={(stream?.asked ?? []).flatMap((id) => cards.get(id) ?? [])}
+              onChange={changeCard}
+            />
             {stream?.watch && (
               <div>
                 <Button size="sm" variant="ghost" onClick={() => setWatching(true)}>

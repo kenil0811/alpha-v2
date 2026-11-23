@@ -5,7 +5,7 @@ import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
 import { ArrowUp, KeyRound } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { CardBox } from './CardBox.tsx'
+import { Cards } from './CardBox.tsx'
 import { shownScreens } from './plugin/screens.ts'
 import { signInWith } from './SignInApps.tsx'
 import { StoryRow } from './story/StoryRow.tsx'
@@ -135,9 +135,7 @@ export function Home({
                 />
               </div>
             )}
-            {cards.map((c) => (
-              <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
-            ))}
+            <Cards cards={cards} onChange={changeCard} />
             {signIns.map((a) => (
               <Line
                 key={a.connector}

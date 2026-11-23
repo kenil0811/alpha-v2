@@ -5,6 +5,7 @@
 import { Check } from 'lucide-react'
 import { type ReactNode, useRef, useState } from 'react'
 import { cn } from './cn.ts'
+import { useArrived } from './list.tsx'
 import { fold, leaveWith, pause, unfold } from './motion.ts'
 
 export function useDecide(id: string) {
@@ -37,11 +38,13 @@ export function Decided({
   shown: 'yes' | 'no' | null
   children: ReactNode
 }) {
+  const arrived = useArrived() // a card new to a list already drawn rises in once
   return (
     <div
       ref={box}
       className={cn(
-        'relative animate-rise transition-[opacity,translate,filter] duration-320 ease-soft',
+        'relative transition-[opacity,translate,filter] duration-320 ease-soft',
+        arrived && 'rise-in',
         shown === 'no' && '-translate-x-6 opacity-0 grayscale',
       )}
     >

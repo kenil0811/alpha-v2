@@ -7,6 +7,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { dueWords } from './time.ts'
 import { cn } from './ui/cn.ts'
+import { Arrivals, useArrived } from './ui/list.tsx'
 import { fold, leaveWith, pause, unfold, useLeaving } from './ui/motion.ts'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
@@ -128,6 +129,7 @@ export function TaskLine({
   // see it, and it folds away so the list closes up. The line is held while it leaves (ui/motion.ts),
   // so a live update cannot take it early; if the save fails it comes back, with its problem.
   const row = useRef<HTMLDivElement>(null)
+  const arrived = useArrived() // new to a list already drawn: it rises in once
   const [finishing, setFinishing] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const leaving = useRef(false)
@@ -164,7 +166,10 @@ export function TaskLine({
   return (
     <div
       ref={row}
-      className="flex animate-rise items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+      className={cn(
+        'flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover',
+        arrived && 'rise-in',
+      )}
     >
       <Tick t={t} onChange={onChange} onFinish={finish} finishing={finishing} />
       <a href={`#/tasks/${t.id}`} className="min-w-0 flex-1">
@@ -191,9 +196,11 @@ export function TaskList({ lines, onChange }: { lines: TaskLineView[]; onChange:
   const shown = useLeaving(lines, (t) => t.id)
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface">
-      {shown.map((t) => (
-        <TaskLine key={t.id} t={t} onChange={onChange} />
-      ))}
+      <Arrivals>
+        {shown.map((t) => (
+          <TaskLine key={t.id} t={t} onChange={onChange} />
+        ))}
+      </Arrivals>
     </div>
   )
 }
