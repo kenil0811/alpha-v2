@@ -56,8 +56,8 @@ export function check(shape: Shape): string[] {
 }
 
 // Whether a module's module.yaml says yes to one of its marks: people (People and Organizations
-// are its tabs) or core (Alpha's own).
-export function manifestSays(m: Module, key: 'people' | 'core'): boolean {
+// are its tabs), core (Alpha's own) or hidden (kept off the rail; it opens from its link and ⌘K).
+export function manifestSays(m: Module, key: 'people' | 'core' | 'hidden'): boolean {
   const file = join(m.dir, 'module.yaml')
   if (!existsSync(file)) return false
   try {

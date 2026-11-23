@@ -174,19 +174,18 @@ export function RowPage({
       {Object.values(view.row.sources).some((s) => s?.open) && part('read')}
     </div>
   )
-  // the module's pages drawn for one record of this table: a report on each client
+  // the module's pages drawn for one record of this table: a report on each client, once, as its
+  // own tab, never on Summary; on its paper, with no second title or frame (Vikas, 23 Nov)
   const mine = near?.module
   const pages: Block[] = mine
     ? mine.pages
         .filter((p) => p.record === view.table.id)
-        .map((p) => {
-          const drawn = (
-            <Framed>
-              <PageView m={mine} page={p} version={version} record={id} />
-            </Framed>
-          )
-          return { key: `page:${p.name}`, title: p.title, full: drawn } // its own tab, never on Summary
-        })
+        .map((p) => ({
+          key: `page:${p.name}`,
+          title: p.title,
+          bare: true,
+          full: <PageView m={mine} page={p} version={version} record={id} />,
+        }))
     : []
   const blocks: Block[] = [
     ...pages,

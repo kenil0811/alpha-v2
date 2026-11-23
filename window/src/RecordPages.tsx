@@ -22,7 +22,7 @@ export function RecordPages({ row }: { row: string }) {
   return m.pages
     .filter((p) => p.record === table)
     .map((p) => (
-      <section key={p.name} className="flex flex-col border-hair border-t pt-3">
+      <section key={p.name} className="flex flex-col border-hair border-b pb-3">
         <h3 className="px-4.5 font-semibold text-ink-3 text-sm">{p.title}</h3>
         {/* ponytail: version 0, so the frame does not ask again on a change; pass the world's
             version when the panel has it */}

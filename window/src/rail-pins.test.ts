@@ -19,4 +19,9 @@ describe('the rail', () => {
   it('leaves out a hidden module and one inside another, pinned or not', () => {
     expect(ids(['c'], ['c', 'e'])).toEqual(['a', 'b', 'd'])
   })
+
+  it('leaves out a module its module.yaml hides, for everyone', () => {
+    const kept = [...modules, { ...m('f'), hidden: true }]
+    expect(shownTops(kept, [], ['f']).map((x) => x.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
 })

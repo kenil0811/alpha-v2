@@ -25,6 +25,7 @@ export interface Block {
   short?: ReactNode // its start, on Summary; none: only its tab, always in the tab row (a module's page)
   full?: ReactNode // the whole of it, on its tab; none: Summary shows all of it, and it has no tab
   wide?: boolean // the whole width on Summary (the note)
+  bare?: boolean // on its tab, itself with no title of its own: its tab names it (a report)
 }
 
 export function RecordPage({
@@ -46,7 +47,10 @@ export function RecordPage({
   properties: ReactNode
   blocks: Block[]
 }) {
-  const [tab, setTab] = useState('summary')
+  // a record with a page drawn for it (a client's report) opens on it, else on Summary (Vikas, 23
+  // Nov)
+  const [chosen, setTab] = useState<string | null>(null)
+  const tab = chosen ?? blocks.find((b) => b.bare)?.key ?? 'summary'
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null)
   // the person's own for every record of its table (or of People's, Organizations'), kept by the
   // core per person and table
@@ -117,7 +121,9 @@ export function RecordPage({
             Ask about this
           </Button>
         </div>
-        {open ? (
+        {open?.bare ? (
+          open.full
+        ) : open ? (
           <Section title={open.title} {...(open.about ? { about: open.about } : {})}>
             {open.full}
           </Section>

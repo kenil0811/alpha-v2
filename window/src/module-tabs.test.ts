@@ -23,4 +23,16 @@ describe('a module’s tabs', () => {
     } as unknown as Pick<ModuleSummary, 'id' | 'pages' | 'tables'>
     expect(moduleTabs(m, null).map((x) => x.label)).toEqual(['Notes', 'Setup'])
   })
+
+  it('leave out a page drawn for a record', () => {
+    const m = {
+      id: 'm',
+      pages: [
+        { name: 'report', title: 'Report', front: false, record: 't_clients' },
+        { name: 'funnel', title: 'Funnel', front: true, record: null },
+      ],
+      tables: [],
+    } as unknown as Pick<ModuleSummary, 'id' | 'pages' | 'tables'>
+    expect(moduleTabs(m, null).map((x) => x.label)).toEqual(['Funnel', 'Setup'])
+  })
 })

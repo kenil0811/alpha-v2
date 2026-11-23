@@ -21,7 +21,8 @@ export type Hiding = {
 }
 
 export const shownTops = (modules: ModuleSummary[], hidden: string[], pinned: string[] = []) => {
-  const shown = tops(modules).filter((m) => !hidden.includes(m.id))
+  // a module its module.yaml keeps off the rail (Your work) never shows here (Vikas, 22 Nov)
+  const shown = tops(modules).filter((m) => !m.hidden && !hidden.includes(m.id))
   const first = pinned.flatMap((id) => shown.filter((m) => m.id === id))
   return [...first, ...shown.filter((m) => !pinned.includes(m.id))]
 }

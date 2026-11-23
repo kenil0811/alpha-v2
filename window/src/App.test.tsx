@@ -30,13 +30,23 @@ describe('delete', () => {
 })
 
 const modules = [
-  { id: 'm_1', name: 'Shops', parent: null, number: null, people: false, pages: [], tables: [] },
+  {
+    id: 'm_1',
+    name: 'Shops',
+    parent: null,
+    number: null,
+    people: false,
+    hidden: false,
+    pages: [],
+    tables: [],
+  },
   {
     id: 'm_2',
     name: 'Bakery',
     parent: 'm_1',
     number: null,
     people: false,
+    hidden: false,
     pages: [],
     tables: [
       {
@@ -57,6 +67,7 @@ const modules = [
     parent: null,
     number: null,
     people: false,
+    hidden: false,
     pages: [],
     tables: [
       {

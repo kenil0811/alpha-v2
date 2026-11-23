@@ -1,14 +1,14 @@
 // A module's page: its file in a sandboxed frame that can reach nothing but this
 // window. The window answers the page's questions from the core (its module's rows, read-only),
 // sends it the window's look, sizes the frame to it, opens what the page asks to open, and prints
-// it to a PDF with the page's choices.
-import type { ModuleView, PageSummary, TableView as TableData } from '@alpha/core/api'
+// it to a PDF with the page's choices. A document is shown as it prints: on its paper (Sheet).
+import type { FieldView, ModuleView, PageSummary, TableView as TableData } from '@alpha/core/api'
 import { Download } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { show } from './table/values.ts'
+import { readValue, show } from './table/values.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 
@@ -58,6 +58,56 @@ function openTarget(m: ModuleView, target: Target) {
   else window.location.hash = `#/table/${t.id}`
 }
 
+// A figure as a page drew it ($94.2K, 36.2%, 1,200) read back as a number.
+const numberOf = (t: string): number => {
+  const m = /^\s*-?[$£€¥]?\s*(-?[\d,.]+)\s*([kKmM])?\s*%?\s*$/.exec(t)
+  if (!m?.[1]) return Number.NaN
+  const n = Number(m[1].replace(/,/g, ''))
+  return m[2] ? n * (/k/i.test(m[2]) ? 1e3 : 1e6) : n
+}
+// a line of a list as a page draws it: its parts after colons, joined by ': '
+const partsOf = (l: string) =>
+  l
+    .split(':')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .join(': ')
+
+// What a field becomes when the person edits a text a page drew from it (was → now): the whole
+// value; or, in a field of lines a page splits into a list, the one line, or the one figure in it.
+export function editedValue(
+  field: FieldView,
+  current: unknown,
+  was: string,
+  now: string,
+): { value: unknown } | { problem: string } {
+  if (field.kind === 'money' || field.kind === 'number') {
+    const n = numberOf(now)
+    if (Number.isNaN(n)) return { problem: `${field.name} takes a number; “${now}” is not one.` }
+    return readValue(field, String(n), current)
+  }
+  const text = typeof current === 'string' ? current : ''
+  if (!text.trim() || text.trim() === was) return readValue(field, now, current)
+  const lines = text.split('\n')
+  const swap = (i: number, line: string) => ({
+    value: lines.map((l, j) => (j === i ? line : l)).join('\n'),
+  })
+  const at = lines.findIndex((l) => partsOf(l) === partsOf(was))
+  if (at >= 0) return swap(at, now)
+  const figure = numberOf(was)
+  const to = numberOf(now)
+  if (!Number.isNaN(figure) && !Number.isNaN(to))
+    for (const [i, l] of lines.entries()) {
+      const parts = l.split(':')
+      const k = parts.findIndex((p) => numberOf(p) === figure)
+      if (k >= 0) {
+        parts[k] = `${k ? ' ' : ''}${to}`
+        return swap(i, parts.join(':'))
+      }
+    }
+  return { problem: `That text is not in ${field.name} as it is now; change it on the row.` }
+}
+
 export function PageView({
   m,
   page,
@@ -92,7 +142,12 @@ export function PageView({
     )
   }, [base, record])
 
-  const send = () => frame.current?.contentWindow?.postMessage({ alpha: 'theme', ...look() }, '*')
+  // a document is drawn on its paper in the kit's own print look, never the window's
+  const doc = !!html && /<meta\s+name=["']alpha-look["']\s+content=["']document["']/i.test(html)
+  const wide = !!html && /<meta\s+name=["']alpha-print["']\s+content=["']landscape["']/i.test(html)
+  const send = () => {
+    if (!doc) frame.current?.contentWindow?.postMessage({ alpha: 'theme', ...look() }, '*')
+  }
   useEffect(() => {
     if (version >= 0) frame.current?.contentWindow?.postMessage({ alpha: 'refresh' }, '*')
   }, [version])
@@ -120,6 +175,8 @@ export function PageView({
         values?: Record<string, string>
         words?: string
         agent?: string
+        was?: string
+        now?: string
       }
       if (msg.alpha === 'ask') {
         try {
@@ -150,6 +207,29 @@ export function PageView({
             setProblem(wordsOf(err))
           }
         } else openTarget(m, target)
+      } else if (msg.alpha === 'edit' && msg.target?.row && msg.target.field && msg.now) {
+        // a text edited in place: written to the field it came from, as the person's; the page
+        // draws again from the row, and a refusal puts the text back
+        const { row, field: named } = msg.target
+        const t = tableOf(m, msg.target)
+        try {
+          if (!t) throw new Problem('That table is not in this module.')
+          const table = await api.get<TableData>(`/api/tables/${t.id}`)
+          const want = named.toLowerCase()
+          const field = table.fields.find((f) => f.name.toLowerCase() === want || f.slug === want)
+          const r = table.rows.find((x) => x.id === row)
+          if (!field || !r) throw new Problem('That value is not on the row any more.')
+          const out = editedValue(field, r.values[field.slug], msg.was ?? '', msg.now)
+          if ('problem' in out) throw new Problem(out.problem)
+          await api.post(`/api/tables/${t.id}/rows/${r.id}`, {
+            field: field.name,
+            value: out.value,
+          })
+          setProblem(null)
+        } catch (err) {
+          setProblem(wordsOf(err))
+          win.postMessage({ alpha: 'refresh' }, '*')
+        }
       } else if (msg.alpha === 'inputs' && msg.values) {
         inputs.current = msg.values
       } else if (msg.alpha === 'say' && typeof msg.words === 'string' && msg.words.trim()) {
@@ -199,8 +279,17 @@ export function PageView({
     }
   }
 
-  // a document uses the window's whole width, its Download PDF at the right edge
-  const wide = !!html && /<meta\s+name=["']alpha-look["']\s+content=["']document["']/i.test(html)
+  const drawn = html && (
+    <iframe
+      ref={frame}
+      title={page.title}
+      sandbox="allow-scripts"
+      srcDoc={html}
+      onLoad={send}
+      className="block w-full border-0"
+      style={{ height }}
+    />
+  )
   const opened = source && {
     row: source.table.rows.find((r) => r.id === source.row),
     field: source.table.fields.find((f) => f.slug === source.field),
@@ -209,7 +298,7 @@ export function PageView({
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className={cn('flex items-center gap-3 px-7 pt-4', !wide && 'max-w-page')}>
+        <div className={cn('flex items-center gap-3 px-7 pt-4', !doc && 'max-w-page')}>
           <span className="min-w-0 flex-1 truncate text-ink-3 text-sm">
             {problem ?? (html ? '' : 'Loading the page…')}
           </span>
@@ -218,17 +307,7 @@ export function PageView({
             {printing ? 'Making the PDF…' : 'Download PDF'}
           </Button>
         </div>
-        {html && (
-          <iframe
-            ref={frame}
-            title={page.title}
-            sandbox="allow-scripts"
-            srcDoc={html}
-            onLoad={send}
-            className="block w-full border-0"
-            style={{ height }}
-          />
-        )}
+        {doc ? <Sheet wide={wide}>{drawn}</Sheet> : drawn}
       </div>
       {source && opened?.row && opened.field && (
         <SourcePanel
@@ -245,6 +324,37 @@ export function PageView({
           onClose={() => setSource(null)}
         />
       )}
+    </div>
+  )
+}
+
+// A document's paper as the core prints it (connector-sdk's browser.ts): A4, its margins, laid out
+// at the width it prints at, so what shows is the PDF (Vikas, 23 Nov). The sheet shrinks to the
+// pane's width as a PDF viewer fits a page; nothing runs past its box.
+const MM = 96 / 25.4
+
+function Sheet({ wide, children }: { wide: boolean; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const paper = (wide ? 297 : 210) * MM
+  useEffect(() => {
+    const room = box.current
+    if (!room) return
+    // less px-4 a side; a pane not laid out yet (a hidden tab) keeps the last
+    const fit = () => room.clientWidth && setScale(Math.min(1, (room.clientWidth - 32) / paper))
+    fit()
+    const watch = new ResizeObserver(fit)
+    watch.observe(room)
+    return () => watch.disconnect()
+  }, [paper])
+  return (
+    <div ref={box} className="px-4 py-5">
+      <div
+        className="mx-auto rounded-sm bg-paper shadow-pop ring-1 ring-line"
+        style={{ width: paper, padding: `${14 * MM}px ${12 * MM}px`, zoom: scale }}
+      >
+        {children}
+      </div>
     </div>
   )
 }

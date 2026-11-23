@@ -1,12 +1,20 @@
 // Pages: listed from a module's folder, framed under Alpha's policy before any of the page's own
 // words, answered read-only from the module's own tables, and printed by the core.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Module, Table } from '../world/shape/index.ts'
 import { World } from '../world/world.ts'
-import { pageAnswer, pageDocument, pageRecord, pagesFor, pagesOf, printPage } from './pages.ts'
+import {
+  pageAnswer,
+  pageDocument,
+  pageRecord,
+  pagesFor,
+  pagesOf,
+  printPage,
+  retitlePage,
+} from './pages.ts'
 
 const BROWSERS = join(import.meta.dirname, '..', '..', '..', '.data', 'browsers')
 const alpha = { actor: { kind: 'alpha' as const } }
@@ -71,6 +79,17 @@ describe('pages', () => {
       { name: 'funnel', title: 'Funnel', front: true, record: null },
       { name: 'about', title: 'About', front: false, record: null },
     ])
+  })
+
+  it('renames a page by its title, gives one to a page with none, and refuses an empty name', () => {
+    retitlePage(m, 'about', 'About <us>')
+    expect(pagesOf(m).find((p) => p.name === 'about')?.title).toBe('About us')
+    writeFileSync(join(m.dir, 'pages', 'bare.html'), '<!doctype html><p>Bare</p>')
+    retitlePage(m, 'bare', 'Bare page')
+    expect(readFileSync(join(m.dir, 'pages', 'bare.html'), 'utf8')).toBe(
+      '<!doctype html><title>Bare page</title><p>Bare</p>',
+    )
+    expect(() => retitlePage(m, 'about', '  ')).toThrow('A page needs a name.')
   })
 
   it('draws a page for one record of the table it names, and for no other row', () => {
