@@ -172,6 +172,8 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | L17 | Nothing on a screen moves when something is picked or appears: what appears takes a place kept for it, as the one line over a table holds a paste waiting, ticked rows or filters at one height | 10 Nov | — |
 | L18 | Loading is quiet: nothing at first and a soft Loading… only once it has taken a while; never a word that something is not there while it is on its way; a module's tabs and the bar's name stay put while what is under them loads, and a module opens straight on where it lands | 10 Nov | — |
 | L19 | Settings › LLM's spend is one card (`ui/chart-card.tsx`): its title, its own choices, and a Show as drop-down drawing the same numbers as columns over time, bars, a donut or a table; each part keeps one colour across the looks and its key says its value (dollars and tokens). No table repeats the chart under it: the table is a look of the card. It draws with the window's one set of chart pieces (`ui/chart.tsx`), which a table's Chart view draws with too | 22 Nov | — |
+| L20 | Yes and no to one thing is a tick and a cross side by side (`ui/yes-no.tsx`), never two worded buttons: each grows a little under the pointer and names itself just under the icon (Approve and Decline, or the screen's own words); the one picked fills green or red (proposed, Vikas 23 Nov) | — | — |
+| L21 | Anything a person is asked to paste somewhere else (a command, an address, a permission's name) is in a monospace box with a copy button at its right (`ui/code-line.tsx`), never plain text to select (proposed, Vikas 23 Nov) | — | — |
 
 ## Proposed, waiting on Kenil or the core
 
