@@ -1,0 +1,22 @@
+name: two-accounts-one-excluded
+title: Two Gmail accounts are two lines; one deleted waits under Excluded and comes back disconnected
+why: >
+  Vikas, 23 Nov: "just one single Add button and I can keep on adding as many as I wish, any
+  number of Gmail accounts", each account one line; and "if I click leave Dropbox out, where did
+  it go if I want to bring it back?": what is deleted waits under Excluded, and Restore brings an
+  account back disconnected, ready to sign in again. On recorded answers, never a real account.
+steps:
+  - connect: { connector: gmail, account: ana@harborbooks.example }
+  - connect: { connector: gmail, account: ben@harborbooks.example }
+    checks:
+      - accounts: { lines: [ana@harborbooks.example, ben@harborbooks.example], excluded: [] }
+  - accounts: { delete: ben@harborbooks.example }
+    checks:
+      - accounts: { lines: [ana@harborbooks.example], excluded: [ben@harborbooks.example] }
+  - accounts: { restore: ben@harborbooks.example }
+    checks:
+      - accounts:
+          lines: [ana@harborbooks.example, ben@harborbooks.example]
+          excluded: []
+          off: [ben@harborbooks.example]
+      - errors: 0
