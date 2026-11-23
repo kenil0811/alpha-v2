@@ -23,6 +23,7 @@ import { World } from '../world/world.ts'
 import { buildServer, type ServerOptions } from './server.ts'
 import { chaptersOf, storyView } from './story.ts'
 import { appsAmong } from './story-connect.ts'
+import { byHand } from './story-screens.ts'
 import type { ConnectScreen, StoryView } from './story-types.ts'
 
 const AS = { host: '127.0.0.1:4700', 'x-alpha-token': 't', 'x-alpha-cli': '1' }
@@ -189,7 +190,7 @@ describe('Set up Alpha', () => {
       (await app.inject({ url: '/api/story/connect', headers: AS })).json() as ConnectScreen
     const mine = await screen(as())
     expect(mine.tiles.map((t) => t.key)).toEqual(['calendar'])
-    // accounts alone: no apps reader or files offered on the first run
+    // accounts alone while no computer is paired: no apps part, no "turn it on" line
     // on a server, a computer pairs through Alpha Bridge, on its own step before the accounts
     const computer = (await as().inject({ url: '/api/story/computer', headers: AS })).json()
     expect(computer.tiles.map((t: { key: string }) => t.key)).toEqual(['computer'])
@@ -307,6 +308,12 @@ describe('Set up Alpha', () => {
     expect(again).toMatchObject({ declined: false, done: false, fresh: false, at: 'workspace' })
     expect(again.chapters[0]).toMatchObject({ key: 'welcome', state: 'done' })
   })
+})
+
+it('says how to bring an app in by hand, a browser by its history', () => {
+  expect(byHand('Dia')[0]).toMatch(/export/)
+  expect(byHand('Dia')[0]).toMatch(/History/)
+  expect(byHand('Media Encoder')[0]).not.toMatch(/History/)
 })
 
 it('names a workspace from a mail domain', () => {

@@ -350,6 +350,28 @@ function BridgeTile({ tile: t, icon }: { tile: ConnectTile; icon: ReactNode }) {
   )
 }
 
+// How to bring an app in by hand, where Alpha has no way into it: its steps, under a button.
+function HowTo({ app, steps }: { app: string; steps: string[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="relative">
+      <Button size="sm" variant="ghost" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        How to connect
+      </Button>
+      {open && (
+        <ol
+          aria-label={`How to connect ${app}`}
+          className="absolute right-0 z-10 mt-1 flex w-72 list-decimal flex-col gap-1 rounded-md border border-line bg-surface py-2 pr-3 pl-7 text-ink-2 text-sm shadow-md"
+        >
+          {steps.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ol>
+      )}
+    </span>
+  )
+}
+
 // The apps the person uses, on their computer (Alpha Bridge's Apps reader) and among their mail's
 // senders, as one list, each with what it was seen by: connected where a connector ships, or
 // signed in to at its site in Alpha's browser.
@@ -433,10 +455,12 @@ function AppsTile({
                 >
                   Sign in
                 </Button>
+              ) : a.how ? (
+                <HowTo app={a.name} steps={a.how} />
               ) : null}
               {/* left out of the list for good, as a short list's ✕ (ui-rules R8) */}
               <IconButton
-                label={`Leave ${a.name} out`}
+                label={`Exclude ${a.name}`}
                 disabled={busy}
                 className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
                 onClick={() => void act(() => api.post('/api/story/apps/remove', { name: a.name }))}

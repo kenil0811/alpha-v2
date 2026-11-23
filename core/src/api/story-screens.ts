@@ -44,6 +44,15 @@ export const PROMISES = [
   'Nothing about you is saved without your approval.',
 ]
 
+// How to bring an app's data in by hand, where Alpha has no way into it: a browser's history
+// exported, anything else exported from its settings; either brought to New module's Import.
+export function byHand(app: string): string[] {
+  const bring = 'Bring the file to me with New module › Import, and I’ll read it.'
+  return /\b(browser|chrome|safari|firefox|edge|brave|opera|arc|dia|vivaldi)\b/i.test(app)
+    ? [`In ${app}, open History and export it, or save it from Settings.`, bring]
+    : [`In ${app}, look in Settings for Export, and save what it exports.`, bring]
+}
+
 export function storyScreens(ctx: Ctx, room: StoryRoom) {
   const { world, engine, user, options, views } = ctx
   const first = () => user.name.split(/\s+/)[0] ?? user.name
@@ -99,6 +108,29 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       if (domain && domain.includes('.') && !services.has(domain)) return domain
     }
     return null
+  }
+
+  // Your accounts: the accounts, and, once a computer is paired, what Alpha Bridge found on it, each
+  // with Connect where Alpha has a way in, else how to bring it by hand, and Exclude (Vikas, 23
+  // Nov: "I want to see that dynamic generation"). Nothing about turning a reader on: with no
+  // computer paired, or nothing found on it, the part is not there.
+  const accounts = () => {
+    const tiles = connectTiles(ctx, room.onServer)
+    const paired = world.computers.of(user.id).length > 0
+    const found = tiles
+      .filter((t) => t.kind === 'apps')
+      .map((t) => ({
+        ...t,
+        title: 'Found on your computer',
+        reads: 'The apps Alpha Bridge found you use',
+        note: 'Connect the ones I have a way into; for the others, here is how to bring me their data.',
+        reader: null, // never "turn it on" here: the list shows only once there is one
+        apps: t.apps
+          .filter((a) => a.times !== null || a.last !== null)
+          .map((a) => (a.connector || a.site ? a : { ...a, how: byHand(a.name) })),
+      }))
+      .filter((t) => paired && t.apps.length)
+    return [...tiles.filter((t) => t.kind === 'connector' || t.kind === 'calendar'), ...found]
   }
 
   const screens = {
@@ -174,10 +206,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       key: 'connect',
       title: 'Your accounts',
       says: 'Where does your work happen? Connect what you’d like me to read.',
-      // accounts alone: the apps on a computer and files to work from come later
-      tiles: connectTiles(ctx, room.onServer).filter(
-        (t) => t.kind === 'connector' || t.kind === 'calendar',
-      ),
+      tiles: accounts(),
     }),
     people: async (): Promise<PeopleScreen> => ({
       key: 'people',
