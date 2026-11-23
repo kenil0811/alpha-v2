@@ -77,9 +77,14 @@ export function linkBeside(href: string, base: string): Opened | null {
 }
 
 // Go to an address as a click on a link to it would: a thing opens beside the page, anything else
-// goes to its page. For the places that open from a button, a row
-// or a result, not an <a>.
-export function openLink(href: string): void {
+// goes to its page; a ⌘-click goes to the page itself (L14). For the places that open from a button,
+// a row or a result, not an <a>: a tab or a rail row shows no address at the window's foot while
+// the pointer rests on it (Vikas, 23 Nov).
+export function openLink(href: string, e?: { metaKey: boolean; ctrlKey: boolean }): void {
+  if (e?.metaKey || e?.ctrlKey) {
+    window.location.hash = href
+    return
+  }
   const a = document.createElement('a')
   a.href = href
   a.hidden = true

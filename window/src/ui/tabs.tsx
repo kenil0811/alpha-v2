@@ -5,6 +5,7 @@
 import type { TableSummary } from '@alpha/core/api'
 import { type DragEvent, type MouseEvent, type ReactNode, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { openLink } from '../opened.ts'
 import { TableTab } from '../TableTab.tsx'
 import { useBarSlot } from './bar-slot.tsx'
 import { cn } from './cn.ts'
@@ -52,11 +53,12 @@ export function Tabs({
       {tabs.map((t) => (
         <Maybe key={t.key} tab={t}>
           {(on) => (
-            <a
+            <button
+              type="button"
               {...on}
               role="tab"
               aria-selected={t.sel}
-              href={t.href}
+              data-href={t.href}
               {...(onMove && t.drag
                 ? {
                     draggable: true,
@@ -74,14 +76,7 @@ export function Tabs({
                     },
                   }
                 : {})}
-              onClick={
-                t.onPick
-                  ? (e) => {
-                      e.preventDefault()
-                      t.onPick?.()
-                    }
-                  : undefined
-              }
+              onClick={(e) => (t.onPick ? t.onPick() : openLink(t.href, e))}
               {...(t.onMenu
                 ? {
                     onContextMenu: (e: MouseEvent) => {
@@ -100,7 +95,7 @@ export function Tabs({
               {t.count !== undefined && (
                 <span className="font-normal text-ink-3 text-xs tabular-nums">{t.count}</span>
               )}
-            </a>
+            </button>
           )}
         </Maybe>
       ))}

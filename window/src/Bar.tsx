@@ -44,7 +44,7 @@ export function Bar({
               type="button"
               aria-label={`Back to ${back.label}`}
               data-href={back.href}
-              onClick={() => openLink(back.href)}
+              onClick={(e) => openLink(back.href, e)}
               className="grid shrink-0 place-items-center rounded-md p-1 hover:bg-hover hover:text-ink"
             >
               <ChevronLeft className="size-4" />
@@ -61,7 +61,7 @@ export function Bar({
                 <button
                   type="button"
                   data-href={c.href}
-                  onClick={() => openLink(c.href)}
+                  onClick={(e) => openLink(c.href, e)}
                   className="min-w-0 truncate rounded-md px-1 py-0.5 hover:bg-hover hover:text-ink"
                 >
                   {c.label}
