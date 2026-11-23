@@ -9,6 +9,7 @@ import { api, wordsOf } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { CodeLine } from './ui/code-line.tsx'
+import { Frame } from './ui/frame.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
@@ -83,7 +84,7 @@ export function Install({
   downloads: BridgeDownload[]
 }) {
   return (
-    <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-surface p-3 text-ink-2 text-md">
+    <Frame className="flex flex-col gap-2.5 text-ink-2 text-md">
       <p>On the computer you are adding:</p>
       <ol className="flex list-decimal flex-col gap-1.5 pl-5">
         <li>
@@ -116,14 +117,14 @@ export function Install({
         </li>
         <li>Lend a folder from Alpha Bridge's menu, or with Lend a folder on its row here.</li>
       </ol>
-    </div>
+    </Frame>
   )
 }
 
 // Step 1's way, while this Alpha has only the zip: what to do on the computer, in a terminal.
 export function Pairing({ link, downloads }: { link: string; downloads: BridgeDownload[] }) {
   return (
-    <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-surface p-3 text-ink-2 text-md">
+    <Frame className="flex flex-col gap-2.5 text-ink-2 text-md">
       <p>On the computer you are adding:</p>
       <ol className="flex list-decimal flex-col gap-1.5 pl-5">
         <li>
@@ -156,7 +157,7 @@ export function Pairing({ link, downloads }: { link: string; downloads: BridgeDo
           <CodeLine className="mt-1.5" text="./alpha-bridge run" />
         </li>
       </ol>
-    </div>
+    </Frame>
   )
 }
 

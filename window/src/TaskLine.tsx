@@ -7,6 +7,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { dueWords } from './time.ts'
 import { cn } from './ui/cn.ts'
+import { FRAME } from './ui/frame.tsx'
 import { Arrivals, useArrived } from './ui/list.tsx'
 import { fold, leaveWith, pause, unfold, useLeaving } from './ui/motion.ts'
 import { Pill } from './ui/pill.tsx'
@@ -195,7 +196,7 @@ export function TaskLine({
 export function TaskList({ lines, onChange }: { lines: TaskLineView[]; onChange: () => void }) {
   const shown = useLeaving(lines, (t) => t.id)
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+    <div className={`${FRAME} overflow-hidden`}>
       <Arrivals>
         {shown.map((t) => (
           <TaskLine key={t.id} t={t} onChange={onChange} />

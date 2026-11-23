@@ -16,6 +16,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Cut, Cuts } from './ui/cut.tsx'
 import { Confirm } from './ui/dialog.tsx'
+import { List } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
@@ -122,7 +123,7 @@ export function Activity({ version, cards }: { version: number; cards: CardView[
         {days.map(([day, list]) => (
           <section key={day}>
             <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-sm">{day}</div>
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            <List>
               {fold(list).map((l) =>
                 l.kind === 'quiet' ? (
                   <div
@@ -146,7 +147,7 @@ export function Activity({ version, cards }: { version: number; cards: CardView[
                   />
                 ),
               )}
-            </div>
+            </List>
           </section>
         ))}
       </div>

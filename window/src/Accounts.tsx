@@ -9,6 +9,7 @@ import { dayWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field, SecretField } from './ui/field.tsx'
+import { Frame } from './ui/frame.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
@@ -195,7 +196,7 @@ function People() {
         </Button>
       </form>
       {link && (
-        <div className="flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-3">
+        <Frame className="flex flex-col gap-1.5">
           <p className="text-ink-2 text-md">
             Send this to {link.who}. It works once, for seven days, and you will not see it again.
           </p>
@@ -210,7 +211,7 @@ function People() {
               Copy
             </Button>
           </div>
-        </div>
+        </Frame>
       )}
       {problem && <p className="text-bad text-md">{problem}</p>}
       <Confirm

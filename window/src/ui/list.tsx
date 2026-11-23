@@ -2,6 +2,7 @@
 // that arrives after the list first drew fades and rises in once; the rows it opened with never move.
 import { Children, createContext, type ReactNode, useContext, useEffect, useState } from 'react'
 import { cn } from './cn.ts'
+import { FRAME } from './frame.tsx'
 import { Info } from './info.tsx'
 
 const Drawn = createContext(false)
@@ -25,7 +26,7 @@ export function useArrived(): boolean {
 
 export function List({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('overflow-hidden rounded-lg border border-line bg-surface', className)}>
+    <div className={cn(FRAME, 'overflow-hidden', className)}>
       <Arrivals>{children}</Arrivals>
     </div>
   )

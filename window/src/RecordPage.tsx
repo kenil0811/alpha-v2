@@ -11,6 +11,7 @@ import { NO_RECORD, useLayout } from './layout.ts'
 import { InBar } from './ui/bar-slot.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { List } from './ui/list.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Tabs } from './ui/tabs.tsx'
@@ -188,5 +189,5 @@ export function RecordPage({
 
 // The frame a block's contents sit in: one border, never a card in a card
 export function Framed({ children }: { children: ReactNode }) {
-  return <div className="overflow-hidden rounded-lg border border-line bg-surface">{children}</div>
+  return <List>{children}</List>
 }

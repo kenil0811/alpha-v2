@@ -3,6 +3,7 @@
 import type { PersonView } from '@alpha/core/api'
 import { CalendarDays, Mail } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { List } from './ui/list.tsx'
 
 export const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, {
@@ -22,7 +23,7 @@ export function Detail({ label, children }: { label: string; children: ReactNode
 
 export function History({ lines }: { lines: PersonView['history'] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+    <List>
       {lines.map((h) => (
         <a
           key={h.href}
@@ -51,6 +52,6 @@ export function History({ lines }: { lines: PersonView['history'] }) {
           )}
         </a>
       ))}
-    </div>
+    </List>
   )
 }

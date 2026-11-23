@@ -9,6 +9,7 @@ import { dayWords, toLocalInput } from './time.ts'
 import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
+import { FRAME } from './ui/frame.tsx'
 import { Info } from './ui/info.tsx'
 
 const HOW: Record<string, string> = {
@@ -48,7 +49,7 @@ export function TaskWorkLine({ task }: { task: TaskView }) {
     <>
       <a
         href={`#/tasks/${task.id}/work`}
-        className="flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-md hover:bg-hover"
+        className={`${FRAME} flex items-center gap-2 px-4 py-3 text-md hover:bg-hover`}
       >
         <span className="min-w-0 flex-1 truncate text-ink">
           {task.state === 'doing' ? (

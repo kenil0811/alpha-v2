@@ -19,6 +19,8 @@ import { Button } from './ui/button.tsx'
 import { DateField } from './ui/date-field.tsx'
 import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { Frame } from './ui/frame.tsx'
+import { List as Rows } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { PageTitle } from './ui/rename.tsx'
@@ -281,7 +283,7 @@ function TaskPage({
           <Segmented label="State" value={t.state} onChange={state} options={STATES} />
         </div>
 
-        <div className="grid gap-x-6 gap-y-3 rounded-lg border border-line bg-surface p-4 sm:grid-cols-2">
+        <Frame className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
           <Labelled label="Due">
             <WhenField
               type="date"
@@ -339,7 +341,7 @@ function TaskPage({
               )}
             </span>
           </Labelled>
-        </div>
+        </Frame>
 
         <TaskWorkLine task={t} />
         <Section title="Notes">
@@ -356,11 +358,11 @@ function TaskPage({
 
         <Section title="Checklist" about="The steps beneath it, each a task of its own">
           {t.subtasks.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            <Rows>
               {t.subtasks.map((s) => (
                 <TaskLine key={s.id} t={s} onChange={load} place={false} />
               ))}
-            </div>
+            </Rows>
           )}
           <SubTask parent={t.id} onAdded={load} />
         </Section>
@@ -368,7 +370,7 @@ function TaskPage({
         {(t.context.values.length > 0 || t.context.siblings.length > 0) && (
           <Section title="Where it sits" about={t.place.words}>
             {t.context.values.length > 0 && (
-              <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              <Rows>
                 {t.context.values.slice(0, 14).map((v) => (
                   <div
                     key={v.field}
@@ -378,16 +380,16 @@ function TaskPage({
                     <span className="min-w-0 flex-1 truncate text-ink">{v.value}</span>
                   </div>
                 ))}
-              </div>
+              </Rows>
             )}
             {t.context.siblings.length > 0 && (
               <>
                 <div className="text-ink-3 text-sm">Other open tasks there</div>
-                <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                <Rows>
                   {t.context.siblings.map((s) => (
                     <TaskLine key={s.id} t={s} onChange={load} place={false} />
                   ))}
-                </div>
+                </Rows>
               </>
             )}
           </Section>

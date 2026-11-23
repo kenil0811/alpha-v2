@@ -17,6 +17,7 @@ import { cn } from './ui/cn.ts'
 import { cutTip } from './ui/cut-tip.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Field, SecretField } from './ui/field.tsx'
+import { FRAME } from './ui/frame.tsx'
 import { List, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
@@ -210,12 +211,7 @@ function TileFrame({
   children?: ReactNode
 }) {
   return (
-    <div
-      className={cn(
-        'flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-surface px-3.5 py-3',
-        wide && 'col-span-full',
-      )}
-    >
+    <div className={cn(FRAME, 'flex min-w-0 flex-col gap-2 px-3.5 py-3', wide && 'col-span-full')}>
       <div className="flex items-center gap-3">
         <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
         <div className="min-w-0 flex-1">

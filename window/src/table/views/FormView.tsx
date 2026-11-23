@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { askForNew } from '../../ask.ts'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { Field } from '../../ui/field.tsx'
+import { FRAME } from '../../ui/frame.tsx'
 import { ChoiceSelect } from '../ChoiceSelect.tsx'
 import { TagPicker } from '../Tags.tsx'
 import { canType, isTags, readValue, show, titleOf, typedOf } from '../values.ts'
@@ -56,10 +57,7 @@ export function FormView({
   }
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
-      <form
-        onSubmit={save}
-        className="flex max-w-stream flex-col gap-4 rounded-lg border border-line bg-surface p-5"
-      >
+      <form onSubmit={save} className={`${FRAME} flex max-w-stream flex-col gap-4 p-4`}>
         <div className="flex items-center gap-2">
           <h2 className="min-w-0 flex-1 truncate font-medium font-serif text-ink text-xl">
             {adding ? 'A new row' : row ? titleOf(fields, row) : ''}

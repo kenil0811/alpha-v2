@@ -2,6 +2,8 @@
 // opens the row whole. The list keeps the view's groups.
 import type { FieldView, RowLine, RowView } from '@alpha/core/api'
 import { cn } from '../../ui/cn.ts'
+import { FRAME } from '../../ui/frame.tsx'
+import { List } from '../../ui/list.tsx'
 import { Choice, Pill } from '../../ui/pill.tsx'
 import { type Group, groupRows } from '../engine.ts'
 import { TagChips } from '../Tags.tsx'
@@ -82,7 +84,7 @@ export function ListView({
               <span className="font-normal text-ink-3 text-sm">{g.rows.length}</span>
             </div>
           )}
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <List>
             {g.rows.map((r) => (
               <button
                 key={r.id}
@@ -110,7 +112,7 @@ export function ListView({
                 )}
               </button>
             ))}
-          </div>
+          </List>
         </section>
       ))}
     </div>
@@ -137,7 +139,7 @@ export function GalleryView({
             type="button"
             id={`row-${r.id}`}
             onClick={() => onOpen(r.id)}
-            className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 text-left lift"
+            className={`${FRAME} flex flex-col gap-2 p-4 text-left hover:border-accent-line lift`}
           >
             <span className="line-clamp-2 font-medium text-base text-ink">
               {titleOf(fields, r)}
