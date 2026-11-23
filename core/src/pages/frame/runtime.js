@@ -1,7 +1,8 @@
 // A page's runtime inside its frame: `alpha`, the page's one way out of the frame.
 // A page asks for its module's rows and their history, offers choosers (a month, a client), asks
 // the window to open rows, and draws Alpha's blocks with `alpha.page`. In the window, questions go
-// to the window by message; printed, to the core that prints it. Nothing here can write.
+// to the window by message; printed, to the core that prints it. Nothing here can write: a text
+// the person edits in place (alpha.edit) goes to the window, which writes it to the row as theirs.
 ;(() => {
   const asked = new Map()
   let seq = 0
@@ -12,6 +13,8 @@
   let maker = null
   let blocks = []
   let drawnWidth = 0
+  let editing = false // a draw waits while a text is edited, so the edit is not wiped
+  let missed = false
 
   const post = (message) => {
     if (!printing) parent.postMessage(message, '*')
@@ -79,6 +82,10 @@
 
   function draw() {
     if (!window.alphaKit) return
+    if (editing) {
+      missed = true
+      return
+    }
     drawnWidth = document.documentElement.clientWidth
     window.alphaKit.draw(blocks, { inputs, choose, printing })
     height()
@@ -117,11 +124,70 @@
       else height()
     }).observe(document.documentElement)
 
+  // A text edited in place, with ✕ and ✓ under it, as the window's Cancel and Save (Vikas, 23
+  // Nov): Enter saves, Escape cancels, clicking elsewhere leaves it open. A change goes to the
+  // window, which writes it to the field `target` names; the page then draws again from the row.
+  const ICON = {
+    yes: '<path d="M20 6 9 17l-5-5"/>',
+    no: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  }
+  const edit = (node, target) => {
+    if (printing || editing) return
+    editing = true
+    const was = node.textContent.trim()
+    const bar = document.createElement('div')
+    const key = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        finish(true)
+      } else if (e.key === 'Escape') finish(false)
+    }
+    function finish(keep) {
+      bar.remove()
+      node.removeEventListener('keydown', key)
+      node.contentEditable = 'false'
+      node.classList.remove('ak-editing')
+      const now = node.textContent.trim()
+      if (keep && now && now !== was) post({ alpha: 'edit', target, was, now })
+      else node.textContent = was
+      editing = false
+      if (missed) {
+        missed = false
+        draw()
+      } else height()
+    }
+    const button = (yes) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = yes ? 'ak-yes' : 'ak-no'
+      b.setAttribute('aria-label', yes ? 'Save' : 'Cancel')
+      b.innerHTML = `<svg viewBox="0 0 24 24">${yes ? ICON.yes : ICON.no}</svg><span>${yes ? 'Save' : 'Cancel'}</span>`
+      // the text keeps its focus until the click lands
+      b.addEventListener('mousedown', (e) => e.preventDefault())
+      b.addEventListener('click', () => finish(yes))
+      return b
+    }
+    bar.className = 'ak-edit-bar'
+    bar.append(button(false), button(true))
+    node.contentEditable = 'plaintext-only'
+    node.classList.add('ak-editing')
+    node.addEventListener('keydown', key)
+    node.focus()
+    document.getSelection()?.selectAllChildren(node)
+    // under the text, its right edge with the text's
+    const at = node.getBoundingClientRect()
+    bar.style.top = `${at.bottom + window.scrollY + 4}px`
+    bar.style.right = `${Math.max(4, document.documentElement.clientWidth - at.right - window.scrollX)}px`
+    document.body.append(bar)
+    height()
+  }
+
   window.alpha = {
     rows: (table) => ask('rows', { table }),
     history: (table, field) => ask('history', { table, field }),
     input,
     open: (target) => post({ alpha: 'open', target }),
+    edit,
     say: (words, agent) => post({ alpha: 'say', words, ...(agent ? { agent } : {}) }),
     page: (fn) => {
       if (!maker) watch()
