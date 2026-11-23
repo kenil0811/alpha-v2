@@ -170,10 +170,12 @@ export function MenuItem({
   hint,
   star,
   tip,
+  tickAfter,
 }: {
   children: ReactNode
   onClick: () => void
   checked?: boolean | undefined
+  tickAfter?: boolean | undefined // the ✓ after the words, with no room kept for it in front
   disabled?: boolean | undefined
   reason?: string | undefined // why it can't be used, shown on hover
   danger?: boolean | undefined
@@ -182,6 +184,7 @@ export function MenuItem({
   tip?: string | undefined // what the line holds, on hover (a saved list's filters, sort…)
 }) {
   const off = disabled || !!reason
+  const tick = <span className="w-3.5 shrink-0 text-accent">{checked ? '✓' : ''}</span>
   const line = (
     <button
       type="button"
@@ -197,8 +200,9 @@ export function MenuItem({
         off && 'pointer-events-auto cursor-default',
       )}
     >
-      <span className="w-3.5 shrink-0 text-accent">{checked ? '✓' : ''}</span>
+      {!tickAfter && tick}
       <span className="flex min-w-0 flex-1 items-center gap-2">{children}</span>
+      {tickAfter && tick}
       {hint && <span className="shrink-0 text-ink-3 text-sm">{hint}</span>}
       {star && <span className="size-3.5 shrink-0" />}
     </button>
