@@ -136,7 +136,7 @@ export function Board({
                     stop()
                   }}
                   data-tip={`Drag to another ${by.name.toLowerCase()}`}
-                  className="flex cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base active:cursor-grabbing"
+                  className="flex cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base lift active:cursor-grabbing"
                 >
                   <button
                     type="button"

@@ -3,11 +3,12 @@
 // this computer shows the Bridge's download for it and a one-time pairing link; the folder is lent
 // on the computer itself, never named here.
 import type { BridgeDownload, ComputersView, ComputerView } from '@alpha/core/api'
-import { ChevronRight, Copy, Download, Laptop } from 'lucide-react'
+import { ChevronRight, Download, Laptop } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { CodeLine } from './ui/code-line.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
@@ -66,11 +67,7 @@ export function Computers({ version }: { version: number }) {
 function LinkLine({ link }: { link: string }) {
   return (
     <div className="mt-1.5 flex items-center gap-2">
-      <code className="min-w-0 flex-1 truncate text-ink text-sm">{link}</code>
-      <Button size="sm" variant="ghost" onClick={() => void navigator.clipboard?.writeText(link)}>
-        <Copy className="size-3.5" />
-        Copy
-      </Button>
+      <CodeLine text={link} />
     </div>
   )
 }
@@ -149,24 +146,14 @@ export function Pairing({ link, downloads }: { link: string; downloads: BridgeDo
           )}
         </li>
         <li>
-          In Terminal (Mac) or PowerShell (Windows), in the unzipped folder, run{' '}
-          <code className="text-ink text-sm">./alpha-bridge pair</code> with this link. It works
-          once, for 15 minutes, and you will not see it again.
-          <div className="mt-1.5 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate text-ink text-sm">{link}</code>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void navigator.clipboard?.writeText(link)}
-            >
-              <Copy className="size-3.5" />
-              Copy
-            </Button>
-          </div>
+          In Terminal (Mac) or PowerShell (Windows), in the unzipped folder, run this. Its link
+          works once, for 15 minutes, and you will not see it again.
+          <CodeLine className="mt-1.5" text={`./alpha-bridge pair "${link}"`} />
         </li>
         <li>
-          Lend a folder with <code className="text-ink text-sm">./alpha-bridge lend</code> and its
-          path, then leave <code className="text-ink text-sm">./alpha-bridge run</code> going.
+          Lend a folder with this and its path, then leave the second going.
+          <CodeLine className="mt-1.5" text="./alpha-bridge lend" />
+          <CodeLine className="mt-1.5" text="./alpha-bridge run" />
         </li>
       </ol>
     </div>

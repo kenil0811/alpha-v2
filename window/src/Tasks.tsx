@@ -4,7 +4,7 @@
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
 import type { KeptTable, TaskLineView, TaskView } from '@alpha/core/api'
-import { Check, CircleDot, Clock, Repeat2, Trash2, X } from 'lucide-react'
+import { CircleDot, Clock, Repeat2, Trash2, X } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Record } from './Record.tsx'
@@ -18,6 +18,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { DateField } from './ui/date-field.tsx'
 import { Confirm, Dialog } from './ui/dialog.tsx'
+import { DoneTick } from './ui/done-tick.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -189,8 +190,7 @@ export function NewTask({
   )
 }
 
-// A task's state as a circle; a click opens its five states, so a click never closes it
-// by itself.
+// A task's state as a circle; a click opens its five states, never closing it by itself.
 function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
   const anchor = useRef<HTMLButtonElement>(null)
   const [choosing, setChoosing] = useState(false)
@@ -221,7 +221,7 @@ function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
                   : 'border-line',
         )}
       >
-        {t.state === 'done' && <Check className="size-3" />}
+        <DoneTick done={t.state === 'done'} className="size-3" />
         {t.state === 'doing' && <span className="size-2 rounded-full bg-accent" />}
         {t.state === 'waiting' && <Clock className="size-2.75" />}
         {t.state === 'dropped' && <X className="size-2.75" />}
