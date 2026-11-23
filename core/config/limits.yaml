@@ -120,3 +120,11 @@ hops_in_a_chain: 4
 tasks_at_once: 4
 # when a repeating task given to an agent starts, if its due day has no time
 repeat_starts_at: "08:00"
+
+# What one piece of an agent's finished work saves a person, in minutes, for its page's "Time saved
+# this week" while nothing records the real figure: a task it finished (a schedule's wake is one), an
+# ask from another agent it answered. A kind left out is not counted. A judgement, said as an
+# estimate wherever it shows.
+minutes_saved:
+  task_done: 15
+  ask_answered: 5

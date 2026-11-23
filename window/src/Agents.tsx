@@ -1,7 +1,7 @@
 // The firm's agents: Settings › Agents lists them with the Chief of staff first, and an
 // agent's page shows what it is, its memories and its skills. An agent is made and changed in a
 // conversation with the Chief of staff, so nothing here is a form to fill in.
-import type { AgentDetail, AgentView, MemoryView, Stream } from '@alpha/core/api'
+import type { AgentDetail, AgentView, MemoryView, Stream, TimeSavedView } from '@alpha/core/api'
 import { Bot, Check, MessageSquare, Plus, Trash2, X } from 'lucide-react'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { AgentSchedules } from './AgentSchedules.tsx'
@@ -12,6 +12,7 @@ import { Record } from './Record.tsx'
 import { MODEL_NAMES } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
+import { fill } from './ui/chart.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
@@ -309,6 +310,7 @@ export function AgentPage({
         )}
         <Refusal words={problem} />
       </div>
+      {a.timeSaved && <TimeSaved saved={a.timeSaved} />}
       {!a.chief && (
         <section className="flex flex-col gap-1.5">
           <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
@@ -384,6 +386,49 @@ export function AgentPage({
         </Confirm>
       )}
     </Record>
+  )
+}
+
+const WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const hm = (min: number) => {
+  const h = Math.floor(min / 60)
+  const m = Math.round(min % 60)
+  return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`
+}
+
+// What it saved this week, Monday to today, a small bar a day; none when it finished nothing.
+function TimeSaved({ saved }: { saved: TimeSavedView }) {
+  const top = Math.max(1, ...saved.days)
+  return (
+    <Section
+      title="Time saved this week"
+      about="Its finished work this week, times the minutes each kind of work saves you."
+    >
+      <div className="flex items-end gap-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span data-roll className="font-serif text-2xl text-ink tabular-nums">
+              {hm(saved.minutes)}
+            </span>
+            {saved.source === 'estimated' && <Pill>Estimated</Pill>}
+          </div>
+          <p className="text-ink-3 text-sm">{saved.how}</p>
+        </div>
+        <div className="ml-auto flex h-10 items-end gap-1">
+          {saved.days.map((m, i) => (
+            <span
+              key={WEEK[i]}
+              data-tip={`${WEEK[i]}: ${hm(m)}`}
+              className="w-2.5 rounded-sm bg-sunk"
+              style={{
+                height: `${Math.max(8, (m / top) * 100)}%`,
+                ...(m ? { background: fill(0) } : {}),
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </Section>
   )
 }
 
