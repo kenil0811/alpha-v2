@@ -13,18 +13,24 @@ it('snaps a dragged share of the row to the nearest width', () => {
   expect(nearestWidth(1.4)).toBe('1')
 })
 
-it("puts each waiting card under its agent in the team's order, sign-ins last", () => {
-  const card = (id: string, agent: string) => ({ id, agent }) as CardView
+it("puts each waiting card under its agent in the team's order, a schedule's under Schedules, sign-ins last", () => {
+  const card = (id: string, agent: string, schedule = false) =>
+    ({ id, agent, schedule: schedule ? { id: 's', name: 'Morning' } : null }) as CardView
   const agents = [
-    { id: 'chief', name: 'Chief of staff' },
+    { id: 'chief', name: 'Chief of staff', chief: true },
     { id: 'a', name: 'Sales' },
     { id: 'b', name: 'Books' },
   ] as AgentView[]
   const sign = { connection: 'g' } as Parameters<typeof fromWhom>[1][number]
-  const f = fromWhom([card('1', 'a'), card('2', 'chief'), card('3', 'a')], [sign], agents)
+  const f = fromWhom(
+    [card('4', 'chief', true), card('1', 'a'), card('2', 'chief'), card('3', 'a', true)],
+    [sign],
+    agents,
+  )
   expect(f.map((x) => [x.key, x.name, x.cards.map((c) => c.id), x.signIns.length])).toEqual([
     ['chief', 'Chief of staff', ['2'], 0],
     ['a', 'Sales', ['1', '3'], 0],
+    ['schedules', 'Schedules', ['4'], 0],
     ['sign-ins', 'Sign-ins', [], 1],
   ])
   expect(fromWhom([], [], agents)).toEqual([])

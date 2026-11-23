@@ -1,8 +1,8 @@
 // Needs you: one card for everything that waits on the person. Along its title, a face for each
-// one with something waiting (an agent, Sign-ins) and how many; the chosen one's things one at a
+// one with something waiting (an agent, Schedules, Sign-ins) and how many; the chosen one's things one at a
 // time, the page numbers under them (Vikas, 23 Nov).
 import type { AgentView, CardView, Stream } from '@alpha/core/api'
-import { KeyRound } from 'lucide-react'
+import { Clock, KeyRound } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { api } from './api.ts'
 import { CardBox } from './CardBox.tsx'
@@ -14,7 +14,8 @@ import { Group, Line } from './ui/groups.tsx'
 
 type SignIn = Stream['attention'][number]
 
-// Who waiting things are from: an agent, or Sign-ins (a connection's, which no agent raised).
+// Who waiting things are from: an agent, Schedules (what a schedule's run raised and no agent did),
+// or Sign-ins (a connection's).
 export interface From {
   key: string
   name: string
@@ -23,19 +24,25 @@ export interface From {
   signIns: SignIn[]
 }
 
-// The ones with something waiting, in the team's order, Sign-ins last.
+const SCHEDULES = { name: 'Schedules', icon: <Clock className="size-4" /> }
+
+// The ones with something waiting: the agents in the team's order, then Schedules, Sign-ins last.
 export function fromWhom(cards: CardView[], signIns: SignIn[], agents: AgentView[]): From[] {
-  const place = (id: string) => {
-    const i = agents.findIndex((a) => a.id === id)
+  const chief = agents.find((a) => a.chief)?.id
+  const whose = (c: CardView) => (c.schedule && c.agent === chief ? 'schedules' : c.agent)
+  const place = (key: string) => {
+    const i = agents.findIndex((a) => a.id === key)
     return i < 0 ? agents.length : i
   }
-  const out = [...new Set(cards.map((c) => c.agent))]
+  const out = [...new Set(cards.map(whose))]
     .sort((x, y) => place(x) - place(y))
     .map(
-      (id): From => ({
-        key: id,
-        name: agents.find((a) => a.id === id)?.name ?? 'An agent',
-        cards: cards.filter((c) => c.agent === id),
+      (key): From => ({
+        key,
+        ...(key === 'schedules'
+          ? SCHEDULES
+          : { name: agents.find((a) => a.id === key)?.name ?? 'An agent' }),
+        cards: cards.filter((c) => whose(c) === key),
         signIns: [],
       }),
     )
