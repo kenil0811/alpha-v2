@@ -2,12 +2,16 @@
 // the few choices it offers; a choice is theirs on that row, and one button takes the first choice
 // for every row not yet decided. The card closes when each row has one. Where the card puts lines
 // for How to work, each line can be reworded first (Edit), so what is kept is in their words.
+// Each row is the tick, the cross and the chat icon: the chat opens a box whose words go to the
+// agent the card is from, the row marked with the middle choice ("Needs edits"); six rows a page
+// (Vikas, 23 Nov).
 import type { CardView, ReviewView } from '@alpha/core/api'
+import { MessageSquareText } from 'lucide-react'
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
+import { Pages } from './table/FootBar.tsx'
 import { Button } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
-import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { YesNo } from './ui/yes-no.tsx'
 
@@ -15,8 +19,14 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  const [page, setPage] = useState(0)
   const [first, ...others] = review.choices
-  const pair = others.length === 1 ? others[0] : undefined
+  // the tick is the first choice, the cross the last; a middle one is what the chat marks
+  const no = others.at(-1)
+  const middle = others.length > 1 ? others[0] : undefined
+  const pages = Math.ceil(review.rows.length / PAGE)
+  const at = Math.min(page, Math.max(pages - 1, 0))
+  const shown = review.rows.slice(at * PAGE, at * PAGE + PAGE)
   // a line for How to work is decided in verbs: Keep, Edit, Drop (its row keeps Kept or Dropped)
   const say = (c: string) =>
     review.edits ? (c === first ? 'Keep' : c === others[0] ? 'Drop' : c) : c
@@ -40,6 +50,18 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
     send(() =>
       api.post(`/api/tables/${review.table}/rows/${id}`, { field: review.edits, value: text }),
     ).then((ok) => ok && setEditing(null))
+  // the person's words on a row, to the agent the card is from; the row marked for changes
+  const tell = (r: { id: string; name: string }, text: string) =>
+    send(async () => {
+      await api.post('/api/say', {
+        words: `About "${r.name}" (${card.words}): ${text}`,
+        agent: card.agent,
+      })
+      if (middle) await api.post(`/api/cards/${card.id}/rows`, { rows: [r.id], value: middle })
+    }).then((ok) => {
+      if (!ok) return
+      setEditing(null)
+    })
   return (
     <Card label="For you to decide" waits="Waits for you">
       <div className="font-medium text-ink text-lg">{card.words}</div>
@@ -54,28 +76,40 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
         )}
       </div>
       <div className="overflow-hidden rounded-md border border-line">
-        {review.rows.map((r) =>
+        {shown.map((r) =>
           editing?.id === r.id ? (
             <form
               key={r.id}
-              className="flex items-center gap-2 border-hair border-t px-3 py-2 first:border-t-0"
+              className="flex flex-col gap-1.5 border-hair border-t px-3 py-2 first:border-t-0"
               onSubmit={(e) => {
                 e.preventDefault()
-                if (editing.text.trim()) void reword(r.id, editing.text.trim())
+                const text = editing.text.trim()
+                if (text) void (review.edits ? reword(r.id, text) : tell(r, text))
               }}
             >
-              <Field
-                className="min-w-0 flex-1"
-                aria-label="The line in your words"
-                value={editing.text}
-                onChange={(e) => setEditing({ id: r.id, text: e.target.value })}
-              />
-              <Button size="sm" type="submit" disabled={busy || !editing.text.trim()}>
-                Save
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                Cancel
-              </Button>
+              {!review.edits && (
+                <span className="truncate font-medium text-base text-ink">{r.name}</span>
+              )}
+              <div className="flex items-center gap-2">
+                <Field
+                  className="min-w-0 flex-1"
+                  aria-label={
+                    review.edits ? 'The line in your words' : 'What to change, to the agent'
+                  }
+                  placeholder={
+                    review.edits ? undefined : 'What should change? The agent reads this'
+                  }
+                  autoFocus
+                  value={editing.text}
+                  onChange={(e) => setEditing({ id: r.id, text: e.target.value })}
+                />
+                <Button size="sm" type="submit" disabled={busy || !editing.text.trim()}>
+                  {review.edits ? 'Save' : 'Send'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+              </div>
             </form>
           ) : (
             <div
@@ -95,57 +129,50 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
                 <span className="shrink-0 text-ink-2 text-sm">{r.value}</span>
               ) : (
                 <span className="flex shrink-0 items-center gap-1.5">
-                  {review.edits && (
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      className="text-ink-2"
-                      onClick={() => setEditing({ id: r.id, text: r.name })}
-                    >
-                      Edit
-                    </Button>
-                  )}
-                  {/* two choices are a yes and a no to the row: the tick and the cross */}
-                  {first && pair ? (
+                  {first && no ? (
                     <YesNo
                       value={null}
                       yes={say(first)}
-                      no={say(pair)}
+                      no={say(no)}
                       disabled={busy}
-                      onChange={(a) => choose([r.id], a === 'yes' ? first : pair)}
+                      onChange={(a) => choose([r.id], a === 'yes' ? first : no)}
                     />
                   ) : (
-                    <>
-                      {first && (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          disabled={busy}
-                          onClick={() => choose([r.id], first)}
-                        >
-                          {say(first)}
-                        </Button>
-                      )}
-                      {others.filter(Boolean).map((c) => (
-                        <Button
-                          key={c}
-                          size="sm"
-                          disabled={busy}
-                          className={cn('text-ink-2')}
-                          onClick={() => choose([r.id], c as string)}
-                        >
-                          {say(c as string)}
-                        </Button>
-                      ))}
-                    </>
+                    first && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={busy}
+                        onClick={() => choose([r.id], first)}
+                      >
+                        {say(first)}
+                      </Button>
+                    )
                   )}
+                  <button
+                    type="button"
+                    aria-label={middle ?? 'Edit'}
+                    data-tip={middle ?? 'Edit'}
+                    disabled={busy}
+                    onClick={() => setEditing({ id: r.id, text: review.edits ? r.name : '' })}
+                    className="press swell grid size-7 place-items-center rounded-md border border-line bg-surface text-ink-3 hover:border-accent-line hover:bg-accent-soft hover:text-accent disabled:opacity-50"
+                  >
+                    <MessageSquareText className="size-3.5" />
+                  </button>
                 </span>
               )}
             </div>
           ),
         )}
       </div>
+      {pages > 1 && (
+        <div className="flex justify-center text-ink-3 text-xs">
+          <Pages at={at} pages={pages} onPage={setPage} />
+        </div>
+      )}
       {problem && <p className="text-bad text-sm">{problem}</p>}
     </Card>
   )
 }
+
+const PAGE = 6 // rows a page (Vikas, 23 Nov)
