@@ -29,6 +29,8 @@ export interface SignInAppView {
   }
   sheet: { words: string; copy?: string[] }[]
   console: string // where IT manages the app
+  alpha: boolean // Alpha's own app (core/config/signin.yaml): the person only signs in
+  consent: string | null // where a business's admin approves Alpha's own app, once
 }
 
 export interface ConnectionView {

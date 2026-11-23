@@ -37,6 +37,8 @@ export function signInApps(ctx: BaseCtx): SignInAppView[] {
       },
       sheet: p.sheet(signIn.registered(p), 'your organisation'),
       console: p.console,
+      alpha: signIn.alpha(p.name),
+      consent: signIn.consent(p.name),
     }))
 }
 

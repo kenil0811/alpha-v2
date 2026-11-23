@@ -173,6 +173,7 @@ const connectors = new ConnectorService(world, {
   signIn: new SignIn(world, {
     secrets,
     back: () => `${install.publicAddress ?? `http://localhost:${port}`}${BACK}`,
+    alpha: () => config.signIn(),
   }),
 })
 // A person's computers (the Bridge): what one lends becomes a connection that runs there.

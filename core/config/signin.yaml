@@ -1,0 +1,18 @@
+# Alpha's own sign-in apps, one per provider, so a person only signs in: nothing for them or their
+# IT to register. Kenil registers them and fills these in; while one is empty, that provider signs
+# in with the firm's own app, set up under Settings › Connections › Sign-in apps, as before. A firm
+# that sets up its own app keeps using it. Never put a made-up id here.
+
+# A multi-tenant public client (PKCE, no secret) on the common authority, so work, school and
+# personal accounts (Outlook.com, Hotmail, Live) all sign in. Its delegated permissions are the
+# setup sheet's seven. A business that blocks people approving apps themselves approves it once,
+# through the admin approval link Alpha shows.
+microsoft:
+  client_id: ''
+
+# A desktop client in Alpha's Google Cloud project, with Calendar and Contacts read (PKCE). Google
+# gives a desktop client a secret it says is not secret; it goes here with the id. Gmail's own
+# scope is restricted (a yearly security review), so mail stays on an app password until it passes.
+google:
+  client_id: ''
+  client_secret: ''

@@ -426,3 +426,76 @@ describe('signing in with an app that has a secret (Intuit)', () => {
     expect(world.connections.get(conn.id)?.place).toBeNull()
   })
 })
+
+// Alpha's own sign-in apps (core/config/signin.yaml, Vikas 23 Nov): a person only signs in
+describe("Alpha's own sign-in app", () => {
+  const ids = (microsoftId: string, googleId = '', googleSecret = '') => ({
+    microsoft: { client_id: microsoftId },
+    google: { client_id: googleId, client_secret: googleSecret },
+  })
+  const withIds = (alpha: ReturnType<typeof ids>) => {
+    const signIn = new SignIn(world, {
+      secrets,
+      back: () => 'http://localhost:4700/api/sign-in/back',
+      providers: { microsoft: madeUp(), intuit: madeUpIntuit() },
+      now: () => clock,
+      alpha: () => alpha,
+    })
+    return { signIn, service: new ConnectorService(world, { secrets, known: [mail], signIn }) }
+  }
+
+  it('the shipped config is empty, so the firm’s own app is in use as before', async () => {
+    const { config } = await import('../config.ts')
+    const { signIn } = withIds(config.signIn())
+    expect(signIn.app('microsoft')).toBeNull()
+    expect(signIn.alpha('microsoft')).toBe(false)
+    expect(signIn.consent('microsoft')).toBeNull()
+    expect(() => signIn.ready(mail)).toThrow(/not set up yet/)
+  })
+
+  it('signs in on the common authority with no setup, and names the admin approval link', async () => {
+    const { signIn, service } = withIds(ids('2b3c4d5e-1111-2222-3333-444455556666'))
+    expect(signIn.app('microsoft')).toEqual({
+      app: '2b3c4d5e-1111-2222-3333-444455556666',
+      directory: 'common',
+    })
+    expect(signIn.alpha('microsoft')).toBe(true)
+    expect(signIn.consent('microsoft')).toBe(
+      'https://login.microsoftonline.com/organizations/adminconsent?client_id=2b3c4d5e-1111-2222-3333-444455556666',
+    )
+    const conn = await service.connect('work-mail', svc.who, null, world.owner('Kenil').id)
+    const url = signIn.start(conn, mail)
+    expect(url).toContain(`${base}/common/authorize`)
+    expect(new URL(url).searchParams.get('client_id')).toBe('2b3c4d5e-1111-2222-3333-444455556666')
+    expect((await signInAs(signIn, url)).problem).toBeNull()
+  })
+
+  it('a business that blocks approving apps is told to send its admin the link', async () => {
+    const { signIn, service } = withIds(ids('2b3c4d5e-1111-2222-3333-444455556666'))
+    const conn = await service.connect('work-mail', svc.who, null, world.owner('Kenil').id)
+    svc.refusal = {
+      error: 'invalid_grant',
+      error_codes: [65001],
+      error_description: 'AADSTS65001: The user or administrator has not consented.',
+    }
+    const out = await signInAs(signIn, signIn.start(conn, mail))
+    expect(out.problem?.message).toMatch(/admin approval link/)
+    expect(out.problem?.kind).toBe('waiting')
+  })
+
+  it('the firm’s own app, once set, is used instead', async () => {
+    const { signIn } = withIds(ids('2b3c4d5e-1111-2222-3333-444455556666'))
+    await signIn.setApp('microsoft', APP, kenil())
+    expect(signIn.app('microsoft')).toEqual(APP)
+    expect(signIn.alpha('microsoft')).toBe(false)
+    expect(signIn.consent('microsoft')).toBeNull()
+  })
+
+  it('Google’s needs its id and its secret', async () => {
+    const { alphaApp } = await import('./signin.ts')
+    expect(alphaApp(ids('', '123-abc.apps.googleusercontent.com'), 'google')).toBeNull()
+    expect(alphaApp(ids('', '123-abc.apps.googleusercontent.com', 'GOCSPX-xyz'), 'google')).toEqual(
+      { app: '123-abc.apps.googleusercontent.com', secret: true, secretValue: 'GOCSPX-xyz' },
+    )
+  })
+})

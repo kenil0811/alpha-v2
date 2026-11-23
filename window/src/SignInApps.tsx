@@ -3,11 +3,12 @@
 // sign-in itself, on the provider's own page in their browser. An app's secret (Intuit's) is typed
 // once and kept by Alpha: the field shows it is kept, never what it is.
 import type { SignInAppView } from '@alpha/core/api'
-import { Check, Copy, KeyRound } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { api } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { CodeLine } from './ui/code-line.tsx'
 import { Field } from './ui/field.tsx'
 import { Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -49,13 +50,17 @@ function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => voi
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-base text-ink">{a.title}</div>
           <div className="text-ink-3 text-sm">
-            {a.set ? 'Set up for your organisation' : 'Your IT sets it up once'}
+            {a.alpha
+              ? 'Alpha’s own: each person just signs in'
+              : a.set
+                ? 'Set up for your organisation'
+                : 'Your IT sets it up once'}
           </div>
         </div>
         <Pill tone={a.set ? 'good' : 'warn'}>{a.set ? 'Set up' : 'Not set up'}</Pill>
         {!open && (
           <Button size="sm" variant={a.set ? 'ghost' : 'default'} onClick={() => setOpen(true)}>
-            {a.set ? 'Change' : 'Set up'}
+            {a.alpha ? 'Use your own' : a.set ? 'Change' : 'Set up'}
           </Button>
         )}
       </div>
@@ -84,8 +89,9 @@ export function AppSetup({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const [id, setId] = useState(a.set?.app ?? '')
-  const [directory, setDirectory] = useState(a.set?.directory ?? '')
+  // Alpha's own app is not the firm's to edit: the boxes start empty for one of its own
+  const [id, setId] = useState(a.alpha ? '' : (a.set?.app ?? ''))
+  const [directory, setDirectory] = useState(a.alpha ? '' : (a.set?.directory ?? ''))
   const [secret, setSecret] = useState('')
   const { busy, problem, act } = useAct()
   const save = async (e: FormEvent) => {
@@ -106,7 +112,7 @@ export function AppSetup({
   const ready =
     !!id.trim() &&
     (!a.fields.directory || !!directory.trim()) &&
-    (!a.fields.secret || !!a.set?.secret || !!secret.trim())
+    (!a.fields.secret || (!a.alpha && !!a.set?.secret) || !!secret.trim())
   return (
     <form onSubmit={save} className="flex flex-col gap-4">
       <ol className="flex flex-col gap-3">
@@ -118,9 +124,9 @@ export function AppSetup({
             <div className="flex min-w-0 flex-col gap-1.5">
               <span className="text-ink-2">{s.words}</span>
               {s.copy && (
-                <span className="flex flex-wrap gap-1.5">
+                <span className="flex flex-col gap-1">
                   {s.copy.map((v) => (
-                    <CopyChip key={v} value={v} />
+                    <CodeLine key={v} text={v} />
                   ))}
                 </span>
               )}
@@ -160,7 +166,7 @@ export function AppSetup({
               id={`${a.provider}-secret`}
               type="password"
               value={secret}
-              placeholder={a.set?.secret ? 'Kept. Type a new one to replace it' : ''}
+              placeholder={!a.alpha && a.set?.secret ? 'Kept. Type a new one to replace it' : ''}
               onChange={(e) => setSecret(e.target.value)}
               autoComplete="off"
               spellCheck={false}
@@ -178,29 +184,5 @@ export function AppSetup({
         <Refusal words={problem} />
       </div>
     </form>
-  )
-}
-
-// A value IT types exactly (an address, a permission's name), copied with one click.
-function CopyChip({ value }: { value: string }) {
-  const [done, setDone] = useState(false)
-  return (
-    <button
-      type="button"
-      aria-label={`Copy ${value}`}
-      onClick={() => {
-        void navigator.clipboard?.writeText(value)
-        setDone(true)
-        setTimeout(() => setDone(false), 1200)
-      }}
-      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-line bg-sunk px-2 py-0.5 font-mono text-ink text-sm hover:bg-hover"
-    >
-      <span className="truncate">{value}</span>
-      {done ? (
-        <Check className="size-3 shrink-0 text-good" />
-      ) : (
-        <Copy className="size-3 shrink-0 text-ink-3" />
-      )}
-    </button>
   )
 }

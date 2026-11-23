@@ -87,6 +87,13 @@ const Sites = z.object({
   server_sign_in_tries: z.number().int().min(1),
 })
 
+// Alpha's own sign-in apps, empty until registered: an empty one leaves the firm's own app in use.
+const SignInIds = z.object({
+  microsoft: z.object({ client_id: z.string() }),
+  google: z.object({ client_id: z.string(), client_secret: z.string() }),
+})
+export type SignInIds = z.infer<typeof SignInIds>
+
 // The never-use list Alpha ships, by kind (rules N1).
 const Never = z.object({
   kinds: z
@@ -141,6 +148,7 @@ export const config = {
   words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
   sites: (dir?: string) => load('sites.yaml', yamlOf(Sites, 'sites.yaml'), dir),
   apps: (dir?: string) => load('apps.yaml', yamlOf(Apps, 'apps.yaml'), dir),
+  signIn: (dir?: string) => load('signin.yaml', yamlOf(SignInIds, 'signin.yaml'), dir),
   never: (dir?: string) => load('never.yaml', yamlOf(Never, 'never.yaml'), dir).kinds,
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
