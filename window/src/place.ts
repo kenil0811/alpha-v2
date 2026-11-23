@@ -5,7 +5,7 @@ import { splitBeside } from './opened.ts'
 
 export type Place =
   | { at: 'home' }
-  | { at: 'conversation'; setup: boolean } // Agents: the chosen agent's chat, or its Setup
+  | { at: 'conversation'; setup: boolean; whole: boolean } // Agents: the chosen agent's landing, its whole conversation, or its Setup
   | { at: 'parts' }
   | { at: 'new'; setup: boolean; task: string | null } // New module: what it should do, then the build's task
   | { at: 'plugin'; name: string } // a plugin's own page
@@ -98,8 +98,8 @@ export function placeOf(address: string): Place {
     }
   const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
-  if (hash === '#/conversation' || hash === '#/conversation/setup')
-    return { at: 'conversation', setup: hash.endsWith('/setup') }
+  if (/^#\/conversation(\/setup|\/chat)?$/.test(hash))
+    return { at: 'conversation', setup: hash.endsWith('/setup'), whole: hash.endsWith('/chat') }
   // New module, its Setup, or the build it started: the task in the address, so it reopens there
   const nm = /^#\/new(?:\/([\w-]+))?$/.exec(hash)
   if (nm)
