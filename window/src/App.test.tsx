@@ -293,6 +293,6 @@ describe('a question card', () => {
       />,
     )
     expect(html).toContain('No targets for now')
-    expect(html).toContain('placeholder="Or answer in your own words"')
+    expect(html).toContain('aria-label="Answer in your own words"') // behind the chat icon (23 Nov)
   })
 })
