@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { api } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { CodeLine } from './ui/code-line.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 
@@ -24,6 +25,8 @@ export function TokenForm({ has, onSaved }: { has: boolean; onSaved: (m: ModelVi
         })
       }}
     >
+      {/* what to run on the person's own computer, to copy */}
+      <CodeLine className="w-fit" text="claude setup-token" />
       <Field
         className="w-72"
         type="password"
