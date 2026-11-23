@@ -19,8 +19,10 @@ import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
+import { Voice } from './ui/voice.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
+import { YesNo } from './ui/yes-no.tsx'
 
 export const CHIEF = 'chief'
 
@@ -309,23 +311,7 @@ export function AgentPage({
         )}
         <Refusal words={problem} />
       </div>
-      {!a.chief && (
-        <section className="flex flex-col gap-1.5">
-          <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
-            Instructions
-            <Info
-              help={
-                a.from.kind === 'here'
-                  ? 'Ask the Chief of staff or this agent to change them.'
-                  : `They change with ${a.from.name}. Add to them through its memory or How to work.`
-              }
-            />
-          </h2>
-          <div className="text-md">
-            <Words text={a.instructions || 'None yet.'} />
-          </div>
-        </section>
-      )}
+      {!a.chief && <Instructions id={a.id} text={a.instructions} />}
       <Memories id={a.id} memories={a.memories} onChange={load} />
       <AgentSchedules
         agent={a.id}
@@ -536,6 +522,69 @@ function Memories({
           </li>
         ))}
       </ul>
+    </section>
+  )
+}
+
+// An agent's instructions, edited in place by a double-click; Save never writes them as typed but
+// sends the edit to the Chief of staff as a proposal, which fits it in, or asks with a card where it
+// conflicts (Vikas, 23 Nov).
+function Instructions({ id, text }: { id: string; text: string }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+  const { busy, problem, act } = useAct()
+  return (
+    <section className="flex flex-col gap-1.5">
+      <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
+        Instructions
+        <Info help="Double-click to change them. Save sends your change to the Chief of staff, which fits it in, or asks you in the chat where it conflicts." />
+      </h2>
+      {draft === null ? (
+        // biome-ignore lint/a11y/noStaticElementInteractions: a double-click edits, as a name's does
+        <div
+          className="text-md"
+          data-tip="Double-click to change"
+          onDoubleClick={() => setDraft(text)}
+        >
+          <Words text={text || 'None yet.'} />
+        </div>
+      ) : (
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="relative w-full">
+            <textarea
+              // biome-ignore lint/a11y/noAutofocus: the double-click asked for it
+              autoFocus
+              aria-label="Instructions"
+              value={draft}
+              rows={Math.min(18, Math.max(4, draft.split('\n').length + 1))}
+              onChange={(e) => setDraft(e.target.value)}
+              className="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-9 text-md text-ink outline-none focus:border-accent-line focus:ring-3 focus:ring-accent-soft"
+            />
+            <Voice value={draft} onChange={setDraft} className="absolute top-1.5 right-1.5" />
+          </div>
+          <span className="flex gap-1">
+            <YesNo yes={false} words="Cancel" onClick={() => setDraft(null)} />
+            <YesNo
+              yes
+              words="Save"
+              busy={busy || !draft.trim() || draft.trim() === text.trim()}
+              onClick={() =>
+                void act(async () => {
+                  await api.post(`/api/agents/${id}/propose`, { instructions: draft })
+                  setDraft(null)
+                  setSent(true)
+                })
+              }
+            />
+          </span>
+        </div>
+      )}
+      {sent && (
+        <p className="text-ink-2 text-md">
+          Sent to the Chief of staff. It changes them, or asks you in the chat.
+        </p>
+      )}
+      <Refusal words={problem} />
     </section>
   )
 }

@@ -161,6 +161,23 @@ export function registerAgents(ctx: Ctx): void {
     }
   })
 
+  // A person's own edit of an agent's instructions is a proposal, never written as typed: the Chief
+  // of staff fits it in, or asks with a card where it conflicts (Vikas, 23 Nov).
+  app.post('/api/agents/:id/propose', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { instructions } = z
+      .object({ instructions: z.string().trim().min(1).max(20_000) })
+      .parse(req.body)
+    const a = world.agents.get(id)
+    if (!a) throw new Refused('That agent is not there.')
+    const words = config.proposing({
+      name: a.name,
+      was: instructionsOf(world, id),
+      proposed: instructions,
+    })
+    return { turn: engine.say(user, words) }
+  })
+
   app.get('/api/agents/:id', async (req): Promise<AgentDetail> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     known(id)
