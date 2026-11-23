@@ -1,5 +1,5 @@
-// Rules waiting on their Save card: a group in Settings › Permissions, each rule as it would hold,
-// with the tick and the cross (Approve and Decline).
+// Rules waiting on their Save card: a group in Settings › Rules, each rule as it would hold,
+// with Approve and Decline.
 // Both answer the card itself, by its yes and no as their words, so the rule, its journal line
 // and its Always count come out as on the card. Nothing waiting: nothing shows.
 import type { WaitingRuleView } from '@alpha/core/api'
@@ -10,7 +10,7 @@ import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
-import { YesNo } from './ui/yes-no.tsx'
+import { TickCross } from './ui/yes-no.tsx'
 
 export function WaitingRules({
   version,
@@ -54,7 +54,7 @@ export function WaitingRules({
             actions={
               <>
                 {on === r.card && <Refusal words={problem} />}
-                <YesNo
+                <TickCross
                   value={null}
                   disabled={busy}
                   onChange={(a) =>

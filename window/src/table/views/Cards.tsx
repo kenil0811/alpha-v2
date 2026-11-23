@@ -1,6 +1,7 @@
 // The list and the gallery: a row as a line with its title and a few values, or as a card. Either
 // opens the row whole. The list keeps the view's groups.
 import type { FieldView, RowLine, RowView } from '@alpha/core/api'
+import type { ReactNode } from 'react'
 import { cn } from '../../ui/cn.ts'
 import { FRAME } from '../../ui/frame.tsx'
 import { List } from '../../ui/list.tsx'
@@ -65,6 +66,7 @@ export function ListView({
   group,
   names,
   onOpen,
+  rowAction,
 }: {
   rows: RowView[]
   lines?: Record<string, RowLine> | undefined // a kept list's rows, each said as one sentence
@@ -72,6 +74,7 @@ export function ListView({
   group: FieldView | undefined
   names: Record<string, string>
   onOpen: (id: string) => void
+  rowAction?: ((row: RowView) => ReactNode) | undefined // a kept list's own control on a row
 }) {
   const groups: Group[] = group ? groupRows(rows, group, names) : [{ key: '', label: '', rows }]
   return (
@@ -86,31 +89,36 @@ export function ListView({
           )}
           <List>
             {g.rows.map((r) => (
-              <button
+              <div
                 key={r.id}
-                type="button"
-                id={`row-${r.id}`}
-                onClick={() => onOpen(r.id)}
-                className="flex w-full flex-col gap-1 border-hair border-t px-4 py-2.5 text-left first:border-t-0 hover:bg-hover"
+                className="flex items-center border-hair border-t first:border-t-0 hover:bg-hover"
               >
-                {lines?.[r.id] ? (
-                  <Sentence line={lines[r.id] as RowLine} />
-                ) : (
-                  <>
-                    <span className="truncate font-medium text-base text-ink">
-                      {titleOf(fields, r)}
-                    </span>
-                    <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
-                      {summary(fields, r, 5, group ? [group.id] : []).map((f) => (
-                        <span key={f.id} className="inline-flex items-center gap-1.5">
-                          <span className="text-ink-3">{f.name}</span>
-                          <Value field={f} row={r} names={names} />
-                        </span>
-                      ))}
-                    </span>
-                  </>
-                )}
-              </button>
+                <button
+                  type="button"
+                  id={`row-${r.id}`}
+                  onClick={() => onOpen(r.id)}
+                  className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-2.5 text-left"
+                >
+                  {lines?.[r.id] ? (
+                    <Sentence line={lines[r.id] as RowLine} />
+                  ) : (
+                    <>
+                      <span className="truncate font-medium text-base text-ink">
+                        {titleOf(fields, r)}
+                      </span>
+                      <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
+                        {summary(fields, r, 5, group ? [group.id] : []).map((f) => (
+                          <span key={f.id} className="inline-flex items-center gap-1.5">
+                            <span className="text-ink-3">{f.name}</span>
+                            <Value field={f} row={r} names={names} />
+                          </span>
+                        ))}
+                      </span>
+                    </>
+                  )}
+                </button>
+                {rowAction && <span className="shrink-0 pr-4 empty:hidden">{rowAction(r)}</span>}
+              </div>
             ))}
           </List>
         </section>

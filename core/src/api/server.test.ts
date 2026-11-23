@@ -622,6 +622,11 @@ describe('the api over a world', () => {
       editable: [],
       why: 'Open a rule to revoke it; its page asks first.',
     })
+    // the standing choice is the list's first row, On or Off as it is turned
+    const first = async () => (await get('/api/kept/rules')).rows[0]
+    expect(await first()).toMatchObject({ id: 'ask-before-sites', values: { state: 'Off' } })
+    await post('/api/rules/ask-before-sites', { on: true })
+    expect(await first()).toMatchObject({ id: 'ask-before-sites', values: { state: 'On' } })
     await a.close()
   })
 

@@ -2,7 +2,7 @@
 // at first start and by install.sh, read at every start. The environment overrides it for a
 // development run, never the other way round; ALPHA_HOME stays the one variable that says where the
 // file is. The per-install token is its own file. Nothing here is a knob a person meets:
-// Settings › Permissions, On this computer, changes keep_awake, which the core writes back.
+// Settings › Connections, changes keep_awake, which the core writes back.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse, stringify } from 'yaml'

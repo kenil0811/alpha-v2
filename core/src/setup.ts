@@ -103,7 +103,7 @@ export class Setup {
   }
 
   // Whether Alpha keeps this Mac from sleeping while it is plugged in (the installed app asks
-  // for it in alpha.yaml; the person turns it off in Settings › Permissions, On this computer, and the core writes
+  // for it in alpha.yaml; the person turns it off in Settings › Connections, and the core writes
   // that back): the computer's own way, through the platform, for as long as the core runs. The screen still turns
   // off; on battery or with the lid closed the Mac sleeps, and catches up on waking.
   get keepAwake(): boolean {
