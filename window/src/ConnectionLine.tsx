@@ -1,8 +1,8 @@
-// One connection, as Connections shows it: a row in the folders' list, or in its connector's tile.
+// One connection, as Connections shows it: a row in the folders' list, or in its connector's card.
 // Its account and state, the computer it runs on, a problem in words when it has one, Read now;
 // who set it up, where it is kept and what it may reach under Details in its ⋮.
 import type { ConnectionView } from '@alpha/core/api'
-import { CalendarDays, Folder, Info, Plug, Plus, Unplug, UserRound } from 'lucide-react'
+import { CalendarDays, Folder, Info, Plug, Plus, RefreshCw, Unplug, UserRound } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { api } from './api.ts'
 import { Reach } from './Reach.tsx'
@@ -16,6 +16,7 @@ import { Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
+import { type State, StateDot } from './ui/state-card.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
@@ -25,26 +26,32 @@ const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   paused: ['Paused', 'neutral'],
   waiting: ['Waiting on your side', 'warn'],
 }
+// a pill's tone as a card's dot
+const DOT: Partial<Record<Tone, State>> = { good: 'good', warn: 'warn', bad: 'bad' }
 
 const WORDS: Partial<Record<Tone, string>> = { bad: 'text-bad', warn: 'text-warn' }
 
 // The pieces of a connection, for each place to lay them out the same way.
 export interface ConnectionParts {
   pill: ReactNode // its state
+  state: State // its state as a card's dot
+  says: string // its state in words
   menu: ReactNode // ⋮: Details, Add another, Disconnect
   where: string | null // the computer it runs on
   problem: ReactNode // its problem in words, one line, or nothing
   body: ReactNode // refused hosts, and its details when asked
-  act: ReactNode // its one act: Read now, Sign in, Try again, Open System Settings
+  act: ReactNode // its one act: Read now (on a card, Disconnect), Sign in, Try again, Open System Settings
   confirm: ReactNode
 }
 
 export function useConnection(
   k: ConnectionView,
   onChange: () => void,
+  // card: on a card (Vikas, 23 Nov): Disconnect on its line while it works, Read now in its ⋮
   // words: when it was last read, beside its Read now (a card says it under its name instead)
   // quiet: its notes (what its last read left out, what it may reach) only under Details (a card)
   options: {
+    card?: boolean
     menuShown?: boolean
     onAdd?: (() => void) | undefined
     words?: boolean
@@ -109,9 +116,54 @@ export function useConnection(
       )}
     </>
   )
-  const main = k.settings ? (
-    // the one switch macOS keeps outside Alpha: System Settings opened at its pane
-    <>
+  const working = k.state === 'connected' && !away
+  const main =
+    options.card && working ? (
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => setLeaving(true)}>
+        Disconnect
+      </Button>
+    ) : k.settings ? (
+      // the one switch macOS keeps outside Alpha: System Settings opened at its pane
+      <>
+        <UpdateNow
+          label="Read now"
+          at={k.lastSyncAt}
+          busy={busy}
+          onClick={read}
+          words={!trouble && options.words !== false}
+        />
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={busy}
+          onClick={() => act(() => api.post('/api/setup/settings', { pane: k.settings }))}
+        >
+          Open System Settings
+        </Button>
+      </>
+    ) : k.state === 'needs_sign_in' ? (
+      <Button
+        size="sm"
+        variant="primary"
+        onClick={() => {
+          // a site read as the person opens in Chrome; a provider's sign-in opens its own page in
+          // the browser; a password goes in Alpha's own form
+          if (k.inBrowser) void act(() => api.post(`/api/connections/${k.id}/sign-in`))
+          else if (k.signsInWith) void act(() => signInWith(k.id))
+          else window.location.hash = `#/settings/connections?connect=${k.connector}`
+        }}
+      >
+        {k.inBrowser
+          ? 'Sign in with Chrome'
+          : k.signsInWith
+            ? `Sign in with ${k.signsInWith}`
+            : 'Sign in'}
+      </Button>
+    ) : k.state === 'waiting' ? (
+      <Button size="sm" disabled={busy} onClick={read}>
+        Try again
+      </Button>
+    ) : (
       <UpdateNow
         label="Read now"
         at={k.lastSyncAt}
@@ -119,50 +171,22 @@ export function useConnection(
         onClick={read}
         words={!trouble && options.words !== false}
       />
-      <Button
-        size="sm"
-        variant="primary"
-        disabled={busy}
-        onClick={() => act(() => api.post('/api/setup/settings', { pane: k.settings }))}
-      >
-        Open System Settings
-      </Button>
-    </>
-  ) : k.state === 'needs_sign_in' ? (
-    <Button
-      size="sm"
-      variant="primary"
-      onClick={() => {
-        // a site read as the person opens in Chrome; a provider's sign-in opens its own page in
-        // the browser; a password goes in Alpha's own form
-        if (k.inBrowser) void act(() => api.post(`/api/connections/${k.id}/sign-in`))
-        else if (k.signsInWith) void act(() => signInWith(k.id))
-        else window.location.hash = `#/settings/connections?connect=${k.connector}`
-      }}
-    >
-      {k.inBrowser
-        ? 'Sign in with Chrome'
-        : k.signsInWith
-          ? `Sign in with ${k.signsInWith}`
-          : 'Sign in'}
-    </Button>
-  ) : k.state === 'waiting' ? (
-    <Button size="sm" disabled={busy} onClick={read}>
-      Try again
-    </Button>
-  ) : (
-    <UpdateNow
-      label="Read now"
-      at={k.lastSyncAt}
-      busy={busy}
-      onClick={read}
-      words={!trouble && options.words !== false}
-    />
-  )
+    )
   const menu = (
-    <More label="More" disabled={busy} shown={options.menuShown ?? false}>
+    <More label="More" disabled={busy} shown={options.card ?? false}>
       {(close) => (
         <>
+          {options.card && working && (
+            <MenuItem
+              onClick={() => {
+                close()
+                void read()
+              }}
+            >
+              <RefreshCw className="size-3.5" />
+              Read now
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() => {
               close()
@@ -183,16 +207,18 @@ export function useConnection(
               Add another account
             </MenuItem>
           )}
-          <MenuItem
-            danger
-            onClick={() => {
-              close()
-              setLeaving(true)
-            }}
-          >
-            <Unplug className="size-3.5" />
-            Disconnect
-          </MenuItem>
+          {!(options.card && working) && (
+            <MenuItem
+              danger
+              onClick={() => {
+                close()
+                setLeaving(true)
+              }}
+            >
+              <Unplug className="size-3.5" />
+              Disconnect
+            </MenuItem>
+          )}
         </>
       )}
     </More>
@@ -219,6 +245,8 @@ export function useConnection(
   )
   return {
     pill: <Pill tone={tone}>{state}</Pill>,
+    state: DOT[tone] ?? 'off',
+    says: state,
     menu,
     where,
     problem: trouble,
@@ -233,18 +261,8 @@ export function useConnection(
   }
 }
 
-// A tile's foot: a problem at its left, the one act at its right, kept at the tile's bottom so
-// tiles side by side line up and are the same height.
-export function TileFoot({ problem, children }: { problem?: ReactNode; children: ReactNode }) {
-  return (
-    <div className="mt-auto flex min-h-8 items-center justify-end gap-3">
-      {problem && <div className="mr-auto min-w-0 flex-1">{problem}</div>}
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
-    </div>
-  )
-}
-
-// One of several accounts in a connector's tile: its name, state and ⋮, then the same foot.
+// One of several accounts in a connector's card: its dot, account, act and ⋮ on one line, then any
+// problem.
 export function ConnectionInTile({
   connection: k,
   onChange,
@@ -252,18 +270,19 @@ export function ConnectionInTile({
   connection: ConnectionView
   onChange: () => void
 }) {
-  const p = useConnection(k, onChange, { menuShown: true })
+  const p = useConnection(k, onChange, { card: true })
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 border-hair border-t pt-3">
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate font-medium text-ink">
+    <div className="flex min-w-0 flex-col gap-1 border-hair border-t pt-2">
+      <div className="flex min-h-7 items-center gap-2">
+        <StateDot state={p.state} says={p.says} />
+        <span className="min-w-0 flex-1 truncate text-ink">
           {p.where ? `${k.account} · ${p.where}` : k.account}
         </span>
-        {p.pill}
+        {p.act}
         {p.menu}
       </div>
+      {p.problem}
       {p.body}
-      <TileFoot problem={p.problem}>{p.act}</TileFoot>
       {p.confirm}
     </div>
   )

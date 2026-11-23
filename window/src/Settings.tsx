@@ -12,7 +12,7 @@ import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
-import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
+import { useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TokenForm } from './TokenForm.tsx'
 import {
@@ -131,8 +131,10 @@ export function Settings({
   const hand = () => {
     byHand.current = true
   }
+  const target = useRef(askedPart) // the part last jumped to
   const scrollTo = useCallback(
     (id: string) => {
+      target.current = id
       const box = scroller.current
       const el = document.getElementById(`settings-${id}`)
       mark(id)
@@ -143,14 +145,20 @@ export function Settings({
     },
     [mark],
   )
-  // the address's part, once its page has drawn (the parts above it load first)
+  // the address's part once the page has drawn; and again as the parts above it load and grow,
+  // until the person scrolls
+  const column = useRef<HTMLDivElement>(null)
   const drawn = view !== null
   useEffect(() => {
-    if (!drawn) return
-    // ponytail: one wait for the parts above to load; a part that loads later can push it down
-    const t = setTimeout(() => scrollTo(askedPart), 150)
-    return () => clearTimeout(t)
+    if (drawn) scrollTo(askedPart)
   }, [drawn, askedPart, scrollTo])
+  useEffect(() => {
+    const grown = new ResizeObserver(() => {
+      if (!byHand.current) scrollTo(target.current)
+    })
+    if (column.current) grown.observe(column.current)
+    return () => grown.disconnect()
+  }, [drawn, scrollTo])
   // scrolling: the last part whose top has passed under the tabs, the last one at the foot
   const spy = () => {
     const box = scroller.current
@@ -175,7 +183,9 @@ export function Settings({
       </>
     ),
     schedules: <Schedules version={version} />,
-    connections: <Connections view={view} open={open} version={version} onChange={load} />,
+    connections: (
+      <Connections view={view} open={open} version={version} owner={!member} onChange={load} />
+    ),
     rules: <Permissions version={version} owner={!member} />,
     activity: <Activity version={version} cards={cards} />,
     backup: <DataSection />,
@@ -239,7 +249,7 @@ export function Settings({
               />
             </div>
           )}
-          <div className="flex flex-col gap-12 pt-6">
+          <div ref={column} className="flex flex-col gap-12 pt-6">
             {parts.map(([id]) => (
               <div key={id} id={`settings-${id}`} className="flex flex-col gap-8">
                 {body[id]}
@@ -255,21 +265,11 @@ export function Settings({
   )
 }
 
-// Permissions: what Alpha has on this Mac (Claude's sign-in, the readers' downloads, Contacts and
-// Calendar, Chrome), then what it does without asking because the person said Always.
+// Permissions: what Alpha does without asking because the person said Always, then how they asked
+// things to be done.
 function Permissions({ version, owner }: { version: number; owner: boolean }) {
-  const [view, reload] = useSetup()
   return (
     <>
-      {owner && (
-        <Section title="On this computer" about="What Alpha may reach on this computer.">
-          {view ? (
-            <SetupList view={view} onChange={reload} />
-          ) : (
-            <p className="text-ink-2 text-md">Not known on this Alpha.</p>
-          )}
-        </Section>
-      )}
       <Section
         title="Rules"
         about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule applies once you save it on its card."
