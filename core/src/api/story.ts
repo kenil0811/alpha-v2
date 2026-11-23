@@ -57,7 +57,11 @@ export function chaptersOf(h: StoryHere): Chapter[] {
 }
 
 // Where the person's story stands: each chapter's state, the one they are on, Home's row.
-export function storyView(chapters: Chapter[], p: Progress): StoryView {
+export function storyView(
+  chapters: Chapter[],
+  p: Progress,
+  summary: (key: string) => string | null = () => null,
+): StoryView {
   const done = !!p.doneAt
   const at = done ? null : (chapters.find((c) => !p.chapters[c.key])?.key ?? 'done')
   const state = (key: string): ChapterState =>
@@ -65,7 +69,16 @@ export function storyView(chapters: Chapter[], p: Progress): StoryView {
   const through = chapters.filter((c) => p.chapters[c.key]).length
   const declined = !!p.declinedAt && !done
   return {
-    chapters: chapters.map((c) => ({ key: c.key, title: c.title, state: state(c.key) })),
+    // a step gone through folds to one line: what happened on it, said by code
+    chapters: chapters.map((c) => {
+      const s = state(c.key)
+      return {
+        key: c.key,
+        title: c.title,
+        state: s,
+        summary: s === 'skipped' ? 'Skipped' : s === 'done' ? summary(c.key) : null,
+      }
+    }),
     at,
     done,
     declined,

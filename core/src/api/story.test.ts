@@ -144,6 +144,9 @@ describe('Set up Alpha', () => {
       use: 'business',
     })
     expect(workspaceUse(world.db)).toBe('business')
+    // folded to one line, said by code
+    const done = (await story(app)).chapters.find((c) => c.key === 'workspace')
+    expect(done?.summary).toBe('Harbor Books · Business')
     expect(workspaceName(world.db)).toBe('Harbor Books')
     expect(workspaceFor(world.db)).toBe('Our bookshop: me and two staff.')
     expect(workspaceSite(world.db)).toBe('https://harborbooks.example/')
@@ -185,15 +188,15 @@ describe('Set up Alpha', () => {
     const screen = async (app: ReturnType<typeof as>) =>
       (await app.inject({ url: '/api/story/connect', headers: AS })).json() as ConnectScreen
     const mine = await screen(as())
-    expect(mine.tiles.map((t) => t.key)).toEqual(['calendar', 'apps', 'file'])
-    // without interviews, no Alpha Bridge Apps reader (rules P1): Apps you use reads mail alone
-    expect(mine.tiles.find((t) => t.key === 'apps')?.reader).toBeNull()
+    expect(mine.tiles.map((t) => t.key)).toEqual(['calendar'])
+    // accounts alone: no apps reader or files offered on the first run
     // on a server, a computer pairs through Alpha Bridge, on its own step before the accounts
     const computer = (await as().inject({ url: '/api/story/computer', headers: AS })).json()
     expect(computer.tiles.map((t: { key: string }) => t.key)).toEqual(['computer'])
     expect(computer.tiles[0]).toMatchObject({
       server: true,
       title: 'Your computer',
+      note: expect.stringMatching(/Nothing else on your computer is read now/),
     })
     expect(mine.tiles.every((t) => t.reads.length > 0)).toBe(true)
     const priya = world.accounts.add('Priya', 'priya@example.com', {

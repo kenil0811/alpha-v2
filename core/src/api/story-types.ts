@@ -5,7 +5,8 @@
 export type ChapterState = 'done' | 'skipped' | 'now' | 'ahead'
 
 export interface StoryView {
-  chapters: { key: string; title: string; state: ChapterState }[]
+  // summary: a step gone through, in a few words ("Harbor Renovations · Business", "2 accounts")
+  chapters: { key: string; title: string; state: ChapterState; summary: string | null }[]
   at: string | null // the chapter the person is on; none once they finished
   done: boolean
   declined: boolean

@@ -66,7 +66,11 @@ export function registerStory(ctx: Ctx): void {
       progress: progressOf(world.db, user.id),
     })
   const view = async (): Promise<StoryView> =>
-    storyView(await chapters(), progressOf(world.db, user.id))
+    storyView(
+      await chapters(),
+      progressOf(world.db, user.id),
+      storyScreens(ctx, room({ protocol: 'http', headers: {} })).summary,
+    )
   // a chapter of the person's story, which they may act on: one gone through, or the one they are on
   const reachable = async (key: string): Promise<Chapter> => {
     // the workspace and who may sign in are the owner's alone (rules A6)

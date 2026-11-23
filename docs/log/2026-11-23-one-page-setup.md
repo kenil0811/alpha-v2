@@ -21,3 +21,10 @@ makes links only on Send. Claude can be skipped, as the last commit, so Kenil ca
 Journeys run here (no Claude sign-in): an Alpha without interviews, a member joins and the new
 everything skipped ends on something to do pass; the ones that call the model were adjusted, not
 run. Not looked at in the app.
+
+Later, on Vikas's "show one step at a time… let it appear layer by layer" and "rolled out phase
+wise when the prerequisites are met": only the step the person is on is open; each one gone through
+folds to one line with what happened, said by the core (`summary` on each step), and Change opens
+it again in place. Your computer only installs and pairs Alpha Bridge, and Your accounts lists only
+accounts (mail, calendar and the systems modules read): the apps reader, files to work from and the
+Bridge's other readers are no longer offered in Set up Alpha.

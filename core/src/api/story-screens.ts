@@ -158,14 +158,26 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     computer: async (): Promise<ConnectScreen> => ({
       key: 'computer',
       title: 'Your computer',
-      says: 'Shall I look at your computer too? Only what you choose.',
-      tiles: connectTiles(ctx, room.onServer).filter((t) => t.kind === 'computer'),
+      says: 'Shall I connect to your computer too? Only Alpha Bridge, nothing else yet.',
+      // only what this step needs: installing and pairing Alpha Bridge (or lending a folder on
+      // Alpha's own Mac); what else it can read is offered later, one at a time, never here
+      tiles: connectTiles(ctx, room.onServer)
+        .filter((t) => t.kind === 'computer')
+        .map((t) => ({
+          ...t,
+          note: room.onServer
+            ? 'Install Alpha Bridge and pair it. Nothing else on your computer is read now.'
+            : t.note,
+        })),
     }),
     connect: async (): Promise<ConnectScreen> => ({
       key: 'connect',
       title: 'Your accounts',
       says: 'Where does your work happen? Connect what you’d like me to read.',
-      tiles: connectTiles(ctx, room.onServer).filter((t) => t.kind !== 'computer'),
+      // accounts alone: the apps on a computer and files to work from come later
+      tiles: connectTiles(ctx, room.onServer).filter(
+        (t) => t.kind === 'connector' || t.kind === 'calendar',
+      ),
     }),
     people: async (): Promise<PeopleScreen> => ({
       key: 'people',
@@ -292,5 +304,28 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     },
   }
 
-  return { screens, acts }
+  // What happened on a step gone through, in a few words, for its folded line.
+  const many = (n: number, one: string, more: string) => `${n} ${n === 1 ? one : more}`
+  const summary = (key: string): string | null => {
+    const mine = world.connections.list().filter((k) => k.madeBy === `person:${user.id}`)
+    if (key === 'workspace') {
+      const use = workspaceUse(world.db)
+      return (
+        [workspaceName(world.db), use && (use === 'business' ? 'Business' : 'Personal')]
+          .filter(Boolean)
+          .join(' · ') || null
+      )
+    }
+    if (key === 'claude') return 'Connected'
+    if (key === 'computer') {
+      const paired = world.computers.of(user.id)
+      return paired.length ? paired.map((c) => c.name).join(', ') : 'Folders lent'
+    }
+    if (key === 'connect')
+      return many(mine.filter((k) => k.connector !== 'folder').length, 'account', 'accounts')
+    if (key === 'people') return `${many(others().length, 'person', 'people')} invited`
+    return null
+  }
+
+  return { screens, acts, summary }
 }

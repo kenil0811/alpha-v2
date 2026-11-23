@@ -112,20 +112,51 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
   )
 }
 
-// One step on the page: Alpha's line, the step's own part, and, on the step the person is on,
-// Skip and its act. A step gone through stays open above, its own buttons still working.
-function StepPart({
+// One step on the page. Only the step the person is on is open (Vikas, 23 Nov: "let it appear
+// layer by layer"); each one gone through folds to one line, its mark, title and what happened,
+// with Change to open it again in place.
+function StepPart(p: {
+  step: Step
+  n: number
+  here: boolean
+  moved: (s: StoryView) => void
+  leave: () => void
+}) {
+  const [opened, setOpened] = useState(false)
+  if (p.here || opened) return <OpenStep {...p} fold={() => setOpened(false)} />
+  return (
+    <section
+      aria-label={p.step.title}
+      className="flex min-h-11 items-center gap-3 border-line border-b py-2"
+    >
+      <Mark state={p.step.state} here={false} />
+      <span className="shrink-0 text-ink-2">{p.step.title}</span>
+      <span className="min-w-0 flex-1 truncate text-ink-3 text-sm">
+        {p.step.summary ?? (p.step.state === 'done' ? 'Done' : '')}
+      </span>
+      <Button variant="ghost" size="sm" onClick={() => setOpened(true)}>
+        Change
+      </Button>
+    </section>
+  )
+}
+
+// A step open: Alpha's line, the step's own part, and its foot: on the step the person is on,
+// Skip and its act; on one opened again with Change, Close and its act, which folds it again.
+function OpenStep({
   step,
   n,
   here,
   moved,
   leave,
+  fold,
 }: {
   step: Step
   n: number
   here: boolean
   moved: (s: StoryView) => void
   leave: () => void
+  fold: () => void
 }) {
   const key = step.key
   const [screen, setScreen] = useState<ChapterScreen | null>(null)
@@ -138,10 +169,10 @@ function StepPart({
   // the step that opens comes into view, gently unless motion is reduced
   const part = useRef<HTMLElement>(null)
   useEffect(() => {
-    if (!here || n === 1) return
+    if (n === 1) return
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     part.current?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
-  }, [here, n])
+  }, [n])
   const go = (skip: boolean) =>
     void act(async () => {
       const out = await api.post<{ story: StoryView }>(
@@ -149,6 +180,7 @@ function StepPart({
         skip ? {} : (next.body?.() ?? {}),
       )
       moved(out.story)
+      if (!here) fold()
     })
   // a step's own act from its part (an answer, an approval): on when it says, else read again,
   // so an answer on a step gone through keeps the person where they are
@@ -160,6 +192,7 @@ function StepPart({
   // Hello has nothing to skip, Claude can't be skipped while no model is set, and Done is the
   // way out
   const skippable =
+    here &&
     key !== 'welcome' &&
     key !== 'done' &&
     !(key === 'claude' && screen?.key === 'claude' && !screen.set)
@@ -167,7 +200,7 @@ function StepPart({
     <section
       ref={part}
       aria-label={step.title}
-      className="story-rise flex scroll-mt-16 flex-col gap-6 border-line border-t pt-10 pb-6 first:border-t-0"
+      className="story-rise flex scroll-mt-16 flex-col gap-6 border-line border-b pt-8 pb-6"
     >
       <header className="flex min-h-12 items-start gap-4">
         <div className="size-10 shrink-0">
@@ -182,13 +215,19 @@ function StepPart({
           <h2 className="text-xl">{screen?.says ?? ''}</h2>
         </div>
       </header>
-      <div className={cn(here && 'min-h-24')}>
+      {/* its place kept while it is read, so nothing below jumps */}
+      <div className="min-h-24">
         {screen && (
           <ChapterBody screen={screen} reload={load} next={setNext} leave={leave} act={actHere} />
         )}
       </div>
-      {here && (
+      {(here || screen) && (
         <footer className="flex flex-wrap items-center gap-2">
+          {!here && (
+            <Button variant="ghost" disabled={busy} onClick={fold}>
+              Close
+            </Button>
+          )}
           {skippable && (
             <Button variant="ghost" disabled={busy} onClick={() => go(true)}>
               Skip
