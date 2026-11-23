@@ -8,7 +8,7 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardGrid, type GridCard } from './CardGrid.tsx'
 import { when } from './Modules.tsx'
-import { fromWhom, NeedsYou } from './NeedsYou.tsx'
+import { fromWhom, mainOf, NeedsYou } from './NeedsYou.tsx'
 import { cn } from './ui/cn.ts'
 import { FRAME } from './ui/frame.tsx'
 import { Group } from './ui/groups.tsx'
@@ -51,6 +51,7 @@ export function AgentLanding({
     grid.push({
       key: 'agent:needs',
       width: '1/2',
+      main: mainOf(fromWhom(mine, [], agents)),
       small: { icon: <Inbox className="size-4" />, value: String(mine.length), label: 'Needs you' },
       node: (
         <NeedsYou
