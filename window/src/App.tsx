@@ -430,7 +430,7 @@ export function App() {
               back={parentOf()}
               path={place.at === 'row' ? rowPlace?.path : undefined}
               next={place.at === 'home' && <NextChip version={version} />}
-              lead={place.at === 'home' && <HomeHead name={name} />}
+              lead={place.at === 'home' && <HomeHead />}
             />
             {problem && (
               <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
