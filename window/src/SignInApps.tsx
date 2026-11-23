@@ -3,12 +3,11 @@
 // sign-in itself, on the provider's own page in their browser. An app's secret (Intuit's) is typed
 // once and kept by Alpha: the field shows it is kept, never what it is.
 import type { SignInAppView } from '@alpha/core/api'
-import { KeyRound } from 'lucide-react'
+import { Check, Copy, KeyRound } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { api } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import { CodeLine } from './ui/code-line.tsx'
 import { Field } from './ui/field.tsx'
 import { Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -124,9 +123,9 @@ export function AppSetup({
             <div className="flex min-w-0 flex-col gap-1.5">
               <span className="text-ink-2">{s.words}</span>
               {s.copy && (
-                <span className="flex flex-col gap-1">
+                <span className="flex flex-wrap gap-1.5">
                   {s.copy.map((v) => (
-                    <CodeLine key={v} text={v} />
+                    <CopyChip key={v} value={v} />
                   ))}
                 </span>
               )}
@@ -184,5 +183,29 @@ export function AppSetup({
         <Refusal words={problem} />
       </div>
     </form>
+  )
+}
+
+// A value IT types exactly (an address, a permission's name), copied with one click.
+function CopyChip({ value }: { value: string }) {
+  const [done, setDone] = useState(false)
+  return (
+    <button
+      type="button"
+      aria-label={`Copy ${value}`}
+      onClick={() => {
+        void navigator.clipboard?.writeText(value)
+        setDone(true)
+        setTimeout(() => setDone(false), 1200)
+      }}
+      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-line bg-sunk px-2 py-0.5 font-mono text-ink text-sm hover:bg-hover"
+    >
+      <span className="truncate">{value}</span>
+      {done ? (
+        <Check className="size-3 shrink-0 text-good" />
+      ) : (
+        <Copy className="size-3 shrink-0 text-ink-3" />
+      )}
+    </button>
   )
 }
