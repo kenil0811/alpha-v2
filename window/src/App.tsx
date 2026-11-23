@@ -80,6 +80,7 @@ export function App() {
       viewOf: { ...l.viewOf, ...change.viewOf },
       tabs: { ...l.tabs, ...change.tabs },
       records: { ...l.records, ...change.records },
+      cardWidth: { ...l.cardWidth, ...change.cardWidth },
     }))
     api.post('/api/layout', change).catch(() => undefined)
   }, [])

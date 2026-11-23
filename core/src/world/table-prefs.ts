@@ -2,7 +2,7 @@
 // opens) and how they draw it (the view: a kind and what only that kind reads); and a module's
 // table tabs (M1, T19): their order, the ones hidden and the ones pinned; and a record's page (a
 // row's, a person's, an organization's): the properties hidden from it and the blocks pinned as its
-// tabs. One preference per table, or per module, and person, so two windows never write over each
+// tabs; and a Home card's width (Vikas, 22 Nov). One preference per table, module or card, and person, so two windows never write over each
 // other's other tables or modules, and each goes with its table, its list, its field or its module:
 // nothing kept names a thing that is gone.
 import { all, type Db, run } from './db.ts'
@@ -45,6 +45,7 @@ const ORDER = 'list_order:'
 const DRAWN = 'view_of:'
 const TABS = 'tabs:'
 const RECORD = 'record:'
+const CARD_WIDTH = 'card_width:'
 
 function kept<T>(db: Db, user: string, prefix: string): Record<string, T> {
   const rows = all<{ key: string; value: string }>(
@@ -200,4 +201,11 @@ export function forgetField(db: Db, table: string, field: string): void {
       measure: off(d.measure),
     })
   }
+}
+
+export const cardWidths = (db: Db, user: string) => kept<string>(db, user, CARD_WIDTH)
+
+// A Home card's width for this person; none gives the card back its own.
+export function setCardWidth(db: Db, user: string, card: string, width: string | null): void {
+  keep(db, user, CARD_WIDTH + card, width)
 }

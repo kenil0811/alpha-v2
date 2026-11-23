@@ -32,7 +32,15 @@ export type {
 
 import type { ViewOf } from './me-types.ts'
 
-export type { Layout, Me, RecordKept, TabsKept, ViewOf, Workspace } from './me-types.ts'
+export type {
+  CardWidth,
+  Layout,
+  Me,
+  RecordKept,
+  TabsKept,
+  ViewOf,
+  Workspace,
+} from './me-types.ts'
 export type { FieldView, Pick, RowAround, RowPageView } from './row-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
