@@ -7,11 +7,22 @@ import { z } from 'zod'
 
 const DIR = join(import.meta.dirname, '..', 'config')
 
-const Models = z.object({
-  desk: z.string().min(1),
-  eyes: z.string().min(1),
-  agents: z.array(z.string().min(1)).min(1),
-})
+// Each one-question use (an ask: no tools, an answer in a schema) names its own model, one of the
+// models listed, so a small decision can run on a small model.
+const Models = z
+  .object({
+    desk: z.string().min(1),
+    agents: z.array(z.string().min(1)).min(1),
+    asks: z.object({
+      reading: z.string().min(1),
+      judging: z.string().min(1),
+      checking: z.string().min(1),
+      plugins: z.string().min(1),
+    }),
+  })
+  .refine((m) => Object.values(m.asks).every((a) => m.agents.includes(a)), {
+    message: 'every model under asks must be one of the models under agents',
+  })
 
 const Limits = z.object({
   query_page_rows: z.number().int().positive(),

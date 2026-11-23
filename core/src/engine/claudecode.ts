@@ -118,13 +118,14 @@ export class ClaudeCodeProvider implements Provider {
     }
   }
 
-  ask(system: string, prompt: string, schema: Record<string, unknown>) {
+  ask(system: string, prompt: string, schema: Record<string, unknown>, model: string) {
     return askOnce(
       this.askDir ?? process.cwd(),
       this.modelRoute?.env() ?? {},
       system,
       prompt,
       schema,
+      model,
     )
   }
 

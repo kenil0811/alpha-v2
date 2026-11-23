@@ -134,7 +134,7 @@ export async function runOne(
     home,
     region: () => null,
     ask: async (system, prompt, schema) => ({
-      answer: (await asker.ask(system, prompt, schema)).answer,
+      answer: (await asker.ask(system, prompt, schema, config.models().asks.plugins)).answer,
     }),
     connectors,
   })

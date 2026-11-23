@@ -73,10 +73,12 @@ export interface Provider {
   readonly route: Route
   readonly can: Capabilities
   session(spec: SessionSpec): Session
-  // One question, no tools, answered in the schema; the instructions are the system prompt.
+  // One question, no tools, answered in the schema; the instructions are the system prompt, the
+  // model the one models.yaml names for the use.
   ask(
     system: string,
     prompt: string,
     schema: Record<string, unknown>,
+    model: string,
   ): Promise<{ answer: unknown; tokens: number }>
 }

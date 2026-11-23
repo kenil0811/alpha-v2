@@ -108,7 +108,9 @@ each task given to an agent has a session of its own, called a lane. A desk spea
 through a provider (`engine/provider.ts`). The one provider is Claude Code through the Agent SDK,
 reached by the person's own subscription or the firm's API key, kept in the Keychain and chosen
 in Settings. Alpha never sees the subscription's token. Model names are in `core/config/models.yaml`,
-and each agent's model can be changed beside its composer.
+and each agent's model can be changed beside its composer. Each one-question ask (reading a document, judging, checking a token,
+a plugin's question) runs on the model `models.yaml` names for it, one of those listed (proposed,
+Vikas 23 Nov; for Kenil's review).
 
 **A turn** is what the model wrote and the steps between, in order, kept that way in the journal
 and shown that way in the window. Streaming text goes to a live store that redraws only the turn
