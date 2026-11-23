@@ -1,11 +1,12 @@
 // The pill switch in the bar: a screen's own pages (a module's tables and pages, Network's People
-// and Organizations, Tasks' lists) as pills, every label in full, the chosen
+// and Organizations, Tasks' lists) as pills, each label 15 characters at most (ui/fit.tsx), the chosen
 // one raised; a row too long scrolls sideways. Cuts of one list are cut buttons (ui/cut.tsx),
 // never pills. A module's table pills (`keeping`) are dragged to reorder, and a right-click holds
 // Move left and Move right after the table's own menu (TableTab), with the hidden ones to show again.
 import { ArrowLeft, ArrowRight, Eye } from 'lucide-react'
 import { type MouseEvent, type ReactNode, useState } from 'react'
 import { cn } from './cn.ts'
+import { Fit } from './fit.tsx'
 import { MenuHeading, MenuItem, MenuLine, Popover, useContextMenu } from './popover.tsx'
 import type { TabKeeping } from './tab-order.ts'
 import { Maybe, type Tab } from './tabs.tsx'
@@ -127,13 +128,13 @@ function SwitchPill({ tab: t, keeping }: { tab: Tab; keeping: TabKeeping | undef
             }
           }}
           className={cn(
-            'flex h-6.5 shrink-0 select-none items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
+            'group/fit flex h-6.5 shrink-0 select-none items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
             t.sel && 'bg-surface font-medium text-ink shadow-btn',
             over && 'ring-2 ring-accent',
           )}
         >
           {t.icon && <span className="text-ink-3">{t.icon}</span>}
-          {t.label}
+          <Fit>{t.label}</Fit>
           {t.count !== undefined && (
             <span className="font-normal text-ink-3 text-sm tabular-nums">
               {t.count.toLocaleString()}

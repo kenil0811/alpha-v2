@@ -2,6 +2,7 @@
 // and didn't finish. A topic chip names a module and, as a button, filters to it.
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from './cn.ts'
+import { Fit, fitWords } from './fit.tsx'
 
 export type Tone = 'neutral' | 'good' | 'warn' | 'bad' | 'accent' | 'faint'
 
@@ -26,12 +27,12 @@ export function Pill({
   return (
     <span
       className={cn(
-        'inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 font-medium text-sm',
+        'group/fit inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 font-medium text-sm',
         TONES[tone],
         className,
       )}
     >
-      {children}
+      {fitWords(children)}
     </span>
   )
 }
@@ -81,15 +82,13 @@ export function Choice({
   const tone = of.tones[value]
   if (tone)
     return (
-      <span className={cn('inline-flex min-w-0 items-center gap-1.5', className)}>
+      <span className={cn('group/fit inline-flex min-w-0 items-center gap-1.5', className)}>
         <span className={cn('size-1.75 shrink-0 rounded-full', STATE_DOT[tone])} />
-        <span className="truncate">{value}</span>
+        <Fit>{value}</Fit>
       </span>
     )
   return (
-    <Pill className={cn('min-w-0 max-w-full', optionClass(of, value), className)}>
-      <span className="truncate">{value}</span>
-    </Pill>
+    <Pill className={cn('min-w-0 max-w-full', optionClass(of, value), className)}>{value}</Pill>
   )
 }
 

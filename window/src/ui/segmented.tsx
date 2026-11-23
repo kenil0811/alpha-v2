@@ -1,5 +1,6 @@
 // A segmented control: one of a few views (Table · Board, All · Failed).
 import { cn } from './cn.ts'
+import { Fit } from './fit.tsx'
 
 export function Segmented<T extends string>({
   value,
@@ -24,11 +25,11 @@ export function Segmented<T extends string>({
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'h-6 rounded-sm px-2.5 text-ink-2 text-sm transition-colors hover:text-ink',
+            'group/fit h-6 rounded-sm px-2.5 text-ink-2 text-sm transition-colors hover:text-ink',
             value === o.value && 'bg-surface font-medium text-ink shadow-btn',
           )}
         >
-          {o.label}
+          <Fit>{o.label}</Fit>
         </button>
       ))}
     </fieldset>

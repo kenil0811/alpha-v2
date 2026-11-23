@@ -13,3 +13,6 @@ double-click edit show Save and Cancel rather than lean on Enter and Escape.
   longer saves.
 
 Not done: a grid cell's edit keeps a spreadsheet's keys (Enter, Escape, Tab) without buttons.
+
+Later the same day: a label on a tab, a toggle, a tag or a button is as wide as its words and
+about 15 letters at most (`ui/fit.tsx`); the rest slides into view under the pointer or focus.
