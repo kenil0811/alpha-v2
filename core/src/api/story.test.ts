@@ -73,7 +73,7 @@ describe('Set up Alpha', () => {
     expect(s).toMatchObject({ at: 'welcome', done: false, fresh: true, row: 'Carry on setting up' })
   })
 
-  it('never lets Claude be skipped while no model is set, and keeps a token only once Claude answered', async () => {
+  it('lets Claude be skipped, saying what waits on it, and keeps a token only once Claude answered', async () => {
     const asked: string[] = []
     const app = as(owner, {
       claudeAnswers: async (t) => {
@@ -84,10 +84,9 @@ describe('Set up Alpha', () => {
     expect((await post(app, '/api/story/welcome/skip')).json().problem).toMatch(/nothing to skip/)
     await post(app, '/api/story/welcome')
     await post(app, '/api/story/workspace', { name: 'X' })
-    const skip = await post(app, '/api/story/claude/skip')
-    expect(skip.statusCode).toBe(409)
-    expect(skip.json().problem).toMatch(/can’t be skipped/)
-    // no going round it either
+    const screen = (await app.inject({ url: '/api/story/claude', headers: AS })).json()
+    expect(screen.without).toMatch(/Until I can reach Claude/)
+    // no going round it unskipped
     expect((await post(app, '/api/story/computer')).json().problem).toMatch(
       /Go through Connect my thinking first/,
     )

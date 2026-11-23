@@ -1,7 +1,7 @@
 // Set up Alpha's routes, each about whoever is asking: where their story stands, a chapter's
 // screen, its act and its Skip, Decline (Home's row goes) and Reopen (from the workspace tile's
-// menu). A chapter is acted on only once the ones before it are gone through or skipped, and
-// Claude cannot be skipped while no model is set (call 5).
+// menu). A chapter is acted on only once the ones before it are gone through or skipped; every one
+// but Hello and Done can be skipped, Claude too (proposed, Vikas 23 Nov).
 import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import {
@@ -158,10 +158,9 @@ export function registerStory(ctx: Ctx): void {
   app.post('/api/story/:chapter/skip', async (req) => {
     const { chapter: key } = z.object({ chapter: z.string().max(60) }).parse(req.params)
     await reachable(key)
-    if (key === 'welcome') throw new Refused('Welcome has nothing to skip: press Start.')
-    // nothing else works without a model (call 5)
-    if (key === 'claude' && !(await modelSet()))
-      throw new Refused('Claude can’t be skipped: nothing else works until Alpha can reach it.')
+    if (key === 'welcome') throw new Refused('Hello has nothing to skip: press Start.')
+    // nothing is compulsory, Claude included: its step says what waits on it (proposed, Vikas
+    // 23 Nov, reversing call 5)
     through(key, 'skipped')
     return { story: await view() }
   })

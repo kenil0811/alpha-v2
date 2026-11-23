@@ -204,13 +204,8 @@ function StepPart({
     if (here && nothing) go(true)
   }, [here, nothing])
   if (nothing) return null
-  // Hello has nothing to skip, Claude can't be skipped while no model is set, and Done is the
-  // way out
-  const skippable =
-    here &&
-    key !== 'welcome' &&
-    key !== 'done' &&
-    !(key === 'claude' && screen?.key === 'claude' && !screen.set)
+  // Hello has nothing to skip, and Done is the way out; every other step can be skipped
+  const skippable = here && key !== 'welcome' && key !== 'done'
   return (
     <section
       id={`step-${key}`}

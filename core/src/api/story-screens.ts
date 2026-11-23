@@ -166,6 +166,8 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         'It prints a code starting sk-ant-: paste it here. I keep it sealed.',
       ],
       command: 'claude setup-token',
+      without:
+        'You can skip this. Until I can reach Claude I can’t read what you connect, learn about you or answer you; connect me any time in Settings.',
     }),
     workspace: async (): Promise<WorkspaceScreen> => ({
       key: 'workspace',

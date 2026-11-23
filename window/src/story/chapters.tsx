@@ -186,6 +186,7 @@ function Claude({ screen, next }: Props & { screen: ClaudeScreen }) {
         value={token}
         onChange={(e) => setToken(e.target.value)}
       />
+      <p className="text-ink-3 text-sm">{screen.without}</p>
     </div>
   )
 }

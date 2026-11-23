@@ -24,10 +24,12 @@ steps:
       body: { name: Harbor Books, site: harborbooks.example, use: business }
     checks:
       - story_says: { chapter: workspace, matches: 'Harbor Books' }
-  # Claude cannot be skipped while no model is set (call 5)
-  - story: { chapter: claude, skip: true, refused: true }
+  # Claude can be skipped (proposed, Vikas 23 Nov), and its step says what waits on it
+  # its Continue without a token is refused
+  - story: { chapter: claude, refused: true }
     checks:
       - story: { at: claude }
+      - story_says: { chapter: claude, matches: 'Until I can reach Claude' }
   - story: { chapter: claude, body: { token: '{claude}' } }
     checks:
       - story: { at: computer }

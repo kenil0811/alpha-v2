@@ -30,7 +30,7 @@ export const StoryPress = z.object({
   chapter: z.string().optional(), // the chapter whose act is pressed
   body: z.record(z.string(), z.unknown()).optional(), // what the person gives it
   skip: z.boolean().optional(), // its Skip instead
-  refused: z.boolean().optional(), // the press is expected to be refused (Claude's Skip while no model is set)
+  refused: z.boolean().optional(), // the press is expected to be refused (Claude's Continue with no token)
   skip_to: z.string().optional(), // every chapter before this one skipped, in order
   // What I learned: the first answer whose pattern fits a question or a playback takes it; About
   // you's first so many lines dropped and the rest kept; with times, only the first so many

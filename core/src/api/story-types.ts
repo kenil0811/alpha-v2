@@ -34,6 +34,7 @@ export interface ClaudeScreen extends Screen {
   set: boolean // Alpha reaches Claude now
   steps: string[] // what to do, in order
   command: string | null // what to run in Terminal, on a server, shown to copy
+  without: string // what won't work until Claude is connected, said beside its Skip
 }
 
 export interface WorkspaceScreen extends Screen {
