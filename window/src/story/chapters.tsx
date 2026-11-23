@@ -34,7 +34,6 @@ import { Refusal, useAct } from '../ui/act.tsx'
 import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { CodeLine } from '../ui/code-line.tsx'
-import { CopyButton } from '../ui/copy.tsx'
 import { Field } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { type Answer, YesNo } from '../ui/yes-no.tsx'
@@ -310,27 +309,24 @@ function Workspace({ screen, next }: Props & { screen: WorkspaceScreen }) {
   )
 }
 
+// Invite team: names and addresses gathered first; nothing is made until Send, which makes each
+// person's one-time link to pass on (Alpha sends no mail, call 22).
 function People({ screen, reload, next }: Props & { screen: PeopleScreen }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [queued, setQueued] = useState<{ name: string; email: string }[]>([])
   const [links, setLinks] = useState<Record<string, string>>({})
-  const add = useAct(reload)
-  useEffect(() => next({ label: 'Continue', ready: true }), [next])
+  const send = useAct(reload)
+  useEffect(() => next({ label: 'Continue', ready: !queued.length }), [next, queued.length])
   return (
     <div className="flex flex-col gap-5">
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          void add.act(async () => {
-            const made = await api.post<{ id: string; link: string }>('/api/accounts', {
-              name: name.trim(),
-              email: email.trim(),
-            })
-            setLinks((l) => ({ ...l, [made.id]: made.link }))
-            setName('')
-            setEmail('')
-          })
+          setQueued((q) => [...q, { name: name.trim(), email: email.trim() }])
+          setName('')
+          setEmail('')
         }}
       >
         <Field
@@ -348,11 +344,50 @@ function People({ screen, reload, next }: Props & { screen: PeopleScreen }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <Button type="submit" disabled={add.busy || !name.trim() || !email.trim()}>
+        <Button type="submit" disabled={!name.trim() || !email.trim()}>
           Add
         </Button>
-        <Refusal words={add.problem} />
       </form>
+      {queued.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <ul className="flex flex-col">
+            {queued.map((p) => (
+              <Item
+                key={p.email}
+                icon={<UserRound className="size-4" />}
+                head={p.name}
+                sub={p.email}
+                end={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setQueued((q) => q.filter((x) => x !== p))}
+                  >
+                    Remove
+                  </Button>
+                }
+              />
+            ))}
+          </ul>
+          <div className="flex items-center gap-2">
+            <Button
+              disabled={send.busy}
+              onClick={() =>
+                void send.act(async () => {
+                  for (const p of queued) {
+                    const made = await api.post<{ id: string; link: string }>('/api/accounts', p)
+                    setLinks((l) => ({ ...l, [made.id]: made.link }))
+                    setQueued((q) => q.filter((x) => x !== p))
+                  }
+                })
+              }
+            >
+              Send
+            </Button>
+            <Refusal words={send.problem} />
+          </div>
+        </div>
+      )}
       {screen.people.length > 0 && (
         <ul className="flex flex-col">
           {screen.people.map((p) => (
@@ -360,12 +395,12 @@ function People({ screen, reload, next }: Props & { screen: PeopleScreen }) {
               key={p.id}
               icon={<UserRound className="size-4" />}
               head={p.name}
-              sub={links[p.id] ? 'Copy their link and pass it on: it works once.' : (p.email ?? '')}
+              sub={links[p.id] ? 'Pass this link on to them: it works once.' : (p.email ?? '')}
               end={
                 links[p.id] ? (
-                  <CopyButton text={() => links[p.id] ?? ''} />
+                  <CodeLine text={links[p.id] ?? ''} className="w-56" />
                 ) : p.state === 'waiting' ? (
-                  <Pill tone="warn">Has not signed in yet</Pill>
+                  <Pill tone="warn">Hasn’t joined yet</Pill>
                 ) : null
               }
             />
