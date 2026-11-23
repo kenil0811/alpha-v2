@@ -13,6 +13,7 @@ export function YesNo({
   yes = 'Approve',
   no = 'Decline',
   disabled,
+  autoFocus,
   className,
 }: {
   value: Answer
@@ -20,6 +21,7 @@ export function YesNo({
   yes?: string
   no?: string
   disabled?: boolean
+  autoFocus?: boolean // on the tick, for a choice opened by the keyboard or a double-click
   className?: string
 }) {
   const one = (answer: 'yes' | 'no', label: string) => {
@@ -31,9 +33,11 @@ export function YesNo({
         aria-pressed={picked}
         data-tip={label}
         disabled={disabled}
+        // biome-ignore lint/a11y/noAutofocus: asked for where the choice opens from a double-click
+        autoFocus={autoFocus && answer === 'yes'}
         onClick={() => onChange(answer)}
         className={cn(
-          'grid size-7 place-items-center rounded-md border transition-[transform,background-color,border-color,color] duration-150 ease-out hover:scale-110 active:scale-95 disabled:pointer-events-none disabled:opacity-50',
+          'press swell grid size-7 place-items-center rounded-md border disabled:pointer-events-none disabled:opacity-50',
           picked
             ? answer === 'yes'
               ? 'border-good bg-good text-surface'
@@ -43,7 +47,11 @@ export function YesNo({
               : 'border-line bg-surface text-ink-3 hover:border-bad hover:bg-bad-soft hover:text-bad',
         )}
       >
-        {answer === 'yes' ? <Check className="size-3.5" /> : <X className="size-3.5" />}
+        {answer === 'yes' ? (
+          <Check className={cn('size-3.5', picked && 'pop')} />
+        ) : (
+          <X className={cn('size-3.5', picked && 'pop')} />
+        )}
       </button>
     )
   }
@@ -54,3 +62,8 @@ export function YesNo({
     </span>
   )
 }
+
+// Whether a card's answers are a plain yes and no, drawn as the tick and the cross; any other
+// answers ("Yes, and also", three of them) keep their words.
+export const isYesNo = (options: readonly string[]) =>
+  options.length === 2 && options[0] === 'Yes' && options[1] === 'No'
