@@ -2,19 +2,17 @@
 // answered right here), and today's tasks. The modules are in the rail; the conversation has its
 // own place in the rail and on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
-import { ArrowUp, KeyRound } from 'lucide-react'
+import { ArrowUp, CheckCheck, Inbox, KeyRound, ListChecks, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { Cards } from './CardBox.tsx'
+import { CardBox } from './CardBox.tsx'
+import { CardGrid, type GridCard } from './CardGrid.tsx'
 import { shownScreens } from './plugin/screens.ts'
-import { ReadLine } from './ReadReport.tsx'
 import { signInWith } from './SignInApps.tsx'
 import { StoryRow } from './story/StoryRow.tsx'
-import { TaskList } from './TaskLine.tsx'
-import { Busy } from './ui/busy.tsx'
+import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
 import { Group, Line } from './ui/groups.tsx'
-import { useLeaving } from './ui/motion.ts'
 import { Segmented } from './ui/segmented.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
@@ -82,14 +80,125 @@ export function Home({
   const all = stream?.cards ?? []
   const by = byAgent(all, agents)
   const one = by.length > 1 && by.some((a) => a.id === from) ? from : 'all'
-  // a card being answered stays drawn until it has left (ui/motion.ts)
-  const cards = useLeaving(one === 'all' ? all : all.filter((c) => c.agent === one), (c) => c.id)
+  const cards = one === 'all' ? all : all.filter((c) => c.agent === one)
   const signIns = one === 'all' ? (stream?.attention ?? []) : []
   const waiting = all.length + (stream?.attention ?? []).length
   const changeCard = (card: CardView) => {
     setWords(`About “${card.words.replace(/\?$/, '')}”: `)
     ask.current?.focus()
   }
+
+  // a card shows only when it has something: no empty frames (Vikas, 23 Nov)
+  const grid: GridCard[] = []
+  if (waiting > 0)
+    grid.push({
+      key: 'needs',
+      width: '1/2', // wide enough that a question stays within two lines (Vikas, 23 Nov)
+      small: { icon: <Inbox className="size-4" />, value: String(waiting), label: 'Needs you' },
+      node: (
+        <Group title="Needs you" count={waiting}>
+          {by.length > 1 && (
+            <div>
+              <Segmented
+                label="From"
+                value={one}
+                onChange={setFrom}
+                options={[
+                  { value: 'all', label: `All ${waiting}` },
+                  ...by.map((a) => ({ value: a.id, label: `${a.name} ${a.count}` })),
+                ]}
+              />
+            </div>
+          )}
+          {cards.map((c) => (
+            <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
+          ))}
+          {signIns.map((a) => (
+            <Line
+              key={a.connector}
+              icon={<KeyRound className="size-3.5 text-warn" />}
+              head={a.waiting ? 'Waiting on your side' : 'Sign-in'}
+              words={
+                a.waiting
+                  ? `${a.title}: ${a.waiting}`
+                  : a.inBrowser
+                    ? `${a.title} needs you to sign in: it opens in Chrome`
+                    : a.signsInWith
+                      ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
+                      : `${a.title} needs you to sign in again`
+              }
+              {...(a.waiting
+                ? { href: '#/settings/connections' }
+                : a.inBrowser
+                  ? {
+                      onClick: () => {
+                        void api.post(`/api/connections/${a.connection}/sign-in`)
+                      },
+                    }
+                  : a.signsInWith
+                    ? {
+                        onClick: () => {
+                          void signInWith(a.connection)
+                        },
+                      }
+                    : { href: `#/settings/connections?connect=${a.connector}` })}
+            />
+          ))}
+        </Group>
+      ),
+    })
+  if (failed || (tasks?.lines.length ?? 0) > 0)
+    grid.push({
+      key: 'tasks',
+      width: '1/4',
+      small: {
+        icon: <ListChecks className="size-4" />,
+        value: String(tasks?.lines.length ?? 0),
+        label: "Today's tasks",
+      },
+      node: (
+        <Group
+          title="Today's tasks"
+          action={
+            <a
+              className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+              href="#/tasks"
+            >
+              All tasks
+            </a>
+          }
+        >
+          {failed && <NotLoaded onTry={load} />}
+          {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} onChange={load} />}
+        </Group>
+      ),
+    })
+  if (finished?.lines.length)
+    grid.push({
+      key: 'finished',
+      width: '1/4',
+      small: {
+        icon: <CheckCheck className="size-4" />,
+        value: String(finished.lines.length),
+        label: 'Recently completed',
+      },
+      node: (
+        <Group
+          title="Recently completed tasks"
+          action={
+            <button
+              type="button"
+              className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+              onClick={() => void api.post('/api/tasks/clear-completed').then(load)}
+            >
+              Clear
+            </button>
+          }
+        >
+          <TaskList lines={finished.lines} onChange={load} />
+        </Group>
+      ),
+    })
 
   return (
     <div className="@container h-full overflow-y-auto">
@@ -109,13 +218,11 @@ export function Home({
         </div>
 
         {stream?.settingUp && (
-          <p className="text-md">
-            <Busy>Setting up {stream.settingUp}</Busy>
+          <p className="flex items-center gap-2 text-ink-2 text-md">
+            <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
+            Setting up {stream.settingUp}
           </p>
         )}
-
-        {/* what Alpha has read so far, while a read runs, opening What Alpha read */}
-        {!!stream?.reading.length && <ReadLine version={last} />}
 
         {/* Set up Alpha, until the person finishes it or declines */}
         <StoryRow version={last} />
@@ -123,88 +230,7 @@ export function Home({
         {/* a plugin's row, while something of its waits for the person */}
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}
 
-        {/* only while something waits */}
-        {(waiting > 0 || cards.length > 0) && (
-          <Group title="Needs you" count={waiting}>
-            {by.length > 1 && (
-              <div>
-                <Segmented
-                  label="From"
-                  value={one}
-                  onChange={setFrom}
-                  options={[
-                    { value: 'all', label: `All ${waiting}` },
-                    ...by.map((a) => ({ value: a.id, label: `${a.name} ${a.count}` })),
-                  ]}
-                />
-              </div>
-            )}
-            <Cards cards={cards} onChange={changeCard} />
-            {signIns.map((a) => (
-              <Line
-                key={a.connector}
-                icon={<KeyRound className="size-3.5 text-warn" />}
-                head={a.waiting ? 'Waiting on your side' : 'Sign-in'}
-                words={
-                  a.waiting
-                    ? `${a.title}: ${a.waiting}`
-                    : a.inBrowser
-                      ? `${a.title} needs you to sign in: it opens in Chrome`
-                      : a.signsInWith
-                        ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
-                        : `${a.title} needs you to sign in again`
-                }
-                {...(a.waiting
-                  ? { href: '#/settings/connections' }
-                  : a.inBrowser
-                    ? {
-                        onClick: () => {
-                          void api.post(`/api/connections/${a.connection}/sign-in`)
-                        },
-                      }
-                    : a.signsInWith
-                      ? {
-                          onClick: () => {
-                            void signInWith(a.connection)
-                          },
-                        }
-                      : { href: `#/settings/connections?connect=${a.connector}` })}
-              />
-            ))}
-          </Group>
-        )}
-
-        {finished && finished.lines.length > 0 && (
-          <Group
-            title="Recently completed tasks"
-            action={
-              <button
-                type="button"
-                className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
-                onClick={() => void api.post('/api/tasks/clear-completed').then(load)}
-              >
-                Clear
-              </button>
-            }
-          >
-            <TaskList lines={finished.lines} onChange={load} />
-          </Group>
-        )}
-
-        <Group
-          title="Today's tasks"
-          action={
-            <a
-              className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
-              href="#/tasks"
-            >
-              All tasks
-            </a>
-          }
-        >
-          {failed && <NotLoaded onTry={load} />}
-          {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} onChange={load} />}
-        </Group>
+        <CardGrid cards={grid} />
       </div>
     </div>
   )
@@ -244,7 +270,6 @@ function AskBox({
     <form onSubmit={send} className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pr-1.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
         <input
-          data-composer
           ref={area}
           value={words}
           onChange={(e) => setWords(e.target.value)}
