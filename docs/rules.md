@@ -87,7 +87,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | B1 | A computer acts only as its person. A connection on a person's computer (the Bridge) is theirs: their own turns (their conversation, the tasks they give) and the scripts run for them may use it; another person's turn and a script run for the firm or for someone else are refused, in words that name the computer | 16 Nov | test |
-| B2 | What a computer lends is said on the computer. A folder there is lent in the Bridge, never named in Alpha; a site is lent only once its person signed in to it there, in a window nothing drives, with the Browser switch on; a reader (Browsing, Apps, AI work) may be turned on or off from Alpha by the computer's own person, only one its Alpha offers, and the Bridge says so there and keeps its switch to turn it off; the Bridge refuses any call for what it does not lend, whatever Alpha sends | 16 Nov, 17 Nov, 24 Nov | test |
+| B2 | What a computer lends is said on the computer. A folder there is lent in the Bridge, never named in Alpha; a site is lent only once its person signed in to it there, in a window nothing drives, with the Browser switch on; a reader its Alpha offers (Browsing, Apps, AI work), a Mac's Calendar or Contacts, or its Browser switch may be turned on or off from Alpha by the computer's own person, and the Bridge says so there and keeps its switch to turn it off; the Bridge refuses any call for what it does not lend, whatever Alpha sends | 16 Nov, 17 Nov, 24 Nov | test |
 
 ## What is never kept
 

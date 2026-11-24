@@ -175,6 +175,11 @@ export async function serve(
         lendHere(home, connector, on)
         state()
       },
+      lendsHere: LENDS_HERE,
+      lendBrowser: (on) => {
+        browserHere(home, on)
+        state()
+      },
     })
     bridge.run()
   }

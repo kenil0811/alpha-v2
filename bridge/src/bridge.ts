@@ -21,12 +21,12 @@ import { type Config, type Lend, lends, lentNow } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.5.3'
+export const VERSION = '0.5.4'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =
   | { t: 'pick'; connector: string }
-  | { t: 'reader'; connector: string; on: boolean } // its person turned a reader on or off in Alpha
+  | { t: 'reader'; connector: string; on: boolean } // its person turned one on or off in Alpha
   | { t: 'challenge'; challenge: string }
   | { t: 'welcome'; name: string; lent: Lend[]; offers?: string[] }
   | { t: 'lent'; lent: Lend[] }
@@ -40,11 +40,14 @@ type FromAlpha =
   | { t: 'cdp'; id: string; m: string }
   | { t: 'cdp-close'; id: string }
 
-// A reader as its person reads it.
+// What it reads, as its person reads it.
 const READER_NAMES: Record<string, string> = {
   browsing: 'Browsing',
   apps: 'Apps',
   'ai-work': 'AI work',
+  calendar: 'Calendar',
+  contacts: 'Contacts',
+  browser: 'Browser',
 }
 
 // The account a computer's key is kept under: the Alpha it is paired with.
@@ -112,6 +115,8 @@ export interface BridgeOptions {
   window?: (chrome: string, dir: string, url: string) => Promise<void> // a sign-in window
   lendSite?: (site: string, on: boolean) => void // a site signed in to or out of here, kept
   lendReader?: (connector: string, on: boolean) => void // a reader turned on or off from Alpha, kept
+  lendsHere?: string[] // what it lends of its own besides folders (a Mac's Calendar and Contacts)
+  lendBrowser?: (on: boolean) => void // its Browser switch turned on or off from Alpha, kept
 }
 
 // A site's address that is the site's own (google.com, or drive.google.com for it), on the web.
@@ -392,18 +397,29 @@ export class Bridge {
     this.send({ t: 'site', id, done: true })
   }
 
-  // A reader turned on or off from Alpha by this computer's person (docs/rules.md, B2): only one its
-  // Alpha offers, said here, and kept in the Bridge's own switches to turn off again.
+  // One of its switches turned on or off from Alpha by this computer's person (docs/rules.md, B2):
+  // a reader its Alpha offers, a Mac's Calendar or Contacts, or its Browser; said here, and kept in
+  // the Bridge's own switches to turn off again. Never a folder: that is picked here.
   private reader(connector: string, on: boolean): void {
-    if (!this.offers.includes(connector)) {
+    const named = READER_NAMES[connector] ?? connector
+    const may = [...this.offers, ...(this.options.lendsHere ?? []), 'browser']
+    if (!may.includes(connector)) {
       this.said(`Alpha asked to turn on ${connector}, which this Bridge does not read for it.`)
       return
     }
-    this.options.lendReader?.(connector, on)
+    try {
+      if (connector === 'browser') this.options.lendBrowser?.(on)
+      else this.options.lendReader?.(connector, on)
+    } catch (err) {
+      this.said(
+        `Alpha asked to turn ${on ? 'on' : 'off'} ${named}: ${err instanceof Error ? err.message : String(err)}`,
+      )
+      return
+    }
     this.said(
       on
-        ? `Turned on ${READER_NAMES[connector] ?? connector}, asked in Alpha. Turn it off here any time.`
-        : `Turned off ${READER_NAMES[connector] ?? connector}, asked in Alpha.`,
+        ? `Turned on ${named}, asked in Alpha. Turn it off here any time.`
+        : `Turned off ${named}, asked in Alpha.`,
     )
     this.changed()
   }

@@ -134,7 +134,7 @@ rule('B2', 'what a computer lends is said on the computer', {
           w.world.connections.on(pc.id).length === 0
         )
       },
-    'a reader turned on in Alpha is turned on only for one its Alpha offers, and said on the computer':
+    'what a computer reads is turned on from Alpha only for what it has, and said on the computer':
       async (w) => {
         // Alpha's side: only the computer's own person may ask it
         const key = newKey()
@@ -169,6 +169,7 @@ rule('B2', 'what a computer lends is said on the computer', {
         // the computer's side: it turns on only what its Alpha offers, and says so there
         const said: string[] = []
         const lent: [string, boolean][] = []
+        const browser: boolean[] = []
         const bridge = new Bridge({
           config: () => ({
             alpha: 'https://alpha.example',
@@ -182,18 +183,29 @@ rule('B2', 'what a computer lends is said on the computer', {
           },
           said: (words) => said.push(words),
           lendReader: (connector, on) => lent.push([connector, on]),
+          lendsHere: ['calendar', 'contacts'],
+          lendBrowser: (on) => browser.push(on),
         })
         bridge.offers = ['browsing']
         const hear = (m: unknown) =>
           (bridge as unknown as { heard(t: string): void }).heard(JSON.stringify(m))
         hear({ t: 'reader', connector: 'browsing', on: true })
         hear({ t: 'reader', connector: 'ai-work', on: true }) // not offered by its Alpha
+        hear({ t: 'reader', connector: 'calendar', on: true }) // a Mac's own
+        hear({ t: 'reader', connector: 'browser', on: true })
+        hear({ t: 'reader', connector: 'folder', on: true }) // a folder is only picked there
         return (
           asked &&
           sent.some((m) => m.t === 'reader' && m.connector === 'browsing' && m.on === true) &&
-          lent.length === 1 &&
+          lent.length === 2 &&
           lent[0]?.[0] === 'browsing' &&
-          said.some((x) => /Turned on Browsing, asked in Alpha/.test(x))
+          lent[1]?.[0] === 'calendar' &&
+          browser.length === 1 &&
+          browser[0] === true &&
+          said.some((x) => /Turned on Browsing, asked in Alpha/.test(x)) &&
+          said.some((x) => /Turned on Calendar, asked in Alpha/.test(x)) &&
+          said.some((x) => /Turned on Browser, asked in Alpha/.test(x)) &&
+          !said.some((x) => /Turned on (AI work|folder)/.test(x))
         )
       },
     'the Bridge refuses a call for what it does not lend, whatever Alpha sends': async () => {

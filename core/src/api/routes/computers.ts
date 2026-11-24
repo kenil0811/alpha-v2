@@ -17,6 +17,28 @@ import { connectionViews } from '../connection-view.ts'
 import type { ComputerPageView, ComputersView, ComputerView } from '../connector-types.ts'
 import type { Ctx } from '../ctx.ts'
 
+// What a Mac's Bridge lends of its own besides folders, and the readers a plugin brings (rules B2).
+const MAC_LENDS = ['calendar', 'contacts'] as const
+const READERS = ['browsing', 'apps', 'ai-work'] as const
+// What each reads, as its person reads it.
+const ABOUT: Record<string, string> = {
+  calendar: 'Its calendar’s events. macOS asks there once.',
+  contacts: 'The people in its Contacts. macOS asks there once.',
+  apps: 'The apps you use there, and how often.',
+  browsing: 'The sites you visit, from its browsers’ history.',
+  'ai-work': 'What you ask Claude Code and Codex there, and your AI chats’ titles.',
+  browser: 'Sites you sign in to there, for Alpha to work on.',
+}
+// The first Bridge that takes Calendar, Contacts and its Browser from Alpha, not only readers.
+const TURNS_ON = [0, 5, 4]
+const turnsOn = (version: string | null): boolean => {
+  if (version === 'test') return true
+  const v = (version ?? '').split('.').map(Number)
+  if (v.length !== 3 || v.some(Number.isNaN)) return false
+  for (let i = 0; i < 3; i++) if (v[i] !== TURNS_ON[i]) return (v[i] ?? 0) > (TURNS_ON[i] ?? 0)
+  return true
+}
+
 // What the Bridge reaches without a session: its pairing, with the link's code; its updates and
 // its own files, which carry Kenil's signature and Tauri's (the app checks the latter itself).
 export const PAIR = '/api/bridge/pair'
@@ -161,8 +183,31 @@ export function registerComputers(ctx: Ctx): void {
     here: true,
     browser: false,
     sites: [],
+    reads: [],
+    turnsOn: false,
     lends: lendsOf(hereLends()),
   })
+  // what else a computer's Bridge reads for this Alpha, each turned on from here by its person
+  const readsOf = (c: { id: string; platform: string }): ComputerView['reads'] => {
+    const lent = world.connections.on(c.id)
+    const title = (name: string) => engine.connectors?.find(name)?.manifest.title ?? name
+    return [
+      ...(c.platform === 'darwin' ? MAC_LENDS : []),
+      ...bridges.offers().filter((n) => (READERS as readonly string[]).includes(n)),
+    ]
+      .map((connector) => ({
+        connector,
+        title: title(connector),
+        about: ABOUT[connector] ?? '',
+        on: lent.some((k) => k.connector === connector),
+      }))
+      .concat({
+        connector: 'browser',
+        title: 'Browser',
+        about: ABOUT.browser ?? '',
+        on: bridges.browserOn(c.id),
+      })
+  }
   const viewOf = (id: string): ComputerView | null => {
     if (id === HERE) return placesHere() ? here() : null
     const c = world.computers.get(id)
@@ -181,6 +226,8 @@ export function registerComputers(ctx: Ctx): void {
       sites: (engine.hands?.browser().as(user.id).sites() ?? [])
         .filter((s) => s.computer === c.id)
         .map((s) => ({ site: s.site, at: s.at })),
+      reads: readsOf(c),
+      turnsOn: turnsOn(bridges.versionOf(c.id)),
       lends: lendsOf(world.connections.on(c.id)),
     }
   }
@@ -234,17 +281,25 @@ export function registerComputers(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // A reader on the computer (browsing, apps, AI work) turned on or off from Alpha's window, by the
-  // computer's own person: the Bridge does it and says so there (docs/rules.md, B2).
+  // One of the computer's switches (a Mac's Calendar or Contacts, a plugin's reader, its Browser)
+  // turned on or off from Alpha's window, by the computer's own person: the Bridge does it and says
+  // so there (docs/rules.md, B2). A folder is never named here: its picker opens on the computer.
   app.post('/api/computers/:id/reader', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const b = z
-      .object({ connector: z.enum(['browsing', 'apps', 'ai-work']), on: z.boolean() })
+      .object({ connector: z.enum([...MAC_LENDS, ...READERS, 'browser']), on: z.boolean() })
       .parse(req.body)
     const pc = world.computers.get(id)
     if (!pc || pc.user !== user.id || pc.removedAt) throw new Refused('That computer is not yours.')
-    if (!bridges.reader(id, b.connector, b.on))
+    if (!readsOf(pc).some((r) => r.connector === b.connector))
+      throw new Refused(`Alpha Bridge does not read that on ${pc.name}.`)
+    if (!bridges.online(id))
       throw new Refused(`${pc.name} is not connected now: open Alpha Bridge on it, then try again.`)
+    if (!turnsOn(bridges.versionOf(id)))
+      throw new Refused(
+        `Alpha Bridge on ${pc.name} is older than this: it updates itself when it starts again. Or turn this on in its menu there.`,
+      )
+    bridges.reader(id, b.connector, b.on)
     return { ok: true }
   })
 

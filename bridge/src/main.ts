@@ -9,7 +9,7 @@
 // The key stays in this computer's Keychain or Credential Manager; the rest is in its own folder.
 import { unwatchFile, watchFile } from 'node:fs'
 import { Bridge, VERSION } from './bridge.ts'
-import { helper, start } from './code.ts'
+import { helper, LENDS_HERE, start } from './code.ts'
 import { type Config, fileOf, homeOf, readConfig } from './config.ts'
 import { storeOf } from './keys.ts'
 import { browserHere, lendHere, pairHere, serve, siteHere } from './serve.ts'
@@ -62,6 +62,10 @@ async function main(args: string[]): Promise<void> {
       lendSite: (site, on) => siteHere(home, site, on),
       lendReader: (connector, on) => {
         lendHere(home, connector, on)
+      },
+      lendsHere: LENDS_HERE,
+      lendBrowser: (on) => {
+        browserHere(home, on)
       },
       config: () => paired(home),
       keys: storeOf(),

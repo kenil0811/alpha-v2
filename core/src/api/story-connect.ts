@@ -167,7 +167,7 @@ export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
       connectors: server ? [] : loaded('folder') ? ['folder'] : [],
       connections: server ? [] : of(['folder'], false),
       note: server
-        ? `Read only while your computer is on.${readers.length ? ` Alpha Bridge can also read ${words(readers)}, each only if you turn it on there.` : ''}`
+        ? `Read only while your computer is on.${readers.length ? ` Alpha Bridge can also read ${words(readers)}, each only once you turn it on.` : ''}`
         : 'Their files are read, never written back.',
     }),
   )
@@ -183,7 +183,7 @@ export function connectTiles(ctx: Ctx, server: boolean): ConnectTile[] {
         kind: 'apps',
         title: 'Apps you use',
         reads: reader ? 'Apps on your computer and in your mail' : 'Work apps found in your mail',
-        note: `${reader ? 'Alpha Bridge lists the apps on your computer once you turn on Apps there: when each was last used and how often. ' : ''}Work apps are also found among your mail’s senders. Alpha connects the ones it can, or signs in to their site.`,
+        note: `${reader ? 'Alpha Bridge lists the apps on your computer once you turn on Apps: when each was last used and how often. ' : ''}Work apps are also found among your mail’s senders. Alpha connects the ones it can, or signs in to their site.`,
         apps: appsUsed(ctx, reader ? tableOf(world, reader, 'Apps') : undefined),
         reader: reader ? { id: k ? k.id : null, read: !!k?.lastSyncAt } : null,
       }),

@@ -68,7 +68,7 @@ export interface TileConnection {
 // the first frame: a tile that connects changes its words, never its shape.
 export interface ConnectTile {
   key: string
-  kind: 'connector' | 'calendar' | 'computer' | 'apps' | 'file'
+  kind: 'connector' | 'calendar' | 'computer' | 'reads' | 'apps' | 'file'
   title: string
   reads: string
   connectors: string[] // connected in place, by name, as Settings › Connections connects them
@@ -81,7 +81,8 @@ export interface ConnectTile {
   // Apps you use: the computer's Apps reader where it comes with this Alpha, its connection once on
   reader: { id: string | null; read: boolean } | null
   server: boolean // the computer tile: Alpha runs on a server, so a computer pairs through Alpha Bridge
-  computer?: string | null // Found on your computer: the person's computer its readers are turned on on
+  // Your computer and Found on your computer: the person's computer what they read is turned on on
+  computer?: string | null
 }
 
 // An app the person uses: on their computer, as Alpha Bridge's Apps reader listed it (when it was

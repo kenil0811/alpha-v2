@@ -232,6 +232,53 @@ describe('the Bridge as the app runs it', { timeout: 30_000 }, () => {
     expect(away.json().problem).toMatch(/not connected now/)
   })
 
+  it('turns on from Alpha what it reads there, only what it has, and says so there', async () => {
+    const made = await app.inject({
+      method: 'POST',
+      url: '/api/computers/link',
+      headers: asWindow(),
+    })
+    const keys = inMemory()
+    const paired = await pair(made.json().link as string, keys, 'Test Mac')
+    computers.push(paired.computer)
+    let config: Config = { ...paired, lends: [] }
+    const said: string[] = []
+    bridge = new Bridge({
+      config: () => config,
+      keys,
+      start: async () => ({ command: process.execPath, args: [CHILD, FOLDER], shell: false }),
+      said: (words) => said.push(words),
+      lendBrowser: (on) => {
+        config = { ...config, browser: on }
+      },
+    })
+    bridge.run()
+    await until(() => bridges.online(paired.computer))
+    const page = async () =>
+      (await app.inject({ url: `/api/computers/${paired.computer}`, headers: asWindow() })).json()
+        .computer
+    const before = await page()
+    expect(before.turnsOn).toBe(true)
+    expect(before.reads).toContainEqual(
+      expect.objectContaining({ connector: 'browser', on: false }),
+    )
+    const turn = (connector: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/computers/${paired.computer}/reader`,
+        headers: asWindow(),
+        payload: { connector, on: true },
+      })
+    expect((await turn('browser')).statusCode).toBe(200)
+    await until(() => bridges.browserOn(paired.computer))
+    expect(said.some((w) => /Turned on Browser, asked in Alpha/.test(w))).toBe(true)
+    expect((await page()).reads).toContainEqual(
+      expect.objectContaining({ connector: 'browser', on: true }),
+    )
+    // no plugin here brings Apps, so this Alpha does not offer it: refused, and nothing sent
+    expect((await turn('apps')).json().problem).toMatch(/does not read that/)
+  })
+
   it('pairs again: the old pairing goes, and what it lent follows the new one', async () => {
     const { dir, config } = await lendFolder()
     await until(() => world.connections.find('folder', dir)?.state === 'connected')

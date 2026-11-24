@@ -13,6 +13,7 @@ import type {
 import { CalendarDays, Check, ExternalLink, FileUp, Laptop, LayoutGrid } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
+import { ComputerReads } from '../ComputerReads.tsx'
 import { Install, lendsWords, mine, Pairing } from '../Computers.tsx'
 import { ConnectForm, ICONS } from '../Connections.tsx'
 import { askFor, giveBuilder } from '../NewModule.tsx'
@@ -65,6 +66,7 @@ export function Connect({
 const KIND_ICONS: Record<string, ReactNode> = {
   calendar: <CalendarDays className="size-4" />,
   computer: <Laptop className="size-4" />,
+  reads: <Laptop className="size-4" />,
   apps: <LayoutGrid className="size-4" />,
   file: <FileUp className="size-4" />,
 }
@@ -84,6 +86,7 @@ function TileBox({
     ICONS[view?.connectors.find((c) => c.name === (t.connectors[0] ?? t.key))?.icon ?? 'plug']
   const frame = { tile: t, icon }
   if (t.kind === 'computer' && t.server) return <BridgeTile {...frame} />
+  if (t.kind === 'reads') return <ReadsTile {...frame} />
   if (t.kind === 'apps') return <AppsTile {...frame} view={view} again={again} />
   if (t.kind === 'file') return <FileTile {...frame} />
   return <ConnectorTile {...frame} view={view} again={again} />
@@ -350,6 +353,26 @@ function BridgeTile({ tile: t, icon }: { tile: ConnectTile; icon: ReactNode }) {
   )
 }
 
+// What Alpha Bridge reads on the person's computer, each turned on from here (rules B2); read again
+// every few seconds, so one turned on there too shows as on.
+function ReadsTile({ tile: t, icon }: { tile: ConnectTile; icon: ReactNode }) {
+  const [view, setView] = useState<ComputersView | null>(null)
+  const load = useCallback(() => {
+    api.get<ComputersView>('/api/computers').then(setView, () => undefined)
+  }, [])
+  useEffect(() => {
+    load()
+    const timer = setInterval(load, 5000)
+    return () => clearInterval(timer)
+  }, [load])
+  const pc = view?.computers.find((c) => c.id === t.computer)
+  return (
+    <Frame tile={t} icon={icon}>
+      {pc && <ComputerReads computer={pc} plain onChange={load} />}
+    </Frame>
+  )
+}
+
 // The apps the person uses, on their computer (Alpha Bridge's Apps reader) and among their mail's
 // senders, as one list, each with what it was seen by: connected where a connector ships, or
 // signed in to at its site in Alpha's browser.
@@ -386,7 +409,7 @@ function AppsTile({
   const id = reader?.id
   const head =
     reader && !id ? (
-      <Pill tone="faint">Turn on Apps in Alpha Bridge</Pill>
+      <Pill tone="faint">Turn on Apps under Your computer</Pill>
     ) : reader && id && !reader.read ? (
       <Button
         size="sm"

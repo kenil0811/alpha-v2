@@ -84,6 +84,11 @@ export class Hub {
     return this.connected.has(computer)
   }
 
+  // The readers a computer may lend besides its own: those of a plugin switched on here.
+  offers(): string[] {
+    return this.hands.offers()
+  }
+
   // Whether its Browser switch is on, while it is connected.
   browserOn(computer: string): boolean {
     return this.connected.get(computer)?.browser === true
@@ -158,10 +163,10 @@ export class Hub {
     return true
   }
 
-  // Turn one of the computer's readers (browsing, apps, AI work) on or off, asked from Alpha by the
-  // computer's own person: the Bridge does it only for a reader its Alpha offers, says so on the
-  // computer, and keeps the switch there to turn it off again (docs/rules.md, B2). False when it is
-  // not connected.
+  // Turn one of the computer's switches on or off (a reader its Alpha offers, a Mac's Calendar or
+  // Contacts, its Browser), asked from Alpha by the computer's own person: the Bridge does it only
+  // for one it has, says so on the computer, and keeps the switch there to turn it off again
+  // (docs/rules.md, B2). False when it is not connected.
   reader(computer: string, connector: string, on: boolean): boolean {
     const c = this.connected.get(computer)
     if (!c) return false

@@ -5,6 +5,7 @@ import type { ComputerPageView, ConnectorsView, ConnectorView } from '@alpha/cor
 import { Globe, Trash2 } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
+import { ComputerReads } from './ComputerReads.tsx'
 import { computerState } from './Computers.tsx'
 import { ConnectionLine } from './ConnectionLine.tsx'
 import { Record } from './Record.tsx'
@@ -118,7 +119,7 @@ export function ComputerPage({
         about={
           c.here
             ? 'Folders Alpha reads on this computer: what you put in one is kept and read, as if you dropped it in. Alpha never writes to them.'
-            : `What ${c.name} lends Alpha through Alpha Bridge: folders, picked there; its Calendar and Contacts, turned on in Alpha Bridge's menu there; and the sites you signed in to there with its Browser on, which agents work on out of sight. Alpha reaches them only while it is on and not paused. Lend a folder here, or turn on Calendar, Contacts or Browser in Alpha Bridge's menu on ${c.name}.`
+            : `What ${c.name} lends Alpha through Alpha Bridge: folders, picked there; what you turned on, here or in Alpha Bridge's menu there; and the sites you signed in to there with its Browser on, which agents work on out of sight. Alpha reaches them only while it is on and not paused.`
         }
       >
         {view.lends.length + c.sites.length > 0 ? (
@@ -158,6 +159,14 @@ export function ComputerPage({
           <FolderForm key={p.name} connector={p} onChange={load} />
         ))}
       </Section>
+      {c.reads.some((r) => !r.on) && (
+        <Section
+          title="It can also read"
+          about={`Turned on here, Alpha Bridge does it and says so on ${c.name}. Turn any off in its menu there.`}
+        >
+          <ComputerReads computer={c} reads={c.reads.filter((r) => !r.on)} onChange={load} />
+        </Section>
+      )}
       {view.did.length > 0 && (
         <Section title="What it did" about="Its latest reads, newest first.">
           <List>
