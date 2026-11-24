@@ -1,7 +1,9 @@
 // A page's runtime inside its frame: `alpha`, the page's one way out of the frame.
 // A page asks for its module's rows and their history, offers choosers (a month, a client), asks
 // the window to open rows, and draws Alpha's blocks with `alpha.page`. In the window, questions go
-// to the window by message; printed, to the core that prints it. Nothing here can write.
+// to the window by message; printed, to the core that prints it. Nothing here can write: a
+// double-click on a value only tells the window where it is, and the window's own editor writes
+// what the person types.
 ;(() => {
   const asked = new Map()
   let seq = 0
@@ -122,6 +124,11 @@
     history: (table, field) => ask('history', { table, field }),
     input,
     open: (target) => post({ alpha: 'open', target }),
+    // a value to edit in place: where it is drawn, for the window to put its editor over it
+    edit: (target, node) => {
+      const r = node.getBoundingClientRect()
+      post({ alpha: 'edit', target, box: { x: r.left, y: r.top, w: r.width, h: r.height } })
+    },
     say: (words, agent) => post({ alpha: 'say', words, ...(agent ? { agent } : {}) }),
     page: (fn) => {
       if (!maker) watch()

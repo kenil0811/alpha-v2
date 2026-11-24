@@ -1,14 +1,22 @@
 // A module's page: its file in a sandboxed frame that can reach nothing but this
 // window. The window answers the page's questions from the core (its module's rows, read-only),
 // sends it the window's look, sizes the frame to it, opens what the page asks to open, and prints
-// it to a PDF with the page's choices.
-import type { ModuleView, PageSummary, TableView as TableData } from '@alpha/core/api'
+// it to a PDF with the page's choices. A value the page drew from one row's field is edited in
+// place by the window's own editor, drawn over it: the page only says where it is.
+import type {
+  FieldView,
+  ModuleView,
+  PageSummary,
+  RowView,
+  TableView as TableData,
+} from '@alpha/core/api'
 import { Download } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
+import { EditCell } from './table/EditCell.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { show } from './table/values.ts'
+import { canEdit, NUMERIC, show, whyFixed } from './table/values.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 
@@ -48,6 +56,34 @@ function tableOf(m: ModuleView, target: Target) {
   return m.tables.find((x) => x.name.toLowerCase() === String(target.table ?? '').toLowerCase())
 }
 
+// Where a value is drawn in the page's frame, as the page measured it.
+type Box = { x: number; y: number; w: number; h: number }
+const isBox = (b: unknown): b is Box =>
+  !!b &&
+  typeof b === 'object' &&
+  ['x', 'y', 'w', 'h'].every((k) => Number.isFinite((b as Record<string, unknown>)[k]))
+
+// What a double-click on a value asks for, from the table as the core has it: its field's whole
+// value edited in place; the value beside the page when it runs to several lines (the editor is
+// one line); or why it can't be typed (worked out, or kept from where it came from).
+export function editOf(
+  table: TableData,
+  target: Target,
+):
+  | { at: 'here'; field: FieldView; row: RowView }
+  | { at: 'beside'; field: FieldView }
+  | { at: 'fixed'; why: string }
+  | null {
+  const want = String(target.field ?? '').toLowerCase()
+  const field = table.fields.find((f) => f.name.toLowerCase() === want || f.slug === want)
+  const row = table.rows.find((r) => r.id === target.row)
+  if (!field || !row) return null
+  if (!canEdit(field)) return { at: 'fixed', why: whyFixed(field, false) }
+  const value = row.values[field.slug]
+  if (typeof value === 'string' && value.includes('\n')) return { at: 'beside', field }
+  return { at: 'here', field, row }
+}
+
 function openTarget(m: ModuleView, target: Target) {
   const t = tableOf(m, target)
   if (!t) return
@@ -80,6 +116,14 @@ export function PageView({
   const [source, setSource] = useState<{ table: TableData; row: string; field: string } | null>(
     null,
   )
+  // a value being edited in place: the window's editor over where the page drew it
+  const [editing, setEditing] = useState<{
+    tableId: string
+    field: FieldView
+    row: RowView
+    box: Box
+  } | null>(null)
+  const [refused, setRefused] = useState<string | null>(null)
   const inputs = useRef<Record<string, string>>({})
   const base = `/api/modules/${m.id}/pages/${page.name}`
 
@@ -120,6 +164,7 @@ export function PageView({
         values?: Record<string, string>
         words?: string
         agent?: string
+        box?: unknown
       }
       if (msg.alpha === 'ask') {
         try {
@@ -150,6 +195,27 @@ export function PageView({
             setProblem(wordsOf(err))
           }
         } else openTarget(m, target)
+      } else if (msg.alpha === 'edit' && msg.target?.row && msg.target.field && isBox(msg.box)) {
+        // the page only says where the value is: the window reads the row itself, draws its own
+        // editor there, and writes only what the person types, as their edit
+        const box = msg.box
+        const t = tableOf(m, msg.target)
+        try {
+          if (!t) throw new Problem('That table is not in this module.')
+          const table = await api.get<TableData>(`/api/tables/${t.id}`)
+          const asked = editOf(table, msg.target)
+          if (!asked) throw new Problem('That value is not on the row any more.')
+          if (asked.at === 'fixed') setProblem(asked.why)
+          else if (asked.at === 'beside')
+            setSource({ table, row: msg.target.row, field: asked.field.slug })
+          else {
+            setProblem(null)
+            setRefused(null)
+            setEditing({ tableId: t.id, field: asked.field, row: asked.row, box })
+          }
+        } catch (err) {
+          setProblem(wordsOf(err))
+        }
       } else if (msg.alpha === 'inputs' && msg.values) {
         inputs.current = msg.values
       } else if (msg.alpha === 'say' && typeof msg.words === 'string' && msg.words.trim()) {
@@ -219,15 +285,41 @@ export function PageView({
           </Button>
         </div>
         {html && (
-          <iframe
-            ref={frame}
-            title={page.title}
-            sandbox="allow-scripts"
-            srcDoc={html}
-            onLoad={send}
-            className="block w-full border-0"
-            style={{ height }}
-          />
+          <div className="relative">
+            <iframe
+              ref={frame}
+              title={page.title}
+              sandbox="allow-scripts"
+              srcDoc={html}
+              onLoad={send}
+              className="block w-full border-0"
+              style={{ height }}
+            />
+            {editing && (
+              <InPlace
+                key={`${editing.row.id}:${editing.field.slug}`}
+                editing={editing}
+                refused={refused}
+                onDone={async (value) => {
+                  if (value === undefined) {
+                    setEditing(null)
+                    return true
+                  }
+                  try {
+                    await api.post(`/api/tables/${editing.tableId}/rows/${editing.row.id}`, {
+                      field: editing.field.name,
+                      value,
+                    })
+                    setEditing(null)
+                    return true
+                  } catch (err) {
+                    setRefused(wordsOf(err))
+                    return false
+                  }
+                }}
+              />
+            )}
+          </div>
         )}
       </div>
       {source && opened?.row && opened.field && (
@@ -244,6 +336,41 @@ export function PageView({
           names={source.table.names}
           onClose={() => setSource(null)}
         />
+      )}
+    </div>
+  )
+}
+
+// The window's own editor over a value the page drew: the table's in-place editor (T4) on the
+// field's whole value, as wide as the value or wider, a number's right edge on the number's and
+// words' left edge on the words', kept inside the frame; Enter or leaving saves what the person
+// typed, Escape leaves it. A refusal shows under it.
+function InPlace({
+  editing,
+  refused,
+  onDone,
+}: {
+  editing: { field: FieldView; row: RowView; box: Box }
+  refused: string | null
+  onDone: (value: unknown) => Promise<boolean>
+}) {
+  const { field, row, box } = editing
+  const width = Math.max(box.w + 24, 220)
+  const from = NUMERIC.has(field.kind) ? box.x + box.w + 12 - width : box.x - 12
+  return (
+    <div
+      className="absolute z-(--z-raised) flex flex-col gap-1"
+      style={{
+        top: Math.max(0, box.y + box.h / 2 - 19),
+        left: `max(0px, min(${from}px, calc(100% - ${width}px)))`,
+        width,
+      }}
+    >
+      <div className="overflow-hidden rounded-md bg-surface shadow-pop">
+        <EditCell field={field} value={row.values[field.slug]} onDone={onDone} />
+      </div>
+      {refused && (
+        <p className="rounded-md bg-surface px-2 py-1 text-bad text-sm shadow-pop">{refused}</p>
       )}
     </div>
   )

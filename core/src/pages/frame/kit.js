@@ -3,7 +3,7 @@
 //
 //   alpha.page(async () => [ ...blocks ])
 //
-//   {heading: 'This week', note?, level?: 1, aside?, asideNote?}
+//   {heading: 'This week', note?, level?: 1, aside?, asideNote?, open?, asideOpen?}
 //            a section's title; level 1 is the page's own title, aside its words at the right
 //   {text: '…'} or '…'                             a paragraph
 //   {stats: [{label, value, unit?, of?, change?: {value, unit?, label?, better?: 'up'|'down'},
@@ -29,7 +29,10 @@
 //
 // A value is a number, words, a date ('2026-10-20') or money ({amount, currency}); `tone` is
 // good, warn or bad; `open` is what the window opens on a click: {table, rows: [ids]} or
-// {table, row, field?}.
+// {table, row, field?}. A value from one row's field ({table, row, field}) opens its source beside
+// the page on a click, which waits a moment for a second one, and a double-click asks the window
+// to edit it there: the window draws its own editor over it and writes what the person types to
+// the field's whole value. The page itself writes nothing.
 ;(() => {
   const MONTHS = [
     'Jan',
@@ -54,6 +57,7 @@
       if (v == null || v === false) continue
       if (k === 'text') node.textContent = v
       else if (k === 'onclick') node.addEventListener('click', v)
+      else if (k === 'ondblclick') node.addEventListener('dblclick', v)
       else node.setAttribute(k, v === true ? '' : v)
     }
     for (const c of children) if (c) node.append(c)
@@ -115,13 +119,28 @@
           ? v
           : Number(v)
 
+  // A click opens the target. A value from one row's field also edits on a double-click, so its
+  // click waits a quarter second for a second one (T4); the window is asked to edit what the value
+  // shows ([data-value]), not its label.
   function opener(target) {
     if (!target) return {}
+    const open = () => window.alpha.open(target)
+    if (!target.row || !target.field || window.alpha.printing)
+      return { class: 'ak-open', role: 'link', tabindex: '0', onclick: open }
+    let wait = 0
     return {
       class: 'ak-open',
       role: 'link',
       tabindex: '0',
-      onclick: () => window.alpha.open(target),
+      onclick: () => {
+        clearTimeout(wait)
+        wait = setTimeout(open, 250)
+      },
+      ondblclick: (e) => {
+        clearTimeout(wait)
+        const node = e.currentTarget
+        window.alpha.edit(target, node.querySelector('[data-value]') ?? node)
+      },
     }
   }
 
@@ -130,13 +149,13 @@
   // ---- blocks ----
   function heading(h) {
     const main = el('div', {}, [
-      el(h.level === 1 ? 'h1' : 'h2', { text: String(h.heading) }),
+      el(h.level === 1 ? 'h1' : 'h2', { ...opener(h.open), text: String(h.heading) }),
       h.note ? el('p', { class: 'ak-note', text: String(h.note) }) : null,
     ])
     const aside =
       h.aside != null
         ? el('div', { class: 'ak-heading__aside' }, [
-            el('strong', { text: String(h.aside) }),
+            el('strong', { ...opener(h.asideOpen), text: String(h.aside) }),
             h.asideNote ? el('p', { class: 'ak-note', text: String(h.asideNote) }) : null,
           ])
         : null
@@ -167,7 +186,7 @@
 
   function stat(s) {
     const value = el('div', { class: `ak-stat__value${tone(s.tone)}` }, [
-      el('span', { text: fmt(s.value, s.unit) }),
+      el('span', { 'data-value': true, text: fmt(s.value, s.unit) }),
       s.of != null ? el('span', { class: 'ak-stat__of', text: ` / ${fmt(s.of, s.unit)}` }) : null,
     ])
     return el('div', { ...opener(s.open), class: s.open ? 'ak-stat ak-open' : 'ak-stat' }, [
