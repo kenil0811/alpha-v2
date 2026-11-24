@@ -43,7 +43,13 @@ export function useConnection(
   k: ConnectionView,
   onChange: () => void,
   // words: when it was last read, beside its Read now (a card says it under its name instead)
-  options: { menuShown?: boolean; onAdd?: (() => void) | undefined; words?: boolean } = {},
+  // quiet: its notes (what its last read left out, what it may reach) only under Details (a card)
+  options: {
+    menuShown?: boolean
+    onAdd?: (() => void) | undefined
+    words?: boolean
+    quiet?: boolean
+  } = {},
 ): ConnectionParts {
   const { busy, problem, act } = useAct(onChange)
   const [leaving, setLeaving] = useState(false)
@@ -74,7 +80,7 @@ export function useConnection(
     ) : null
   const body = (
     <>
-      {(details || k.refused.length > 0 || k.leftOut > 0) && (
+      {(details || (!options.quiet && (k.refused.length > 0 || k.leftOut > 0))) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-3 text-sm">
           {details && <span>Set up by {k.owner}</span>}
           {k.leftOut > 0 && <span>Left out {k.leftOut} on the never-use list</span>}

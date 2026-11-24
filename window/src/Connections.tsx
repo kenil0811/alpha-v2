@@ -246,13 +246,14 @@ function SoloTile({
   onAdd: (() => void) | undefined
   onChange: () => void
 }) {
-  const p = useConnection(k, onChange, { menuShown: true, onAdd, words: false })
-  // when it was last read goes under its name, beside its account, so its foot is its act alone
-  const read = k.lastSyncAt && !k.health ? `Read ${updatedWords(k.lastSyncAt)}` : null
+  const p = useConnection(k, onChange, { menuShown: true, onAdd, words: false, quiet: true })
+  // under its name: its account and when it was last read, or its problem in their place, so every
+  // card is the same one row; its notes are under ⋮ › Details
+  const read = k.lastSyncAt ? `Read ${updatedWords(k.lastSyncAt)}` : null
   return (
     <TileFrame
       connector={c}
-      sub={[k.account, p.where, read].filter(Boolean).join(' · ')}
+      sub={k.health ?? [k.account, p.where, read].filter(Boolean).join(' · ')}
       wide={!!form}
       right={
         <span className="flex shrink-0 items-center gap-1.5">
@@ -263,13 +264,8 @@ function SoloTile({
         </span>
       }
     >
-      {/* its act on its one row; under it only what it has to say (a problem, a note) */}
-      {form ?? (
-        <>
-          {p.problem}
-          {p.body}
-        </>
-      )}
+      {/* its one row; its notes only when Details is asked for under ⋮ */}
+      {form ?? p.body}
       {p.confirm}
     </TileFrame>
   )
