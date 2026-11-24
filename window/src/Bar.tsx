@@ -10,7 +10,7 @@ export type Crumb = { label: string; href: string }
 
 // The bar over each screen, at the shared 48px: the screen's switch or name centred; at its left a
 // ‹ to the page above and the path from Home to it, each part a way there (Home / Deals), the
-// middle cut short with … when long; on Home the date and the greeting there instead, with no ‹
+// middle cut short with … when long; on Home the date there instead, with no ‹
 // and no name; at its right, on Home what comes next today, and Alpha's face, which opens the
 // assistant while it is closed.
 // Find is ⌘K, from anywhere.
@@ -29,7 +29,7 @@ export function Bar({
   ask: { mood: Mood; open: () => void } | null
   trail: Crumb[] // Home to the page above this one; none on Home
   next?: ReactNode // on Home, what comes next today, before the face
-  lead?: ReactNode // on Home, the date and the greeting, in place of the ‹ and the name
+  lead?: ReactNode // on Home, the date, in place of the ‹ and the name
 }) {
   const back = trail.at(-1)
   return (

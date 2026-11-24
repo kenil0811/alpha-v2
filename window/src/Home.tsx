@@ -1,6 +1,6 @@
 // Home: the ask box, then its cards: Needs you while something waits (each answered right here),
 // Set up Alpha until it is done, today's tasks and the ones just completed, each card only while it
-// has something. The date and the greeting are in the bar (HomeHead). The modules
+// has something. The date is in the bar (HomeHead), with no greeting. The modules
 // are in the rail; the conversation has its own place on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
 import { ArrowUp, CheckCheck, Inbox, ListChecks, Sparkles } from 'lucide-react'
@@ -28,25 +28,14 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
   )
 }
 
-// The date, and the greeting under it, at the left of Home's bar.
+// The date, at the left of Home's bar: no greeting.
 export function HomeHead() {
   const day = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   })
-  return (
-    <div className="flex min-w-0 flex-col leading-tight">
-      <span className="truncate text-ink-3 text-xs">{day}</span>
-      <h1 className="truncate font-serif text-ink text-lg">{greeting()}</h1>
-    </div>
-  )
-}
-
-// no name in it
-function greeting(): string {
-  const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+  return <h1 className="min-w-0 truncate font-serif text-ink text-lg">{day}</h1>
 }
 
 export function Home({
