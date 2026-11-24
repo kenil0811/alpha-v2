@@ -158,6 +158,17 @@ export class Hub {
     return true
   }
 
+  // Turn one of the computer's readers (browsing, apps, AI work) on or off, asked from Alpha by the
+  // computer's own person: the Bridge does it only for a reader its Alpha offers, says so on the
+  // computer, and keeps the switch there to turn it off again (docs/rules.md, B2). False when it is
+  // not connected.
+  reader(computer: string, connector: string, on: boolean): boolean {
+    const c = this.connected.get(computer)
+    if (!c) return false
+    c.socket.send(JSON.stringify({ t: 'reader', connector, on }))
+    return true
+  }
+
   // The process a computer runs for a connector: made once, started on its first call; a computer
   // away answers at once that it is.
   processFor(computer: string, connector: string, entry: string): BridgedProcess {

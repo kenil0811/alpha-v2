@@ -39,3 +39,17 @@ apps:
   - { name: Linear, sites: [linear.app] }
   - { name: Figma, sites: [figma.com] }
   - { name: ClickUp, sites: [app.clickup.com] }
+
+# Apps whose data Alpha Bridge itself reads on the person's computer, by its reader (browsing: a
+# Chromium browser's history; ai-work: Claude Code's and Codex's requests, and ChatGPT's and
+# claude.ai's chats opened in a browser). Found on the computer, each is turned on from Alpha by
+# its person (rules B2); any other app found is only listed.
+readers:
+  - { name: Google Chrome, reader: browsing }
+  - { name: Microsoft Edge, reader: browsing }
+  - { name: Brave Browser, reader: browsing }
+  - { name: Arc, reader: browsing }
+  - { name: Vivaldi, reader: browsing }
+  - { name: Chromium, reader: browsing }
+  - { name: Claude, reader: ai-work }
+  - { name: ChatGPT, reader: ai-work }

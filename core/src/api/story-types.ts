@@ -81,6 +81,7 @@ export interface ConnectTile {
   // Apps you use: the computer's Apps reader where it comes with this Alpha, its connection once on
   reader: { id: string | null; read: boolean } | null
   server: boolean // the computer tile: Alpha runs on a server, so a computer pairs through Alpha Bridge
+  computer?: string | null // Found on your computer: the person's computer its readers are turned on on
 }
 
 // An app the person uses: on their computer, as Alpha Bridge's Apps reader listed it (when it was
@@ -95,6 +96,8 @@ export interface AppFound {
   site: string | null
   connector: string | null
   connected: boolean
+  reader: 'browsing' | 'apps' | 'ai-work' | null // Alpha Bridge itself reads it, by this reader
+  reading: boolean // that reader is on
 }
 
 export interface PeopleScreen extends Screen {

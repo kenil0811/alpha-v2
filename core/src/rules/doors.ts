@@ -350,6 +350,8 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/computers/link': 'a pairing link for the person’s next computer',
   'POST /api/computers/:id/pick':
     'asks a computer to open its own folder picker; what is picked there comes through the connector’s door',
+  'POST /api/computers/:id/reader':
+    'asks a computer to turn one of its readers on or off, which it says there; what it reads comes through the connector’s door',
   'POST /api/bridge/pair':
     'a computer paired with its link; what it lends goes through the connector’s door',
   'DELETE /api/computers/:id': 'a person’s computer removed; what it lent stops, kept',

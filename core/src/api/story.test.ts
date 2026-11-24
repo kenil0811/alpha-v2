@@ -425,6 +425,27 @@ describe('Apps you use', () => {
     expect(found.map((a) => a.name)).toEqual(['Slack'])
   })
 
+  it('says which apps Alpha Bridge itself reads, and whether that reader is on on their computer', () => {
+    const desktop = [
+      { name: 'Google Chrome', last: day(1), times: 41 },
+      { name: 'Claude', last: day(1), times: 20 },
+      { name: 'Telegram', last: day(1), times: 10 },
+    ]
+    const readers = [
+      { name: 'Google Chrome', reader: 'browsing' as const },
+      { name: 'Claude', reader: 'ai-work' as const },
+    ]
+    const found = appsAmong({ desktop, mail: new Map() }, { ...known, readers }, now, {
+      ...here,
+      reads: (r) => r === 'browsing',
+    })
+    expect(found.map((a) => [a.name, a.reader, a.reading])).toEqual([
+      ['Google Chrome', 'browsing', true],
+      ['Claude', 'ai-work', false],
+      ['Telegram', null, false],
+    ])
+  })
+
   it('shows so many at most', () => {
     const desktop = Array.from({ length: 20 }, (_, i) => ({
       name: `App ${i}`,

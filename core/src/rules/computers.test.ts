@@ -3,8 +3,9 @@
 // made-up desk connector that runs only on a person's computer and a computer paired with a test
 // key; nothing reaches a real computer.
 import { createPrivateKey, sign } from 'node:crypto'
+import { Bridge } from '@alpha/bridge'
 import { Children } from '@alpha/bridge/children'
-import { newKey } from '@alpha/bridge/keys'
+import { inMemory, newKey } from '@alpha/bridge/keys'
 import { type Connector, MemorySecrets } from '@alpha/connector-sdk'
 import { Hub } from '../bridge/hub.ts'
 import { lend } from '../connectors/computers.ts'
@@ -131,6 +132,68 @@ rule('B2', 'what a computer lends is said on the computer', {
           asked &&
           sent.some((m) => m.t === 'pick' && m.connector === 'folder') &&
           w.world.connections.on(pc.id).length === 0
+        )
+      },
+    'a reader turned on in Alpha is turned on only for one its Alpha offers, and said on the computer':
+      async (w) => {
+        // Alpha's side: only the computer's own person may ask it
+        const key = newKey()
+        const pc = w.world.computers.pair(w.world.computers.link(w.user.id).code, {
+          publicKey: key.publicPem,
+          name: 'Kenil’s Mac',
+          platform: 'darwin',
+        })
+        const hub = new Hub()
+        hub.use(w.world, {
+          notify: () => undefined,
+          lend: async () => undefined,
+          unlend: () => undefined,
+          signedOut: () => undefined,
+          back: () => undefined,
+          sitesOn: () => [],
+          offers: () => ['browsing'],
+        })
+        const sent: Record<string, unknown>[] = []
+        const door = hub.open({ send: (t) => sent.push(JSON.parse(t)), close: () => undefined })
+        const challenge = String(sent[0]?.challenge)
+        const signature = sign(null, Buffer.from(challenge), createPrivateKey(key.privatePem))
+        door.heard(
+          JSON.stringify({
+            t: 'hello',
+            computer: pc.id,
+            signature: signature.toString('base64'),
+            version: 'test',
+          }),
+        )
+        const asked = hub.reader(pc.id, 'browsing', true)
+        // the computer's side: it turns on only what its Alpha offers, and says so there
+        const said: string[] = []
+        const lent: [string, boolean][] = []
+        const bridge = new Bridge({
+          config: () => ({
+            alpha: 'https://alpha.example',
+            computer: pc.id,
+            name: pc.name,
+            lends: [],
+          }),
+          keys: inMemory(),
+          start: async () => {
+            throw new Error('Nothing runs here.')
+          },
+          said: (words) => said.push(words),
+          lendReader: (connector, on) => lent.push([connector, on]),
+        })
+        bridge.offers = ['browsing']
+        const hear = (m: unknown) =>
+          (bridge as unknown as { heard(t: string): void }).heard(JSON.stringify(m))
+        hear({ t: 'reader', connector: 'browsing', on: true })
+        hear({ t: 'reader', connector: 'ai-work', on: true }) // not offered by its Alpha
+        return (
+          asked &&
+          sent.some((m) => m.t === 'reader' && m.connector === 'browsing' && m.on === true) &&
+          lent.length === 1 &&
+          lent[0]?.[0] === 'browsing' &&
+          said.some((x) => /Turned on Browsing, asked in Alpha/.test(x))
         )
       },
     'the Bridge refuses a call for what it does not lend, whatever Alpha sends': async () => {

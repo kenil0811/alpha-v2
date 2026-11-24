@@ -60,6 +60,9 @@ async function main(args: string[]): Promise<void> {
       helper,
       home,
       lendSite: (site, on) => siteHere(home, site, on),
+      lendReader: (connector, on) => {
+        lendHere(home, connector, on)
+      },
       config: () => paired(home),
       keys: storeOf(),
       start,

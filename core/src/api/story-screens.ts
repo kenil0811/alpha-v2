@@ -103,8 +103,8 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
   }
 
   // Your accounts: the accounts, and, once a computer is paired, what Alpha Bridge found on it: an
-  // app Alpha can connect directly (its connector, or its site) with Connect and Exclude, any other
-  // only listed. Nothing about turning a reader on: with no computer paired, or nothing found on
+  // app Alpha can connect directly (its connector, or its site) with Connect and Exclude, one Alpha
+  // Bridge itself reads with Turn on, any other only listed. Nothing about turning a reader on: with no computer paired, or nothing found on
   // it, the part is not there.
   const accounts = () => {
     const tiles = connectTiles(ctx, room.onServer)
@@ -115,8 +115,10 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         ...t,
         title: 'Found on your computer',
         reads: 'The apps Alpha Bridge found you use',
-        note: 'Connect the ones I can reach directly; the others are listed so you know what I saw.',
+        note: 'Connect the ones I can reach, or turn on reading the ones Alpha Bridge reads on your computer; the others are listed so you know what I saw.',
         reader: null, // never "turn it on" here: the list shows only once there is one
+        // the person's computer, where an app's reader is turned on from here (rules B2)
+        computer: world.computers.of(user.id)[0]?.id ?? null,
         apps: t.apps
           .filter((a) => a.times !== null || a.last !== null)
           // Alpha itself and its Bridge are never offered as apps to connect

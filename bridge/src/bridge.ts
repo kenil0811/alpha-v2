@@ -21,11 +21,12 @@ import { type Config, type Lend, lends, lentNow } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.5.2'
+export const VERSION = '0.5.3'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =
   | { t: 'pick'; connector: string }
+  | { t: 'reader'; connector: string; on: boolean } // its person turned a reader on or off in Alpha
   | { t: 'challenge'; challenge: string }
   | { t: 'welcome'; name: string; lent: Lend[]; offers?: string[] }
   | { t: 'lent'; lent: Lend[] }
@@ -38,6 +39,13 @@ type FromAlpha =
   | { t: 'cdp-open'; id: string; site: string } // a signed-in site's profile, driven out of sight
   | { t: 'cdp'; id: string; m: string }
   | { t: 'cdp-close'; id: string }
+
+// A reader as its person reads it.
+const READER_NAMES: Record<string, string> = {
+  browsing: 'Browsing',
+  apps: 'Apps',
+  'ai-work': 'AI work',
+}
 
 // The account a computer's key is kept under: the Alpha it is paired with.
 export const keyAccount = (alpha: string) => new URL(alpha).host
@@ -103,6 +111,7 @@ export interface BridgeOptions {
   chrome?: () => string | null // where Chrome is here (chrome.ts)
   window?: (chrome: string, dir: string, url: string) => Promise<void> // a sign-in window
   lendSite?: (site: string, on: boolean) => void // a site signed in to or out of here, kept
+  lendReader?: (connector: string, on: boolean) => void // a reader turned on or off from Alpha, kept
 }
 
 // A site's address that is the site's own (google.com, or drive.google.com for it), on the web.
@@ -314,7 +323,8 @@ export class Bridge {
     else if (m.t === 'cdp-close') {
       this.pipes.get(m.id)?.close()
       this.pipes.delete(m.id)
-    } else if (m.t === 'pick') {
+    } else if (m.t === 'reader') this.reader(m.connector, m.on)
+    else if (m.t === 'pick') {
       this.said('Alpha asked to lend a folder from this computer.')
       this.options.pick?.(m.connector)
     }
@@ -380,6 +390,22 @@ export class Bridge {
     this.said(`Signed in to ${site} for Alpha.`)
     this.reconcile()
     this.send({ t: 'site', id, done: true })
+  }
+
+  // A reader turned on or off from Alpha by this computer's person (docs/rules.md, B2): only one its
+  // Alpha offers, said here, and kept in the Bridge's own switches to turn off again.
+  private reader(connector: string, on: boolean): void {
+    if (!this.offers.includes(connector)) {
+      this.said(`Alpha asked to turn on ${connector}, which this Bridge does not read for it.`)
+      return
+    }
+    this.options.lendReader?.(connector, on)
+    this.said(
+      on
+        ? `Turned on ${READER_NAMES[connector] ?? connector}, asked in Alpha. Turn it off here any time.`
+        : `Turned off ${READER_NAMES[connector] ?? connector}, asked in Alpha.`,
+    )
+    this.changed()
   }
 
   // Signed out of a site from Alpha: its profile here goes, and it is lent no more.

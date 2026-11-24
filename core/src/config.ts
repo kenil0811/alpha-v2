@@ -72,6 +72,9 @@ const Apps = z.object({
       desktop: z.array(z.string().min(1)).optional(),
     }),
   ),
+  readers: z
+    .array(z.object({ name: z.string().min(1), reader: z.enum(['browsing', 'apps', 'ai-work']) }))
+    .default([]),
 })
 
 const People = z.object({

@@ -234,6 +234,20 @@ export function registerComputers(ctx: Ctx): void {
     return { ok: true }
   })
 
+  // A reader on the computer (browsing, apps, AI work) turned on or off from Alpha's window, by the
+  // computer's own person: the Bridge does it and says so there (docs/rules.md, B2).
+  app.post('/api/computers/:id/reader', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const b = z
+      .object({ connector: z.enum(['browsing', 'apps', 'ai-work']), on: z.boolean() })
+      .parse(req.body)
+    const pc = world.computers.get(id)
+    if (!pc || pc.user !== user.id || pc.removedAt) throw new Refused('That computer is not yours.')
+    if (!bridges.reader(id, b.connector, b.on))
+      throw new Refused(`${pc.name} is not connected now: open Alpha Bridge on it, then try again.`)
+    return { ok: true }
+  })
+
   // Removed by its person: turned away now, and what it lent stops (kept for the record).
   app.delete('/api/computers/:id', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

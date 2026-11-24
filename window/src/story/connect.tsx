@@ -419,8 +419,33 @@ function AppsTile({
                     .join(' · ')}
                 </span>
                 {/* Connect and Exclude only where Alpha can connect the app directly: its
-                    connector, or its site signed in to; any other app is only listed */}
-                {a.connected || (a.site && signedIn(a.site)) ? (
+                    connector, or its site signed in to; Turn on where Alpha Bridge itself reads it
+                    (its reader, turned on on the computer from here); any other app only listed */}
+                {a.reader ? (
+                  a.reading ? (
+                    <Pill tone="good">
+                      <Check className="size-3" /> Reading
+                    </Pill>
+                  ) : (
+                    <Button
+                      size="sm"
+                      disabled={busy || !t.computer}
+                      onClick={() =>
+                        void act(async () => {
+                          await api.post(`/api/computers/${t.computer}/reader`, {
+                            connector: a.reader,
+                            on: true,
+                          })
+                          // the computer lends it, then Alpha has it: read the tile again
+                          await new Promise((r) => setTimeout(r, 1500))
+                          again()
+                        })
+                      }
+                    >
+                      Turn on
+                    </Button>
+                  )
+                ) : a.connected || (a.site && signedIn(a.site)) ? (
                   <Pill tone="good">
                     <Check className="size-3" /> {a.connected ? 'Connected' : 'Signed in'}
                   </Pill>

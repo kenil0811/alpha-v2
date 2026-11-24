@@ -171,6 +171,10 @@ export async function serve(
         siteHere(home, site, on)
         state()
       },
+      lendReader: (connector, on) => {
+        lendHere(home, connector, on)
+        state()
+      },
     })
     bridge.run()
   }

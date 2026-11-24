@@ -279,9 +279,15 @@ function appsUsed(ctx: Ctx, apps: Table | undefined): AppFound[] {
       .filter((k) => k.state === 'connected')
       .map((k) => k.connector),
   )
+  const mine = world.computers.of(ctx.user.id)
   return appsAmong({ desktop, mail }, config.apps(), Date.now(), {
     ships: (name) => !!engine.connectors?.find(name),
     connected: (name) => connected.has(name),
+    // a reader is on only on the person's own computer, never someone else's
+    reads: (reader) =>
+      mine.some((pc) =>
+        world.connections.on(pc.id).some((k) => k.connector === reader && k.state === 'connected'),
+      ),
     left: new Set(appsLeftOut(world.db, ctx.user.id).map((n) => n.toLowerCase())),
   })
 }
@@ -296,6 +302,7 @@ interface Known {
     connector?: string | undefined
     desktop?: string[] | undefined
   }[]
+  readers?: { name: string; reader: 'browsing' | 'apps' | 'ai-work' }[] | undefined
 }
 
 // One list of both: the computer's apps used in the config's last days, and the known work apps
@@ -312,6 +319,7 @@ export function appsAmong(
   here: {
     ships: (connector: string) => boolean
     connected: (connector: string) => boolean
+    reads?: (reader: string) => boolean // a reader on the person's own computer is on
     left?: Set<string> // what the person left out, lower case: never listed
   },
 ): AppFound[] {
@@ -324,12 +332,15 @@ export function appsAmong(
   // a site's own domain, which its mail comes from: quickbooks.intuit.com's is intuit.com
   const domain = (site: string) => site.split('.').slice(-2).join('.')
   const out = new Map<string, AppFound>()
-  const reach = (a: Known['apps'][number] | undefined) => {
+  const reach = (a: Known['apps'][number] | undefined, name: string) => {
     const connector = a?.connector && here.ships(a.connector) ? a.connector : null
+    const reader = (known.readers ?? []).find((r) => plain(r.name) === plain(name))?.reader ?? null
     return {
       site: a?.sites[0] ?? null,
       connector,
       connected: !!connector && here.connected(connector),
+      reader,
+      reading: !!reader && (here.reads ?? here.connected)(reader),
     }
   }
   for (const r of seen.desktop) {
@@ -339,7 +350,7 @@ export function appsAmong(
       [x.name, ...(x.desktop ?? [])].some((k) => n === plain(k) || n.startsWith(`${plain(k)} `)),
     )
     const name = a?.name ?? r.name.replace(/\.app$/, '')
-    out.set(name, { name, last: r.last, times: r.times, mails: 0, ...reach(a) })
+    out.set(name, { name, last: r.last, times: r.times, mails: 0, ...reach(a, name) })
   }
   for (const a of known.apps) {
     let mails = 0
@@ -350,7 +361,9 @@ export function appsAmong(
     const was = out.get(a.name)
     out.set(
       a.name,
-      was ? { ...was, mails } : { name: a.name, last: null, times: null, mails, ...reach(a) },
+      was
+        ? { ...was, mails }
+        : { name: a.name, last: null, times: null, mails, ...reach(a, a.name) },
     )
   }
   const can = (a: AppFound) => (a.connector || a.site ? 1 : 0)
