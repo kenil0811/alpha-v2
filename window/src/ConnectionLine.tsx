@@ -42,7 +42,8 @@ export interface ConnectionParts {
 export function useConnection(
   k: ConnectionView,
   onChange: () => void,
-  options: { menuShown?: boolean; onAdd?: (() => void) | undefined } = {},
+  // words: when it was last read, beside its Read now (a card says it under its name instead)
+  options: { menuShown?: boolean; onAdd?: (() => void) | undefined; words?: boolean } = {},
 ): ConnectionParts {
   const { busy, problem, act } = useAct(onChange)
   const [leaving, setLeaving] = useState(false)
@@ -76,7 +77,7 @@ export function useConnection(
       {(details || k.refused.length > 0 || k.leftOut > 0) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-3 text-sm">
           {details && <span>Set up by {k.owner}</span>}
-          {k.leftOut > 0 && <span>Its last read left out {k.leftOut} on the never-use list</span>}
+          {k.leftOut > 0 && <span>Left out {k.leftOut} on the never-use list</span>}
           {details &&
             k.tables.map((t) => (
               <span key={t.id}>
@@ -105,7 +106,13 @@ export function useConnection(
   const main = k.settings ? (
     // the one switch macOS keeps outside Alpha: System Settings opened at its pane
     <>
-      <UpdateNow label="Read now" at={k.lastSyncAt} busy={busy} onClick={read} words={!trouble} />
+      <UpdateNow
+        label="Read now"
+        at={k.lastSyncAt}
+        busy={busy}
+        onClick={read}
+        words={!trouble && options.words !== false}
+      />
       <Button
         size="sm"
         variant="primary"
@@ -138,7 +145,13 @@ export function useConnection(
       Try again
     </Button>
   ) : (
-    <UpdateNow label="Read now" at={k.lastSyncAt} busy={busy} onClick={read} words={!trouble} />
+    <UpdateNow
+      label="Read now"
+      at={k.lastSyncAt}
+      busy={busy}
+      onClick={read}
+      words={!trouble && options.words !== false}
+    />
   )
   const menu = (
     <More label="More" disabled={busy} shown={options.menuShown ?? false}>

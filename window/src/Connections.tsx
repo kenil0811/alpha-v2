@@ -21,6 +21,7 @@ import { List, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
+import { updatedWords } from './ui/update-now.tsx'
 
 // The pictures a connector can ask for (its manifest's icon).
 export const ICONS: Record<ConnectorView['icon'], ReactNode> = {
@@ -71,7 +72,7 @@ export function Connections({
             <AccountList view={lines.view} connectors={view} onChange={again} />
           </div>
         )}
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] items-start gap-3">
           {accounts.map((c) => (
             <ConnectorTile
               key={c.name}
@@ -165,23 +166,27 @@ function ConnectorTile({
             : 'Not connected'
       }
       right={
-        added && connections.length === 0 ? (
-          <DeleteConnector connector={c} onChange={onChange} />
-        ) : null
+        <span className="flex shrink-0 items-center gap-1.5">
+          {/* none connected yet: Connect at the right of its one row, never a foot of its own */}
+          {!open && canAdd && connections.length === 0 && (
+            <Button size="sm" onClick={() => setOpen(true)}>
+              Connect
+            </Button>
+          )}
+          {added && connections.length === 0 && (
+            <DeleteConnector connector={c} onChange={onChange} />
+          )}
+        </span>
       }
     >
       {form}
       {connections.map((k) => (
         <ConnectionInTile key={k.id} connection={k} onChange={onChange} />
       ))}
-      {!open && canAdd && (
+      {!open && canAdd && connections.length > 0 && (
         <TileFoot>
-          <Button
-            size="sm"
-            variant={connections.length ? 'ghost' : 'default'}
-            onClick={() => setOpen(true)}
-          >
-            {connections.length ? 'Add another' : 'Connect'}
+          <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
+            Add another
           </Button>
         </TileFoot>
       )}
@@ -207,7 +212,7 @@ function TileFrame({
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-4',
+        'flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-surface px-3.5 py-3',
         wide && 'col-span-full',
       )}
     >
@@ -241,21 +246,30 @@ function SoloTile({
   onAdd: (() => void) | undefined
   onChange: () => void
 }) {
-  const p = useConnection(k, onChange, { menuShown: true, onAdd })
+  const p = useConnection(k, onChange, { menuShown: true, onAdd, words: false })
+  // when it was last read goes under its name, beside its account, so its foot is its act alone
+  const read = k.lastSyncAt && !k.health ? `Read ${updatedWords(k.lastSyncAt)}` : null
   return (
     <TileFrame
       connector={c}
-      sub={p.where ? `${k.account} · ${p.where}` : k.account}
+      sub={[k.account, p.where, read].filter(Boolean).join(' · ')}
       wide={!!form}
       right={
         <span className="flex shrink-0 items-center gap-1.5">
-          {p.pill}
+          {/* connected says itself by when it was read; any other state by its pill */}
+          {(k.state !== 'connected' || (k.computer && !k.computer.online)) && p.pill}
+          {!form && p.act}
           {p.menu}
         </span>
       }
     >
-      {p.body}
-      {form ?? <TileFoot problem={p.problem}>{p.act}</TileFoot>}
+      {/* its act on its one row; under it only what it has to say (a problem, a note) */}
+      {form ?? (
+        <>
+          {p.problem}
+          {p.body}
+        </>
+      )}
       {p.confirm}
     </TileFrame>
   )
