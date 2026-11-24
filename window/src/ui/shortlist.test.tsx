@@ -15,7 +15,13 @@ describe('a short list', () => {
       addLabel="Add an instruction"
       onAdd={() => {}}
       onEdit={async () => {}}
-      remove={{ title: 'Forget this?', yes: 'Forget it', what: () => 'it', run: async () => {} }}
+      remove={{
+        title: 'Forget this?',
+        yes: 'Forget it',
+        done: 'Forgotten.',
+        what: () => 'it',
+        run: async () => {},
+      }}
     />,
   )
 

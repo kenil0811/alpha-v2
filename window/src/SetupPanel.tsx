@@ -9,7 +9,9 @@ import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { DoneTick } from './ui/done-tick.tsx'
+import { Frame } from './ui/frame.tsx'
 import { Info } from './ui/info.tsx'
+import { List } from './ui/list.tsx'
 import { celebrate } from './ui/motion.ts'
 import { Ring } from './ui/ring.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -113,7 +115,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         <Ring done={ready} of={items.length} />
         {ready === items.length ? 'All set' : `${ready} of ${items.length} ready`}
       </div>
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <List>
         {items.map((s) => (
           <div
             key={s.words}
@@ -143,9 +145,9 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
             )}
           </div>
         ))}
-      </div>
+      </List>
       {view.keepAwake !== null && (
-        <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
+        <Frame className="flex items-center gap-3">
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5 font-medium text-ink">
               Keep this Mac awake while plugged in
@@ -158,7 +160,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
             named
             onChange={(on) => api.post('/api/setup/awake', { on }).then(onChange, onChange)}
           />
-        </div>
+        </Frame>
       )}
       {view.readers.problem && <p className="text-bad text-sm">{view.readers.problem}</p>}
       {waiting && (

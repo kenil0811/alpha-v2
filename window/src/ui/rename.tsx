@@ -1,12 +1,14 @@
 // A name changed where it shows: a table's in the bar, a module's in the rail. A double-click
-// edits it in place, Enter keeping the change and Escape putting it back, as a short list's entry
-// is (editStep, R8). A name the core refuses (one another has, one naming a period) stays in the
-// box with the core's words under it; leaving the box then puts the name back.
+// edits it in place, the tick and the cross beside the box (L20); Enter and leaving the box keep
+// the change, Escape puts it back, as a short list's entry does (editStep, R8). A name the core
+// refuses (one another has, one naming a period) stays in the box with the core's words under it;
+// leaving the box then puts the name back.
 import { type ReactNode, useState } from 'react'
 import { wordsOf } from '../api.ts'
 import { cn } from './cn.ts'
 import { Field } from './field.tsx'
 import { type Edit, editStep } from './shortlist.tsx'
+import { SaveCancel } from './yes-no.tsx'
 
 export const RENAME_TIP = 'Double-click to rename'
 
@@ -45,12 +47,12 @@ export function Renamable({
       <>{children(rename ? () => step({ type: 'start', key: 'name', words: name }) : undefined)}</>
     )
   return (
-    <span className="relative block min-w-0 flex-1">
+    <span className="relative flex min-w-0 flex-1 items-center gap-1">
       <Field
         autoFocus
         aria-label={`Rename ${name}`}
         value={edit.words}
-        className={cn('w-full font-sans text-md', className)}
+        className={cn('w-full min-w-0 flex-1 font-sans text-md', className)}
         onChange={(e) => step({ type: 'type', words: e.target.value })}
         onKeyDown={(e) => {
           if (e.key === 'Enter') step({ type: 'keep' })
@@ -58,6 +60,7 @@ export function Renamable({
         }}
         onBlur={() => step({ type: problem ? 'cancel' : 'keep' })}
       />
+      <SaveCancel onSave={() => step({ type: 'keep' })} onCancel={() => step({ type: 'cancel' })} />
       {problem && (
         <span
           role="alert"

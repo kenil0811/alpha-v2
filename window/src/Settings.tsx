@@ -202,7 +202,11 @@ function DataSection() {
     }, 2000)
     return () => clearInterval(t)
   }, [restarting])
-  const act = async (fn: () => Promise<{ restarting?: boolean }>, words?: string) => {
+  // true once the core did it
+  const act = async (
+    fn: () => Promise<{ restarting?: boolean }>,
+    words?: string,
+  ): Promise<boolean> => {
     setBusy(true)
     setProblem(null)
     setSaid(null)
@@ -217,8 +221,10 @@ function DataSection() {
         setSaid(words ?? null)
         load()
       }
+      return true
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That did not go through.')
+      return false
     } finally {
       setBusy(false)
     }
@@ -273,12 +279,13 @@ function DataSection() {
         open={!!goingBack}
         title="Go back to this backup?"
         yes="Go back to it"
+        done={{ words: 'Going back to that backup. Alpha restarts in a moment.' }}
         busy={busy || restarting}
         onClose={() => setGoingBack(null)}
         onYes={() => {
           const name = goingBack
           setGoingBack(null)
-          void act(() => api.post('/api/data/restore', { name }))
+          return act(() => api.post('/api/data/restore', { name }))
         }}
       >
         Alpha backs up now first, then restarts on this one.

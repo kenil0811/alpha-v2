@@ -67,3 +67,32 @@ export function YesNo({
 // answers ("Yes, and also", three of them) keep their words.
 export const isYesNo = (options: readonly string[]) =>
   options.length === 2 && options[0] === 'Yes' && options[1] === 'No'
+
+// An edit in place ends on the same pair: the tick keeps it, the cross puts it back, each naming
+// itself in the tooltip. Pressing one never takes the focus from the box first, so the box's own
+// leaving (a save) does not run before the cross.
+export function SaveCancel({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+  const one = (save: boolean) => (
+    <button
+      type="button"
+      aria-label={save ? 'Save' : 'Cancel'}
+      data-tip={save ? 'Save' : 'Cancel'}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={save ? onSave : onCancel}
+      className={cn(
+        'press swell grid size-7 shrink-0 place-items-center rounded-md border border-line bg-surface text-ink-3',
+        save
+          ? 'hover:border-good hover:bg-good-soft hover:text-good'
+          : 'hover:border-bad hover:bg-bad-soft hover:text-bad',
+      )}
+    >
+      {save ? <Check className="size-3.5" /> : <X className="size-3.5" />}
+    </button>
+  )
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1">
+      {one(true)}
+      {one(false)}
+    </span>
+  )
+}

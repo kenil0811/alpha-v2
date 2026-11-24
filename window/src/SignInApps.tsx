@@ -10,6 +10,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { CodeLine } from './ui/code-line.tsx'
 import { Field, SecretField } from './ui/field.tsx'
+import { Frame } from './ui/frame.tsx'
 import { Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
@@ -42,7 +43,7 @@ export function SignInApps({ apps, onChange }: { apps: SignInAppView[]; onChange
 function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => void }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 has-[form]:col-span-full">
+    <Frame className="flex flex-col gap-3 has-[form]:col-span-full">
       <div className="flex items-center gap-3">
         <Tile>
           <KeyRound className="size-4" />
@@ -70,7 +71,7 @@ function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => voi
           onCancel={() => setOpen(false)}
         />
       )}
-    </div>
+    </Frame>
   )
 }
 

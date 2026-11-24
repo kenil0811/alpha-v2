@@ -60,6 +60,7 @@ import {
   NUMERIC,
   readValue,
   rowCount,
+  rowsGone,
   show,
   TINT,
   whyFixed,
@@ -574,10 +575,9 @@ export function Grid({
         open={!!removing}
         title="Delete this row?"
         yes="Delete row"
+        done={rowsGone(1)}
         onClose={() => setRemoving(null)}
-        onYes={async () => {
-          if (removing && (await onRemove?.([removing]))) setRemoving(null)
-        }}
+        onYes={async () => !!removing && !!(await onRemove?.([removing]))}
       >
         {goes}
       </Confirm>

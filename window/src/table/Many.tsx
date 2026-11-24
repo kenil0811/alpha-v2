@@ -13,7 +13,7 @@ import { useTableName } from './context.ts'
 import type { PastePlan } from './Grid.tsx'
 import { useGoes } from './goes.ts'
 import { TagPicker } from './Tags.tsx'
-import { canType, isTags, readValue } from './values.ts'
+import { canType, isTags, readValue, rowsGone } from './values.ts'
 
 export function TickedBar({
   tableId,
@@ -81,9 +81,8 @@ export function TickedBar({
         open={removing}
         title={`Delete ${n === 1 ? 'this row' : `these ${n} rows`}?`}
         yes={`Delete ${n === 1 ? 'it' : 'them'}`}
-        onYes={async () => {
-          if (await onRemove()) setRemoving(false)
-        }}
+        done={rowsGone(n)}
+        onYes={onRemove}
         onClose={() => setRemoving(false)}
       >
         {goes}

@@ -104,6 +104,23 @@ export function money(amount: number, currency: string, compact = false): string
   }).format(amount)
 }
 
+// The notice once rows are deleted: Activity brings them back (L33, R6).
+export const rowsGone = (n: number) => ({
+  words: `${n === 1 ? 'The row is' : `${n} rows are`} deleted. Bring ${n === 1 ? 'it' : 'them'} back from`,
+  where: { label: 'Activity', href: '#/settings/activity' },
+})
+
+// Where a value goes outside Alpha: a link or a web address in words opens in the
+// browser, an email writes to it, a phone calls it. Anything else goes nowhere.
+export function hrefOf(field: FieldView, value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const v = value.trim()
+  if (field.kind === 'email') return `mailto:${v}`
+  if (field.kind === 'phone') return `tel:${v.replace(/[^\d+]/g, '')}`
+  const web = /^https?:\/\//i.test(v) ? v : field.kind === 'link' ? `https://${v}` : null
+  return web && URL.canParse(web) ? web : null
+}
+
 export function show(field: FieldView, value: unknown, names: Record<string, string> = {}): string {
   if (value === null || value === undefined) return ''
   if (field.kind === 'relation')

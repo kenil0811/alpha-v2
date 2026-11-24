@@ -12,7 +12,7 @@ import { EditCell } from './EditCell.tsx'
 import { type Grey, GreyChoice, isGrey } from './GreyChoice.tsx'
 import { RowMenu } from './RowMenu.tsx'
 import { TagChips } from './Tags.tsx'
-import { canEdit, EMPTY_WORDS, isTags, MARK, show, sourceTip } from './values.ts'
+import { canEdit, EMPTY_WORDS, hrefOf, isTags, MARK, show, sourceTip } from './values.ts'
 
 // A row's fields, every one: a double-click (or Enter or F2) changes one that can be typed, a
 // right-click (or Shift+F10) opens the cell's menu with where it came from. The row's view draws it,
@@ -56,6 +56,7 @@ export function FieldList({
           .map((f) => {
             const source = row.sources[f.slug]
             const text = show(f, row.values[f.slug], names)
+            const out = hrefOf(f, row.values[f.slug])
             const editable = !!onEdit && canEdit(f)
             if (editing === f.slug && onEdit)
               return (
@@ -151,6 +152,15 @@ export function FieldList({
                     ))
                   ) : isTags(f) && text ? (
                     <TagChips field={f} value={row.values[f.slug]} />
+                  ) : out ? (
+                    <a
+                      href={out}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      {text}
+                    </a>
                   ) : f.kind === 'choice' && text ? (
                     <Choice of={f} value={text} />
                   ) : (
@@ -165,7 +175,7 @@ export function FieldList({
               </>
             )
             // a field holding links cannot be a button: a link inside a button is never clicked
-            return related.length > 0 ? (
+            return related.length > 0 || out ? (
               // biome-ignore lint/a11y/noNoninteractiveTabindex: reached by Tab like every field, for F2 and the menu key
               <div key={f.id} tabIndex={0} {...props}>
                 {inner}

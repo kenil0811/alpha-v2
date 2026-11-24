@@ -108,7 +108,7 @@ export function AddRow({
     </form>
   )
   return dialog ? (
-    <Dialog open title={title} onClose={onClose}>
+    <Dialog open title={title} wide onClose={onClose}>
       {form}
     </Dialog>
   ) : (

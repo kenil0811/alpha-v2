@@ -204,10 +204,14 @@ export function useConnection(
       title={`Disconnect ${k.title}?`}
       yes="Disconnect"
       busy={busy}
+      done={{
+        words: `${k.title} is disconnected. Connect it again from`,
+        where: { label: 'Connections', href: '#/settings/connections' },
+      }}
       onClose={() => setLeaving(false)}
       onYes={() => {
         setLeaving(false)
-        void act(() => api.delete(`/api/connections/${k.id}`))
+        return act(() => api.delete(`/api/connections/${k.id}`))
       }}
     >
       Alpha stops reading {k.account}. What it read stays, and connecting again starts from scratch.

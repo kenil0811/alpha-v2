@@ -64,7 +64,7 @@ export function CorePicture({
       >
         <img src={src} alt={alt} className={className} />
       </button>
-      <Dialog open={open} title={alt} onClose={() => setOpen(false)}>
+      <Dialog open={open} title={alt} wide onClose={() => setOpen(false)}>
         <img src={src} alt={alt} className="block max-h-[75dvh] w-auto max-w-full" />
       </Dialog>
     </>

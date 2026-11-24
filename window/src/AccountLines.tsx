@@ -201,9 +201,10 @@ function Line({
         yes="Delete"
         busy={busy}
         onClose={() => setLeaving(false)}
+        done={{ words: `${l.account} is deleted. Add it again to read it.` }}
         onYes={() => {
           setLeaving(false)
-          void act(() =>
+          return act(() =>
             api.post('/api/connect/accounts/delete', { provider: l.provider, account: l.account }),
           )
         }}

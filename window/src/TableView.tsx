@@ -44,6 +44,7 @@ import { FormView } from './table/views/FormView.tsx'
 import { MapView } from './table/views/MapView.tsx'
 import { blankFor, drawnAs, useCoreView, useKept, useWorkingList, viewOf } from './table/working.ts'
 import { Select } from './ui/field.tsx'
+import { FRAME } from './ui/frame.tsx'
 import { Roll } from './ui/roll.tsx'
 
 export function TableView({
@@ -180,13 +181,15 @@ export function TableView({
     choices.find((f) => f.name === 'Stage') ??
     choices[0]
 
-  const act = async (fn: () => Promise<void>) => {
-    if (kept) return setProblem(why)
-    setProblem(null)
+  const act = async (fn: () => Promise<void>): Promise<boolean> => {
+    setProblem(kept ? why : null)
+    if (kept) return false
     try {
       await fn()
+      return true
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That was not saved.')
+      return false
     }
   }
   const pick = (id: string | null) => {
@@ -274,7 +277,7 @@ export function TableView({
     <TableName.Provider value={{ name: data.name, id: own ? null : data.id }}>
       <ShapeFixed.Provider value={managedWhy(data.managed)}>
         <div className="flex h-full min-h-0">
-          <div className="mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
+          <div className={`${FRAME} mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden`}>
             <ViewTabs
               picker={
                 <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setView} />

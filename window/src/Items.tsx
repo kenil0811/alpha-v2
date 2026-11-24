@@ -13,6 +13,7 @@ import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
+import { FRAME } from './ui/frame.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -34,7 +35,7 @@ function Page({ kind, title, children }: { kind: string; title: string; children
 // Facts about an item, a term and its value a line each.
 function Facts({ lines }: { lines: [string, ReactNode][] }) {
   return (
-    <dl className="grid grid-cols-[160px_1fr] gap-x-4 gap-y-2 rounded-lg border border-line bg-surface px-4.5 py-3.5 text-md">
+    <dl className={`${FRAME} grid grid-cols-[160px_1fr] gap-x-4 gap-y-2 p-4 text-md`}>
       {lines.map(([term, value]) => (
         <div key={term} className="contents">
           <dt className="text-ink-3">{term}</dt>
@@ -164,7 +165,7 @@ function SchedulePage({
       />
       <h2 className="font-medium font-serif text-ink text-xl">Recent runs</h2>
       {runs.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
+        <List>
           {runs.map((r) => (
             <RunRow
               key={r.id}
@@ -176,7 +177,7 @@ function SchedulePage({
               onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
             />
           ))}
-        </div>
+        </List>
       )}
     </Page>
   )
@@ -210,14 +211,14 @@ function RunPage({ run, schedule }: { run: RunView; schedule: ScheduleView | nul
           ['Started', dayWords(run.startedAt)],
         ]}
       />
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <List>
         <RunRow
           run={run}
           open
           onOpen={() => undefined}
           onStop={() => void api.post(`/api/runs/${run.id}/stop`)}
         />
-      </div>
+      </List>
     </Page>
   )
 }
@@ -308,7 +309,13 @@ function RulePage({ rule: r }: { rule: RuleView }) {
         yes={noticed ? 'Dismiss it' : 'Revoke it'}
         busy={busy}
         onClose={() => setAsking(false)}
-        onYes={() => act(() => api.post(`/api/rules/${r.id}/revoke`)).then(() => setAsking(false))}
+        done={{ words: noticed ? 'Dismissed.' : 'The rule is revoked.' }}
+        onYes={() =>
+          act(() => api.post(`/api/rules/${r.id}/revoke`)).then((ok) => {
+            setAsking(false)
+            return ok
+          })
+        }
       >
         “{r.words}” {noticed ? 'Alpha stops following it.' : 'stops holding.'}
       </Confirm>

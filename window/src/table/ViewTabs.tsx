@@ -47,7 +47,7 @@ export function ViewTabs({
   onRename: (name: string) => void
   order: string[] // the person's order of the lists ('all' is All), kept by the core; first opens
   onOrder: (ids: string[]) => void
-  onRemove: () => void
+  onRemove: () => Promise<boolean> // true once the core deleted it
   // a list Alpha keeps itself may hold its own lists (Tasks: Today, This week…): pills that go to
   // them, in place of All, in the same one row
   links?:
@@ -255,10 +255,11 @@ export function ViewTabs({
         open={removing && !!view}
         title={`Delete ${view?.name} for everyone?`}
         yes="Delete list"
+        done={{ words: `${view?.name} is deleted.` }}
         onClose={() => setRemoving(false)}
         onYes={() => {
           setRemoving(false)
-          onRemove()
+          return onRemove()
         }}
       >
         The list goes, with its filters, sorts and columns, and can’t be brought back; the rows

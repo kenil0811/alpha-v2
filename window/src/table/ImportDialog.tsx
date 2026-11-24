@@ -50,6 +50,7 @@ export function ImportDialog({
   return (
     <Dialog
       open
+      wide
       title="Import"
       onClose={onClose}
       actions={

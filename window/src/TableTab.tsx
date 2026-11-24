@@ -8,6 +8,8 @@ import { PanelTop, PanelTopClose, PencilLine } from 'lucide-react'
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { api } from './api.ts'
 import { useLayout } from './layout.ts'
+import { partId } from './ModuleSetup.tsx'
+import { notify } from './ui/notice.tsx'
 import { MenuItem, Popover, useContextMenu } from './ui/popover.tsx'
 import { Renamable } from './ui/rename.tsx'
 import { inBar, NO_TABS, pinTab } from './ui/tab-order.ts'
@@ -33,7 +35,19 @@ export function TableTab({
   const { layout, change } = useLayout()
   const kept = layout.tabs[module] ?? NO_TABS
   const shown = inBar(t, kept)
-  const toggle = () => change({ tabs: { [module]: pinTab(t, kept, !shown) } })
+  const toggle = () => {
+    change({ tabs: { [module]: pinTab(t, kept, !shown) } })
+    // a hidden table is not lost: the notice says where it is
+    if (shown)
+      notify({
+        words: `${t.name} is hidden from the header. Find it in`,
+        where: {
+          label: 'Setup › Tables',
+          href: `#/module/${module}/setup`,
+          part: partId('Tables'),
+        },
+      })
+  }
   return (
     <Renamable name={t.name} rename={(to) => api.post(`/api/tables/${t.id}/name`, { name: to })}>
       {(start) => (
