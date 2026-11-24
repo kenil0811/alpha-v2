@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 
 // Motion's helpers for what leaves : what is finished shows it first, then folds away so the
 // rest close up smoothly, and you see where it went. Reduced motion skips straight on.
@@ -117,13 +116,9 @@ export async function leaveWith(
   }
 }
 
-// ---- a record grows out of its row, and goes back into it -------------------------------------
-// The browser's own View Transitions morph one named thing into another; where they are missing,
-// or motion is reduced, the change just happens.
-
-// what the person pressed last, so an open knows which row it came from
+// what the person pressed last, and where it was, for a burst once it has folded away
 let pressed: Element | null = null
-let pressedBox: DOMRect | null = null // where it was, for a burst once it has folded away
+let pressedBox: DOMRect | null = null
 if (typeof document !== 'undefined')
   document.addEventListener(
     'pointerdown',
@@ -133,48 +128,6 @@ if (typeof document !== 'undefined')
     },
     true,
   )
-const ROW = 'tr, [role="row"], li, button, a'
-let grewFrom: HTMLElement | null = null
-
-// One transition; a newer one skips it, which is no failure, so its promises never go unheard.
-function transition(update: () => void): ViewTransition {
-  const t = document.startViewTransition(update)
-  t.ready.catch(() => undefined)
-  t.finished.catch(() => undefined)
-  return t
-}
-
-const canMorph = () =>
-  typeof document !== 'undefined' && 'startViewTransition' in document && !reduced()
-
-// Opens what update() draws (a panel marked with this name) out of the row just pressed; opened
-// any other way (the keyboard, an address), it just opens.
-export function grow(update: () => void, name = 'record') {
-  const from = justPressed(1000) ? (pressed?.closest<HTMLElement>(ROW) ?? null) : null
-  grewFrom = from
-  if (!from || !canMorph()) return update()
-  from.style.viewTransitionName = name
-  transition(() => {
-    from.style.viewTransitionName = ''
-    flushSync(update)
-  })
-}
-
-// Closes it back into the row it grew from, when that row is still there.
-export function shrink(update: () => void, name = 'record') {
-  const to = grewFrom?.isConnected ? grewFrom : null
-  grewFrom = null
-  if (!to || !canMorph()) return update()
-  const t = transition(() => {
-    flushSync(update)
-    to.style.viewTransitionName = name
-  })
-  t.finished
-    .catch(() => undefined)
-    .then(() => {
-      to.style.viewTransitionName = ''
-    })
-}
 
 // ---- earned moments ----------------------------------------------------------------------------
 // One small burst from what was just pressed, at a real milestone only: the last thing waiting on

@@ -741,21 +741,3 @@
 .alpha-map .maplibregl-ctrl-attrib-button {
   filter: var(--map-icon);
 }
-
-/* A record grows out of its row (ui/motion.ts), short, on the curves above; the rest of the screen
-   does not fade (ui-rules L23) */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-}
-::view-transition-group(record) {
-  animation-duration: 320ms;
-  animation-timing-function: var(--ease-spring);
-}
-::view-transition-old(record),
-::view-transition-new(record) {
-  animation-duration: 200ms;
-  height: 100%;
-  object-fit: cover;
-  object-position: top left;
-}

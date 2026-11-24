@@ -18,7 +18,6 @@ export function SidePanel({
   full,
   head,
   keep,
-  morph,
 }: {
   title: ReactNode
   onClose: () => void
@@ -28,7 +27,6 @@ export function SidePanel({
   full?: string // where Open page goes: a large button across the panel's foot
   head?: ReactNode // a header of its own, in place of the title and its buttons
   keep?: number // the room it always leaves the rest of the window (the rail and the screen)
-  morph?: string // the name it grows from a row by (ui/motion.ts grow)
 }) {
   const sizable = onWidth !== undefined
   const [room, setRoom] = useState(() => window.innerWidth)
@@ -50,10 +48,7 @@ export function SidePanel({
 
   return (
     <aside
-      style={{
-        ...(sizable ? { width: shown } : {}),
-        ...(morph ? { viewTransitionName: morph } : {}),
-      }}
+      style={sizable ? { width: shown } : undefined}
       className={cn(
         // a firmer edge and a soft shadow, so it reads as lying over the page
         'relative z-(--z-raised) flex min-h-0 shrink-0 flex-col border-edge border-l bg-surface shadow-(--elev-side)',

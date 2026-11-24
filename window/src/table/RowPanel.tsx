@@ -52,7 +52,6 @@ export function RowPanel({
       }
       onClose={onClose}
       full={`#/row/${row.id}`}
-      morph="record"
     >
       <RowBody {...rest} row={row} />
       <RecordPages row={row.id} />
