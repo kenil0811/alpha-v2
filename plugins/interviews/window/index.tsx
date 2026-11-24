@@ -6,6 +6,7 @@
 // own screens do.
 import {
   askFor,
+  Busy,
   Button,
   type ChapterProps,
   Check,
@@ -86,23 +87,32 @@ function useLearned({ screen, reload, next }: ChapterProps) {
   return { drafting, empty, problem: (screen.problem ?? null) as string | null }
 }
 
-// While it is read and written: one quiet line, with what was read under it.
+// While it is read and written: what it is doing, in words, and each source read so far with how
+// much, in one quiet list; it fills in by itself while the person carries on.
 function Writing({ found }: { found: Found[] }) {
   return (
-    <div className="flex flex-col gap-3">
-      <p className="flex items-center gap-2 text-ink-2">
-        <LoaderCircle className="size-4 animate-spin" /> Reading what you connected. This fills in
-        by itself; carry on below.
+    <div className="flex flex-col gap-4">
+      <p className="flex flex-col gap-0.5">
+        <Busy className="text-md">Reading</Busy>
+        <span className="text-ink-3 text-sm">This fills in by itself. You can carry on.</span>
       </p>
-      {/* the spot for a live "I've read …" line, from the report of what Alpha read */}
-      <ul data-slot="read-so-far" className="flex flex-col gap-1">
-        {found.map((f) => (
-          <li key={f.name} className="text-sm">
-            <span className="font-medium text-ink">{f.name}</span>
-            <span className="text-ink-3"> {f.words}</span>
-          </li>
-        ))}
-      </ul>
+      {found.length > 0 && (
+        <ul
+          data-slot="read-so-far"
+          className="flex flex-col rounded-lg border border-line bg-surface"
+        >
+          {found.map((f) => (
+            <li
+              key={f.name}
+              className="flex items-center gap-3 border-hair border-t px-3.5 py-2.5 first:border-t-0"
+            >
+              <Check className="size-3.5 shrink-0 text-good" />
+              <span className="min-w-0 flex-1 truncate text-ink text-md">{f.name}</span>
+              <span className="shrink-0 text-ink-3 text-sm">{f.words}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -191,7 +201,7 @@ function Learned(p: ChapterProps) {
       </ul>
       {drafting && (
         <p className="flex items-center gap-2 text-ink-3 text-sm">
-          <LoaderCircle className="size-3.5 animate-spin" /> Learning more
+          <Busy>Learning more</Busy>
         </p>
       )}
       <Refusal words={doing.problem} />
@@ -209,7 +219,7 @@ function Questions(p: ChapterProps) {
   if (!question)
     return drafting ? (
       <p className="flex items-center gap-2 text-ink-3">
-        <LoaderCircle className="size-4 animate-spin" /> Working out what to ask
+        <Busy>Working out what to ask</Busy>
       </p>
     ) : (
       <p className="flex items-center gap-2 text-ink-2">

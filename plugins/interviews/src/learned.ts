@@ -27,6 +27,20 @@ const lines = (v: unknown) =>
     .map((x) => x.trim())
     .filter(Boolean)
 
+// A source's reading in a few words: its first sentence, how much was read ("885 mails in the last
+// 90 days", "11 sites"), with any list after a colon and any row ids left out.
+export function countOf(words: string): string {
+  const first = ((words.split('\n')[0] ?? '').split(/\.\s/)[0] ?? '')
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\.$/, '')
+    .trim()
+  const [head, list] = first.split(/:\s(.*)/s)
+  // a list with no count before it ("Modules: Calendar, Network") is counted
+  if (list && head && !/\d/.test(head))
+    return `${list.split(/,\s*|;\s*/).length} ${head.toLowerCase()}`
+  return head ?? ''
+}
+
 export function learnedScreen(host: PluginHost, who: Who, step: Step = 'learned') {
   // what is connected is read, in the background, as soon as these steps are drawn
   startReading(host, who)
@@ -54,7 +68,11 @@ export function learnedScreen(host: PluginHost, who: Who, step: Step = 'learned'
           : null
   return {
     says: {
-      learned: 'Here’s what I learned about you. Approve what’s right.',
+      // never "here's what I learned" before anything is
+      learned:
+        busy && !about.length
+          ? 'Let me read what you connected.'
+          : 'Here’s what I learned about you. Approve what’s right.',
       questions: 'A few questions only you can answer.',
       plate: 'Here’s what I could take off your plate.',
     }[step],
@@ -64,9 +82,8 @@ export function learnedScreen(host: PluginHost, who: Who, step: Step = 'learned'
     drafting: busy,
     problem: st.problem,
     // what was read, as Get to know you showed it, while the draft is written
-    found: st.found
-      .filter((f) => f.on)
-      .map((f) => ({ name: f.name, words: f.words.split('\n')[0] ?? '' })),
+    // what was read, each in a few words: how much, never its rows, ids or what they say
+    found: st.found.filter((f) => f.on).map((f) => ({ name: f.name, words: countOf(f.words) })),
     question: next
       ? {
           id: next.id,

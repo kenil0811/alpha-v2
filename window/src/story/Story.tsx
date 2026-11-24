@@ -1,12 +1,12 @@
-// Set up Alpha: the first run as one continuous page over the window (23 Nov; the 22 Nov story's
-// chapters are its steps). A slim progress bar and Later at the top; each step opens
-// under the one before once that is done or skipped, Alpha's face saying its one line, the step,
-// and Skip and its own act at its foot. The core draws every step from state (core/src/api/
+// Set up Alpha: the first run over the window, one step on screen at a time (the 22 Nov story's
+// chapters are its steps). Later at the top and dots at the right edge; Alpha's face saying the
+// step's one line, the step, and Previous, Skip and its own act at its foot. Nothing scrolls back
+// to an earlier step: Previous goes to it. The core draws every step from state (core/src/api/
 // story.ts); each part keeps its place from the first frame, so nothing moves as things load
 // (ui-rules U1 to U4).
 import type { ChapterScreen, StoryView } from '@alpha/core/api'
 import { Check, Minus } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from '../api.ts'
 import { Face } from '../Face.tsx'
 import { Refusal, useAct } from '../ui/act.tsx'
@@ -64,20 +64,22 @@ const through = (c: Step) => c.state === 'done' || c.state === 'skipped'
 
 function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
   const [story, setStory] = useState(first)
-  useState(() => {
-    openedAt.at = Date.now()
-  })
   const list = story.chapters
-  // every step gone through or skipped, and the one the person is on; opened again after the
-  // end, every step
-  const at = story.at ? list.findIndex((c) => c.key === story.at) : list.length - 1
-  const open = list.slice(0, at + 1)
-  const moved = (s: StoryView) => {
+  // the one step on screen: where the person is, or one before it they went back to with Previous
+  const [viewing, setViewing] = useState(() => story.at ?? list[0]?.key ?? 'done')
+  const index = list.findIndex((c) => c.key === viewing)
+  const step = list[index]
+  const moved = (s: StoryView, on: boolean) => {
     setStory(s)
-    if (s.done) onClose()
+    if (s.done) return onClose()
+    if (!on) return
+    // on from the step on screen: to the next one, never past where the person is
+    const atNow = s.chapters.findIndex((c) => c.key === s.at)
+    const nextAt = Math.min(index + 1, atNow < 0 ? s.chapters.length - 1 : atNow)
+    setViewing(s.chapters[nextAt]?.key ?? s.at ?? 'done')
   }
   return (
-    <div className="fixed inset-0 z-(--z-overlay) snap-y snap-proximity overflow-y-auto bg-canvas text-base text-ink">
+    <div className="fixed inset-0 z-(--z-overlay) flex flex-col overflow-y-auto bg-canvas text-base text-ink">
       <header className="sticky top-0 z-(--z-raised) bg-canvas/95 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-[760px] items-center gap-4 px-4 md:px-8">
           <p className="flex-1 font-semibold text-ink-2 text-sm">Set up Alpha</p>
@@ -86,45 +88,44 @@ function Story({ first, onClose }: { first: StoryView; onClose: () => void }) {
           </Button>
         </div>
       </header>
-      <Dots list={list} at={story.at} />
-      <main className="mx-auto flex max-w-[760px] flex-col px-4 pr-8 md:px-8">
-        {open.map((c, i) => (
+      <Dots list={list} viewing={viewing} onPick={setViewing} />
+      <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col px-4 pr-8 md:px-8">
+        {step && (
           <StepPart
-            key={c.key}
-            step={c}
-            n={i + 1}
-            here={c.key === story.at}
+            key={step.key}
+            step={step}
+            here={step.key === story.at}
             fresh={first.fresh}
             moved={moved}
+            back={index > 0 ? () => setViewing(list[index - 1]?.key ?? viewing) : null}
             leave={onClose}
           />
-        ))}
+        )}
       </main>
     </div>
   )
 }
 
-const scrollTo = (key: string, gently: boolean) => {
-  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  document
-    .getElementById(`step-${key}`)
-    ?.scrollIntoView({ behavior: gently && !still ? 'smooth' : 'auto', block: 'start' })
-}
-// when the page opened: a step there from the start is shown at once, one that opens later glides in
-const openedAt = { at: 0 }
-
 // The steps as vertical dots at the right edge, like a slideshow's: the one the person is on
 // filled and a little larger; one gone through goes there, named in its tip with what happened;
 // those ahead are faint, unnamed and can't be pressed, so nothing ahead is told.
-function Dots({ list, at }: { list: Step[]; at: string | null }) {
+function Dots({
+  list,
+  viewing,
+  onPick,
+}: {
+  list: Step[]
+  viewing: string
+  onPick: (key: string) => void
+}) {
   return (
     <nav
       aria-label="Steps"
       className="fixed top-1/2 right-[max(env(safe-area-inset-right),6px)] z-(--z-raised) flex -translate-y-1/2 flex-col items-center gap-2 md:right-4 md:gap-3"
     >
       {list.map((c) => {
-        const here = c.key === at
-        const gone = through(c)
+        const here = c.key === viewing
+        const gone = through(c) || c.state === 'now'
         const tip = [c.title, c.summary].filter(Boolean).join(' · ')
         return (
           <button
@@ -134,7 +135,7 @@ function Dots({ list, at }: { list: Step[]; at: string | null }) {
             aria-label={gone || here ? tip : 'A step ahead'}
             aria-current={here ? 'step' : undefined}
             data-tip={gone || here ? tip : undefined}
-            onClick={() => scrollTo(c.key, true)}
+            onClick={() => onPick(c.key)}
             className="grid size-4 place-items-center disabled:cursor-default"
           >
             <span
@@ -154,23 +155,22 @@ function Dots({ list, at }: { list: Step[]; at: string | null }) {
   )
 }
 
-// One step on the page, filling the screen under the top bar: the page settles on a step as it
-// scrolls near one, never holding the person from the middle of a step taller than the screen. Alpha's line, the step's own part, and
-// its foot: Skip and its act on the step the person is on; its act alone on one gone through,
-// scrolled back to and changed in place.
+// One step on the page, the only one on screen: Alpha's line, the step's own part, and its foot,
+// Previous to the step before (none on the first), Skip on the step the person is on, and its act.
+// A step gone through, gone back to with Previous, is changed in place and goes on to the next.
 function StepPart({
   step,
-  n,
   here,
   fresh,
   moved,
+  back,
   leave,
 }: {
   step: Step
-  n: number
   here: boolean
   fresh: boolean
-  moved: (s: StoryView) => void
+  moved: (s: StoryView, on: boolean) => void
+  back: (() => void) | null
   leave: () => void
 }) {
   const key = step.key
@@ -183,28 +183,19 @@ function StepPart({
     api.get<ChapterScreen>(`/api/story/${key}`).then(setScreen, () => undefined)
   }, [key])
   useEffect(load, [load])
-  // the step the person is on comes into view once it is drawn, so nothing loading above it moves
-  // the page after: at once when the page opens on it, gently when it opens after a step is done
-  const loaded = !!screen
-  const shown = useRef(false)
-  useEffect(() => {
-    if (!here || n === 1 || !loaded || shown.current) return
-    shown.current = true
-    scrollTo(key, Date.now() - openedAt.at > 1500)
-  }, [here, n, key, loaded])
   const go = (skip: boolean) =>
     void act(async () => {
       const out = await api.post<{ story: StoryView }>(
         `/api/story/${key}${skip ? '/skip' : ''}`,
         skip ? {} : (next.body?.() ?? {}),
       )
-      moved(out.story)
+      moved(out.story, true)
     })
   // a step's own act from its part (an answer, an approval): on when it says, else read again,
-  // so an answer on a step gone through keeps the person where they are
+  // so an answer keeps the person where they are
   const actHere = async (body: unknown) => {
     const out = await api.post<{ story: StoryView; on?: boolean }>(`/api/story/${key}`, body)
-    moved(out.story)
+    moved(out.story, !!out.on)
     if (!out.on) load()
   }
   const doneSaying = useCallback(() => setSaid(true), [])
@@ -225,7 +216,7 @@ function StepPart({
     <section
       id={`step-${key}`}
       aria-label={step.title}
-      className="story-rise flex min-h-[calc(100dvh-3rem)] snap-start scroll-mt-12 flex-col justify-center gap-6 py-10"
+      className="story-rise flex min-h-[calc(100dvh-3rem)] flex-col justify-center gap-6 py-10"
     >
       <header className="flex min-h-12 items-start gap-4">
         <div className="size-10 shrink-0">
@@ -261,6 +252,11 @@ function StepPart({
       </div>
       {screen && (
         <footer className="flex flex-wrap items-center gap-2">
+          {back && (
+            <Button variant="ghost" disabled={busy} onClick={back}>
+              Previous
+            </Button>
+          )}
           {skippable && (
             <Button variant="ghost" disabled={busy} onClick={() => go(true)}>
               Skip
