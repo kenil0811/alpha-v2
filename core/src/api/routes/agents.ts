@@ -16,7 +16,7 @@ import {
 } from '../../modules/agents.ts'
 import { moduleNetwork, removeHost } from '../../modules/runs/reach.ts'
 import { agentSchedules } from '../../modules/schedules.ts'
-import { fromView } from '../../modules/shipped.ts'
+import { fromView, refuseShipped } from '../../modules/shipped.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import { STATE_WORDS } from '../../world/tasks/index.ts'
@@ -151,6 +151,27 @@ export function registerAgents(ctx: Ctx): void {
       schedules: schedulesOf(id),
       sites: sitesOf(id),
     }
+  })
+
+  // A person's own edit of an agent's instructions is a proposal to the Chief of staff, never
+  // written as typed: it fits it in with its own tool, or asks with a card where it conflicts. The
+  // person's words alone are their message; the Chief of staff also reads what it is for
+  // (config/proposing.md). A shipped agent changes only with its source (G1), so it is refused
+  // here, before anything is sent.
+  app.post('/api/agents/:id/propose', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { instructions } = z
+      .object({ instructions: z.string().trim().min(1).max(20_000) })
+      .parse(req.body)
+    const a = world.agents.get(id)
+    if (!a) throw new Refused('That agent is not there.')
+    refuseShipped(world, a)
+    const read = config.proposing({
+      name: a.name,
+      was: instructionsOf(world, id),
+      proposed: instructions,
+    })
+    return { turn: engine.say(user, instructions, null, CHIEF, [], read) }
   })
 
   // A site taken off an agent's list: a link it writes to that site asks again.

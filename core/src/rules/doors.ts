@@ -326,6 +326,8 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/agents/:id/remove': 'an agent, which is no row or module',
   'POST /api/agents/:id/model': 'the model an agent runs on, which is no row or module',
   'POST /api/agents/:id/seen': 'the person opened an agent’s chat, kept with them',
+  'POST /api/agents/:id/propose':
+    "the person's message to the Chief of staff proposing an agent's instructions; the Chief of staff changes them through its own tool, under G1",
   'POST /api/agents/:id/sites/remove': "a site off an agent's list, which is no row or module",
   'tool memory': "an agent's memory, which is no row or module",
   'tool list_agents': 'reads the team',

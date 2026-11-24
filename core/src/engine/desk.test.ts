@@ -151,6 +151,27 @@ describe('the desk', () => {
     desk.close()
   })
 
+  it('keeps only the person’s own words as their message when the model reads more around them', async () => {
+    const heard: string[] = []
+    const { desk, idle } = deskWith(async (text) => {
+      heard.push(text)
+      return [result('Changed them.')]
+    })
+    const done = idle()
+    desk.say(
+      'Call back within a day.',
+      null,
+      [],
+      'A proposal for Sales:\n\nCall back within a day.',
+    )
+    await done
+    expect(world.lines({ kinds: ['said'] }).map((l) => l.words)).toEqual([
+      'Call back within a day.',
+    ])
+    expect(heard).toEqual(['A proposal for Sales:\n\nCall back within a day.'])
+    desk.close()
+  })
+
   it('refuses a removal of the person’s own rows on a card, and lets it through on their yes', async () => {
     const m = world.shape.makeModule('Food', { actor: { kind: 'alpha' } })
     const t = world.shape.makeTable(m.id, 'Meals', [{ name: 'Food', kind: 'text' }], {

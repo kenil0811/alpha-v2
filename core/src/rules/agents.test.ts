@@ -94,6 +94,16 @@ rule('G1', 'an agent that shipped changes only with its source', {
       const r = await w.post(`/api/agents/${id}/undo`, { commit: 'HEAD', path: 'AGENT.md' })
       return r.status === 409 && /Sourcing/.test(String(r.body.problem))
     },
+    'its instructions proposed in the window: refused before anything is sent, naming the kit':
+      async (w) => {
+        const id = await sourcing(w)
+        const r = await w.post(`/api/agents/${id}/propose`, { instructions: 'Look in Ohio.' })
+        return (
+          r.status === 409 &&
+          /Sourcing/.test(String(r.body.problem)) &&
+          w.world.lines({ kinds: ['said'] }).length === 0
+        )
+      },
     'its source: the kit’s update changes it': async (w) => {
       const id = await sourcing(w)
       await update(w.world, 'Sourcing', join(KITS, 'sourcing-2'), person(w))

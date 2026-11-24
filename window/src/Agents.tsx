@@ -12,6 +12,7 @@ import { Record } from './Record.tsx'
 import { MODEL_NAMES } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
@@ -19,6 +20,7 @@ import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
+import { SaveCancel } from './ui/yes-no.tsx'
 
 export const CHIEF = 'chief'
 
@@ -139,7 +141,14 @@ export function AgentRail({
 // Failed when something of its failed since they last opened its chat; nothing otherwise.
 function AgentMark({ id, stream }: { id: string; stream: Stream | null }) {
   const waiting = stream?.cards.filter((c) => c.agent === id).length ?? 0
-  if (waiting) return <Pill tone="warn">{waiting} waiting</Pill>
+  // the number alone in the waiting colour; a screen reader hears what it counts
+  if (waiting)
+    return (
+      <Pill tone="warn">
+        {waiting}
+        <span className="sr-only"> waiting for you</span>
+      </Pill>
+    )
   if (stream?.failed.includes(id)) return <Pill tone="bad">Failed</Pill>
   return null
 }
@@ -254,21 +263,15 @@ export function AgentPage({
         <Refusal words={problem} />
       </div>
       {!a.chief && (
-        <section className="flex flex-col gap-1.5">
-          <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
-            Instructions
-            <Info
-              help={
-                a.from.kind === 'here'
-                  ? 'Ask the Chief of staff or this agent to change them.'
-                  : `They change with ${a.from.name}. Add to them through its memory or How to work.`
-              }
-            />
-          </h2>
-          <div className="text-md">
-            <Words text={a.instructions || 'None yet.'} />
-          </div>
-        </section>
+        <Instructions
+          id={a.id}
+          text={a.instructions}
+          fixed={
+            a.from.kind === 'here'
+              ? null
+              : `They change with ${a.from.name}. Add to them through its memory or How to work.`
+          }
+        />
       )}
       <Memories id={a.id} memories={a.memories} onChange={load} />
       <AgentSchedules
@@ -480,6 +483,77 @@ function Memories({
           </li>
         ))}
       </ul>
+    </section>
+  )
+}
+
+// An agent's instructions: a double-click edits them in place, Escape or ✕ leaving them as they
+// were. ✓ never writes them as typed: it sends them to the Chief of staff, which fits them in, or
+// asks with a card where they conflict; the person's message is their own words. A shipped
+// agent's are greyed, and a double-click says why they change only with its source (rules G1).
+function Instructions({ id, text, fixed }: { id: string; text: string; fixed: string | null }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const [why, setWhy] = useState(false)
+  const [sent, setSent] = useState(false)
+  const { busy, problem, act } = useAct()
+  const save = () => {
+    if (draft === null || busy) return
+    if (!draft.trim() || draft.trim() === text.trim()) return setDraft(null)
+    void act(async () => {
+      await api.post(`/api/agents/${id}/propose`, { instructions: draft })
+      setDraft(null)
+      setSent(true)
+    })
+  }
+  return (
+    <section className="flex flex-col gap-1.5">
+      <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
+        Instructions
+        <Info
+          help={
+            fixed ??
+            'Double-click to change them. ✓ sends your change to the Chief of staff, which fits it in, or asks you where it conflicts.'
+          }
+        />
+      </h2>
+      {draft === null ? (
+        // biome-ignore lint/a11y/noStaticElementInteractions: a double-click edits, as a name's does
+        <div
+          className={cn('text-md', fixed && 'text-ink-2')}
+          onDoubleClick={() => {
+            if (fixed) setWhy(true)
+            else {
+              setSent(false)
+              setDraft(text)
+            }
+          }}
+        >
+          <Words text={text || 'None yet.'} />
+        </div>
+      ) : (
+        <div className="flex flex-col items-end gap-1.5">
+          <textarea
+            // biome-ignore lint/a11y/noAutofocus: the double-click asked for it
+            autoFocus
+            aria-label="Instructions"
+            value={draft}
+            rows={Math.min(18, Math.max(4, draft.split('\n').length + 1))}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setDraft(null)
+            }}
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-md text-ink outline-none focus:border-accent-line focus:ring-3 focus:ring-accent-soft"
+          />
+          <SaveCancel onSave={save} onCancel={() => setDraft(null)} />
+        </div>
+      )}
+      {why && fixed && <p className="text-ink-2 text-sm">{fixed}</p>}
+      {sent && (
+        <p className="text-ink-2 text-md">
+          Sent to the Chief of staff. It changes them, or asks you in its chat.
+        </p>
+      )}
+      <Refusal words={problem} />
     </section>
   )
 }

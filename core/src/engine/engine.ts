@@ -241,11 +241,12 @@ export class Engine {
     from: { id: string; name: string } | null = null,
     agent = CHIEF,
     named: string[] = [],
+    read: string = words, // what the model reads, when it is more than the person's words
   ): string {
     // one teammate named: straight to it, and its answer is the reply here
     const [one, ...more] = named
     if (one && !more.length && one !== agent) return this.sayDirect(user, words, from, agent, one)
-    return this.desk(user, agent).say(words, from, named)
+    return this.desk(user, agent).say(words, from, named, read)
   }
 
   private answerLine(

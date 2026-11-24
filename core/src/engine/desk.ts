@@ -165,7 +165,6 @@ export class Desk {
     ].filter(Boolean)
   }
 
-  // The teammates the person picked with @ on this message.
   // Where this desk's session is kept: an agent's chat, or one task's thread with it.
   private get sessionKey(): string {
     return this.lane ? `${this.agentId}#${this.lane}` : this.agentId
@@ -218,6 +217,7 @@ export class Desk {
     words: string,
     from: { id: string; name: string } | null = null,
     named: string[] = [],
+    read: string = words, // what the model reads, at times more; the journal keeps their words
   ): string {
     const own = this.laneTurn()
     const line = this.world.line({
@@ -234,7 +234,7 @@ export class Desk {
     const at = this.queue.findIndex((t) => t.low)
     this.queue.splice(at < 0 ? this.queue.length : at, 0, {
       turn,
-      text: words,
+      text: read,
       said: { message: line.id, user: this.user.id },
       message: words,
       from,
