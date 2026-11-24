@@ -516,6 +516,8 @@ function Instructions({ id, text, fixed }: { id: string; text: string; fixed: st
           }
         />
       </h2>
+      {/* asked on a shipped agent: why, above words that may run long */}
+      {why && fixed && <p className="text-ink-2 text-sm">{fixed}</p>}
       {draft === null ? (
         // biome-ignore lint/a11y/noStaticElementInteractions: a double-click edits, as a name's does
         <div
@@ -547,7 +549,6 @@ function Instructions({ id, text, fixed }: { id: string; text: string; fixed: st
           <SaveCancel onSave={save} onCancel={() => setDraft(null)} />
         </div>
       )}
-      {why && fixed && <p className="text-ink-2 text-sm">{fixed}</p>}
       {sent && (
         <p className="text-ink-2 text-md">
           Sent to the Chief of staff. It changes them, or asks you in its chat.
