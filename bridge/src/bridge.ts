@@ -21,7 +21,7 @@ import { type Config, type Lend, lends, lentNow } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.5.4'
+export const VERSION = '0.5.5'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =

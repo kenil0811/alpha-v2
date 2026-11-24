@@ -4,6 +4,6 @@
 
 export { checkConnector } from '../../connector-sdk/src/check.ts'
 export * from '../../connector-sdk/src/connector.ts'
-export { type HelperOptions, runHelper } from '../../connector-sdk/src/helper.ts'
+export { type HelperOptions, helperBinary, runHelper } from '../../connector-sdk/src/helper.ts'
 export { type CallOptions, makeCall } from '../../connector-sdk/src/runtime.ts'
 export { CONTACTS, EVENTS, who } from '../../connector-sdk/src/shared-tables.ts'

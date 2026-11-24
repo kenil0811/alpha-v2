@@ -7,7 +7,7 @@ import { homedir, hostname, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { appDirs } from '@alpha/connector-computer/paths'
 import { macApps } from '@alpha/connector-computer/read'
-import { type HelperOptions, runHelper } from '@alpha/connector-sdk'
+import { type HelperOptions, helperBinary, runHelper } from '@alpha/connector-sdk'
 import type { Start } from './children.ts'
 
 // Where the code it runs is: beside it in the zip, bundled; or in the repository.
@@ -37,12 +37,13 @@ export const LENDS_HERE = process.platform === 'darwin' ? ['calendar', 'contacts
 // the app only when the Alpha it is paired with says it offers them (welcome's offers).
 export const READERS = ['browsing', 'apps', 'ai-work']
 
-// Alpha's helper, carried beside the Bridge in the app (or built in the repository), run here for
-// Calendar and Contacts, so macOS asks this computer's person.
+// Alpha's helper, carried inside the Bridge as a plain command (or built in the repository), run
+// here for Calendar and Contacts: started by the Bridge itself, so macOS asks this computer's
+// person on Alpha Bridge's behalf, and no second app is listed.
 const HELPER =
   process.env.ALPHA_HELPER_APP ??
   (packed
-    ? join(root, 'Alpha Helper.app')
+    ? join(root, 'alpha-helper')
     : join(root, 'connector-sdk', 'helper', 'build', 'Alpha Helper.app'))
 export const helper = (args: string[], options: Record<string, unknown>): Promise<unknown> => {
   // the apps here, with Spotlight's last use: asked of the Bridge itself, which Spotlight answers
@@ -51,8 +52,13 @@ export const helper = (args: string[], options: Record<string, unknown>): Promis
     return Promise.resolve(macApps(appDirs()))
   if (process.platform !== 'darwin' || !existsSync(HELPER))
     return Promise.reject(new Error("Alpha's helper is not on this computer."))
-  // the helper lives inside Alpha Bridge, so macOS names Alpha Bridge as asking
-  return runHelper(HELPER, args, { ...(options as HelperOptions), asker: 'Alpha Bridge' })
+  // a whole helper app (the repository's build, or one named from outside): its command, run so
+  const command = HELPER.endsWith('.app') ? helperBinary(HELPER) : HELPER
+  return runHelper(command, args, {
+    ...(options as HelperOptions),
+    tool: true,
+    asker: 'Alpha Bridge',
+  })
 }
 
 // A connector's process: in Anthropic's sandbox on a Mac, reading only its code and the folders

@@ -125,8 +125,9 @@ async function resources(platform: (typeof PLATFORMS)[number]['platform']): Prom
     copyFileSync(join(unpacked, top, 'bin', 'node'), join(dir, 'node', 'bin', 'node'))
     chmodSync(join(dir, 'node', 'bin', 'node'), 0o755)
     copyFileSync(join(unpacked, top, 'LICENSE'), join(dir, 'node', 'LICENSE'))
-    // Alpha's helper, for Calendar and Contacts, beside the Bridge in the app
-    run('sh', [join(ROOT, 'connector-sdk', 'helper', 'build.sh'), dir])
+    // Alpha's helper, for Calendar and Contacts: a plain command inside the Bridge, never an app
+    // of its own, so macOS names Alpha Bridge as asking and lists one app
+    run('sh', [join(ROOT, 'connector-sdk', 'helper', 'build.sh'), dir, 'tool'])
   }
   rmSync(unpacked, { recursive: true, force: true })
   return dir

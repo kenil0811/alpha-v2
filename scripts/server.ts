@@ -183,9 +183,26 @@ else if (what === 'setup' && host && rest[0]) {
 } else if (what === 'bridge' && host) {
   // the newest signed zip for each computer, into the Alpha's own bridge folder
   const dir = join(ROOT, '.data', 'bridge')
-  // each file with its signatures: Kenil's (.sig) and, for an update, the updater key's
-  const files = readdirSync(dir)
-    .filter((f) => /^alpha-bridge-.*\.(zip|dmg|exe|gz)(\.sig|\.updater\.sig)?$/.test(f))
+  // each file with its signatures: Kenil's (.sig) and, for an update, the updater key's; only the
+  // newest version for each computer, never every one built (they add up to more than a gigabyte)
+  const all = readdirSync(dir).filter((f) =>
+    /^alpha-bridge-.*\.(zip|dmg|exe|gz)(\.sig|\.updater\.sig)?$/.test(f),
+  )
+  const of = (f: string) => /^alpha-bridge-(\d+)\.(\d+)\.(\d+)-([a-z]+-[a-z0-9]+)/.exec(f)
+  const newest = new Map<string, number[]>()
+  for (const f of all) {
+    const m = of(f)
+    if (!m) continue
+    const v = [Number(m[1]), Number(m[2]), Number(m[3])]
+    const was = newest.get(m[4] ?? '') ?? [-1, -1, -1]
+    const later = v.findIndex((x, i) => x !== was[i])
+    if (later >= 0 && (v[later] ?? 0) > (was[later] ?? 0)) newest.set(m[4] ?? '', v)
+  }
+  const files = all
+    .filter((f) => {
+      const m = of(f)
+      return !!m && newest.get(m[4] ?? '')?.join('.') === `${m[1]}.${m[2]}.${m[3]}`
+    })
     .map((f) => join(dir, f))
   if (!files.length) throw new Error('No Bridge here yet: pnpm bridge mac first.')
   put(host, files, '/tmp/')

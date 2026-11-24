@@ -17,6 +17,7 @@ export interface HelperOptions {
   raw?: boolean // the answer is the bytes themselves (a secret), not JSON
   asApp?: boolean // through `open`, for what macOS asks the person about
   asker?: string // the app macOS names as asking, the helper being inside it (Alpha, Alpha Bridge)
+  tool?: boolean // the helper is a plain command inside an app (Alpha Bridge), run as it is
 }
 
 export async function runHelper(
@@ -24,9 +25,11 @@ export async function runHelper(
   args: string[],
   options: HelperOptions = {},
 ): Promise<unknown> {
-  if (options.asApp) return runAsApp(app, args, options.asker)
+  if (options.asApp && !options.tool) return runAsApp(app, args, options.asker)
   const text = await new Promise<string>((resolve, reject) => {
-    const child = spawn(helperBinary(app), args, { stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(options.tool ? app : helperBinary(app), args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
     let out = ''
     child.stdout.on('data', (d) => {
       out += d
@@ -41,7 +44,7 @@ export async function runHelper(
     if (text.startsWith('{"ok":false')) return null
     return text
   }
-  return parseAnswer(text)
+  return parseAnswer(text, options.asker)
 }
 
 // `open -W` can lose a helper that already ended before it began waiting for it ("kevent() failed:
