@@ -31,6 +31,7 @@ import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
 import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
+import { trailOf } from './path.ts'
 import { forward, type Place, placeOf } from './place.ts'
 import { PluginPage } from './plugin/page.tsx'
 import { screenOf, switchedOn } from './plugin/screens.ts'
@@ -48,7 +49,7 @@ import { frameOf } from './table/frame.ts'
 import { titleOf } from './table/values.ts'
 import { useTableLoad } from './table-load.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
-import { inside, landingOf } from './tree.ts'
+import { inside } from './tree.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { useWorkspaceHere, WorkspaceContext } from './Workspace.tsx'
@@ -300,61 +301,6 @@ export function App() {
     void refresh()
   }, [chosen, refresh])
 
-  // the page above this one, for the bar's ‹; none on a page at the top
-  const parentOf = (): { label: string; href: string } | null => {
-    const HOME = { label: 'Home', href: '#/' }
-    // above a module: the module it sits in, where that one opens, else Home
-    const aboveModule = (id: string | null): { label: string; href: string } => {
-      const up = id ? modules.find((m) => m.id === id)?.parent : null
-      const p = up ? modules.find((m) => m.id === up) : null
-      return p ? { label: p.name, href: landingOf(modules, p) } : { label: 'Home', href: '#/' }
-    }
-    switch (place.at) {
-      case 'tasks':
-        return place.id ? { label: 'Tasks', href: '#/tasks' } : HOME
-      case 'work':
-        return { label: itemName || 'The task', href: `#/tasks/${place.id}` }
-      case 'row':
-        return rowPlace && { label: rowPlace.table.name, href: `#/table/${rowPlace.table.id}` }
-      // a module's own tables and pages are the module: they go to the module it sits in, else Home
-      // (the module's address would open this same table again)
-      case 'table':
-        if (place.row) return table && { label: table.name, href: `#/table/${place.id}` }
-        return aboveModule(moduleHereId)
-      case 'module':
-        // a module's details sit under its Setup
-        if (place.tab === 'details') return { label: 'Setup', href: `#/module/${place.id}/setup` }
-        return aboveModule(place.id)
-      case 'item':
-        return place.kind === 'schedule'
-          ? { label: 'Schedules', href: '#/settings/schedules' }
-          : place.kind === 'run'
-            ? { label: 'Activity', href: '#/settings/activity' }
-            : { label: 'Permissions', href: '#/settings/permissions' }
-      // an agent's page is one of Settings › Agents
-      case 'agent':
-        return { label: 'Agents', href: '#/settings/agents' }
-      // a computer's page is one of Connections › Your computers
-      case 'computer':
-        return { label: 'Connections', href: '#/settings/connections' }
-      case 'card':
-        return { label: 'Home', href: '#/' }
-      // a kept file is one of Settings › Files
-      case 'file':
-        return { label: 'Files', href: '#/settings/files' }
-      case 'people':
-        if (!place.id) return HOME
-        return place.kind === 'company'
-          ? { label: 'Organizations', href: '#/people?companies' }
-          : { label: 'People', href: '#/people' }
-      // every other page goes Home; Home alone has nothing above it
-      case 'home':
-        return null
-      default:
-        return HOME
-    }
-  }
-
   // the screen's name, for the bar
   const screenName = (): string => {
     switch (place.at) {
@@ -426,8 +372,7 @@ export function App() {
               middle={setMiddle}
               plain={place.at === 'work'}
               ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
-              back={parentOf()}
-              path={place.at === 'row' ? rowPlace?.path : undefined}
+              trail={trailOf({ place, modules, rowPlace, table, itemName, moduleHereId })}
               next={place.at === 'home' && <NextChip version={version} />}
             />
             {problem && (

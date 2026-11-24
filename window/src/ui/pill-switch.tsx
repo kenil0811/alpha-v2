@@ -5,6 +5,7 @@
 // Move left and Move right after the table's own menu (TableTab), with the hidden ones to show again.
 import { ArrowLeft, ArrowRight, Eye } from 'lucide-react'
 import { type MouseEvent, type ReactNode, useState } from 'react'
+import { openLink } from '../opened.ts'
 import { cn } from './cn.ts'
 import { MenuHeading, MenuItem, MenuLine, Popover, useContextMenu } from './popover.tsx'
 import type { TabKeeping } from './tab-order.ts'
@@ -95,7 +96,8 @@ function SwitchPill({ tab: t, keeping }: { tab: Tab; keeping: TabKeeping | undef
   return (
     <Maybe tab={t} extra={extra}>
       {(on) => (
-        <a
+        <button
+          type="button"
           {...on}
           {...(keeping
             ? {
@@ -105,7 +107,8 @@ function SwitchPill({ tab: t, keeping }: { tab: Tab; keeping: TabKeeping | undef
                 },
               }
             : {})}
-          href={t.href}
+          data-href={t.href}
+          onClick={(e) => (t.onPick ? t.onPick() : openLink(t.href, e))}
           aria-current={t.sel ? 'page' : undefined}
           draggable={keeping ? true : undefined}
           onDragStart={(e) => {
@@ -139,7 +142,7 @@ function SwitchPill({ tab: t, keeping }: { tab: Tab; keeping: TabKeeping | undef
               {t.count.toLocaleString()}
             </span>
           )}
-        </a>
+        </button>
       )}
     </Maybe>
   )
