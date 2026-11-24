@@ -83,7 +83,7 @@ export const ViewConfig = z.object({
   widths: z.record(z.string(), z.number().min(48).max(1200)).default({}),
   frozen: z.number().int().min(1).max(50).default(1), // columns that stay at the left as it scrolls across
   wrap: z.array(z.string()).default([]), // fields whose words run onto more lines
-  clip: z.array(z.string()).default([]), // fields cut at their edge; the rest run on into an empty neighbour
+  overflow: z.array(z.string()).default([]), // fields whose long words run on into empty neighbours; the rest are cut at their edge
   totals: z.record(z.string(), z.enum(TOTAL_OPS)).default({}),
   colours: z
     .object({
@@ -147,7 +147,7 @@ export function resolveConfig(table: Table, input: unknown): ViewConfig {
     order: c.order.map(id),
     widths: Object.fromEntries(Object.entries(c.widths).map(([k, v]) => [id(k), v])),
     wrap: c.wrap.map(id),
-    clip: c.clip.map(id),
+    overflow: c.overflow.map(id),
     totals: Object.fromEntries(Object.entries(c.totals).map(([k, v]) => [id(k), v])),
     colours: {
       tint: opt(c.colours.tint),
@@ -227,7 +227,7 @@ export function namedConfig(table: Table, c: ViewConfig): ViewConfig {
         .map(([k, v]) => [name(k) as string, v]),
     ),
     wrap: c.wrap.filter(known).map((w) => name(w) as string),
-    clip: c.clip.filter(known).map((w) => name(w) as string),
+    overflow: c.overflow.filter(known).map((w) => name(w) as string),
     totals: Object.fromEntries(
       Object.entries(c.totals)
         .filter(([k]) => known(k))

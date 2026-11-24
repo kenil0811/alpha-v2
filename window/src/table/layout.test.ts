@@ -2,18 +2,18 @@ import type { ViewConfig } from '@alpha/core/api'
 import { expect, it } from 'vitest'
 import { layoutOf, runOn } from './layout.ts'
 
-it('keeps a column in one of Overflow, Wrap and Clip', () => {
-  let c = { frozen: 1, wrap: ['a'], clip: [] } as unknown as ViewConfig
+it('keeps a column in one of Clip (the default), Overflow and Wrap', () => {
+  let c = { frozen: 1, wrap: ['a'], overflow: [] } as unknown as ViewConfig
   const now = () =>
     layoutOf(c, (n) => {
       c = n
     })
   expect(now().spillOf('a')).toBe('wrap')
-  expect(now().spillOf('b')).toBe('overflow')
-  now().setSpill('a', 'clip')
-  expect([c.wrap, c.clip]).toEqual([[], ['a']])
+  expect(now().spillOf('b')).toBe('clip')
   now().setSpill('a', 'overflow')
-  expect([c.wrap, c.clip, now().spillOf('a')]).toEqual([[], [], 'overflow'])
+  expect([c.wrap, c.overflow]).toEqual([[], ['a']])
+  now().setSpill('a', 'clip')
+  expect([c.wrap, c.overflow, now().spillOf('a')]).toEqual([[], [], 'clip'])
 })
 
 it('runs a cell on over the empty cells after it only as far as its words reach', () => {

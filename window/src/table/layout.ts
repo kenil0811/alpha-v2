@@ -1,16 +1,16 @@
 // How a table is laid out, kept with its saved list in the core: how many columns stay in place at
 // the left as it scrolls across, and how each column shows words longer than it is wide, as in a
-// spreadsheet: Overflow into the empty cells after it (the default), Wrap onto
-// more lines, or Clip at its edge. Changing either changes the list on screen, saved like a filter
+// spreadsheet: Clip at its edge (the default), Overflow into the empty cells after it, or Wrap
+// onto more lines. Changing either changes the list on screen, saved like a filter
 // or a width.
 import type { ViewConfig } from '@alpha/core/api'
 
 export type Spill = 'overflow' | 'wrap' | 'clip'
 
 export function layoutOf(config: ViewConfig, onConfig: (c: ViewConfig) => void) {
-  const { wrap, clip } = config
+  const { wrap, overflow } = config
   const spillOf = (id: string): Spill =>
-    wrap.includes(id) ? 'wrap' : clip.includes(id) ? 'clip' : 'overflow'
+    wrap.includes(id) ? 'wrap' : overflow.includes(id) ? 'overflow' : 'clip'
   return {
     frozen: Math.max(1, config.frozen), // the first column always stays
     wrap,
@@ -20,7 +20,7 @@ export function layoutOf(config: ViewConfig, onConfig: (c: ViewConfig) => void) 
       onConfig({
         ...config,
         wrap: [...wrap.filter((x) => x !== id), ...(to === 'wrap' ? [id] : [])],
-        clip: [...clip.filter((x) => x !== id), ...(to === 'clip' ? [id] : [])],
+        overflow: [...overflow.filter((x) => x !== id), ...(to === 'overflow' ? [id] : [])],
       }),
     setWrap: (next: string[]) => onConfig({ ...config, wrap: next }),
   }

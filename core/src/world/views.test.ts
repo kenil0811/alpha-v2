@@ -139,13 +139,13 @@ describe('a saved view', () => {
     ).toThrow(/no latitude and longitude, or column of points/)
   })
 
-  it('keeps the columns frozen at the left and the ones that wrap or clip, by name in module.yaml', () => {
+  it('keeps the columns frozen at the left and the ones that wrap or run on, by name in module.yaml', () => {
     const t = deals()
     const v = world.views.save(
       {
         table: t.id,
         name: 'Wide',
-        config: { frozen: 2, wrap: ['Stage', 'listed_on'], clip: ['Stage'] },
+        config: { frozen: 2, wrap: ['Stage', 'listed_on'], overflow: ['Stage'] },
       },
       person,
     )
@@ -155,14 +155,14 @@ describe('a saved view', () => {
     const yaml = readFileSync(join(t.module.dir, 'module.yaml'), 'utf8')
     expect(yaml).toContain('frozen: 2')
     expect(yaml).toMatch(/wrap:\s+- Stage\s+- Listed on/)
-    expect(yaml).toMatch(/clip:\s+- Stage/)
+    expect(yaml).toMatch(/overflow:\s+- Stage/)
     // a field taken away leaves the list's wrap with it
     world.shape.removeField(t.id, 'Stage', { actor: alpha })
     expect(world.views.get(v.id)?.config.wrap).toEqual([id('Listed on')])
-    expect(world.views.get(v.id)?.config.clip).toEqual([])
+    expect(world.views.get(v.id)?.config.overflow).toEqual([])
     expect(
       world.views.save({ table: t.id, name: 'Plain', config: {} }, person).config,
-    ).toMatchObject({ frozen: 1, wrap: [], clip: [] })
+    ).toMatchObject({ frozen: 1, wrap: [], overflow: [] })
   })
 
   it('goes with its table', () => {

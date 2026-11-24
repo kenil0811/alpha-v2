@@ -61,11 +61,12 @@ import type { LayoutNow, Spill } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
 import { show } from './values.ts'
 
-// how a column shows words longer than it is wide; Overflow runs on into the empty cells after it
+// how a column shows words longer than it is wide: Clip (the default) cuts them at its edge,
+// Overflow runs them on into the empty cells after it
 const SPILLS: { to: Spill; words: string }[] = [
+  { to: 'clip', words: 'Clip' },
   { to: 'overflow', words: 'Overflow' },
   { to: 'wrap', words: 'Wrap' },
-  { to: 'clip', words: 'Clip' },
 ]
 
 type Tone = 'good' | 'warn' | 'bad' | 'accent'
