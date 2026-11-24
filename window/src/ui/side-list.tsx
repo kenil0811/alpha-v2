@@ -18,6 +18,14 @@ export function SideList({
   )
 }
 
+// A small heading over a group of its lines (Settings' General, Intelligence, Data); on a narrow
+// window, where the lines run across, there are no headings.
+export function SideHead({ children }: { children: ReactNode }) {
+  return (
+    <div className="px-2.5 pt-4 pb-1 text-ink-3 text-sm first:pt-0 max-md:hidden">{children}</div>
+  )
+}
+
 // One line of it, the chosen one in the accent with its dot.
 export function SideItem({
   on,

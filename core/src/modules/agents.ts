@@ -225,7 +225,7 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   world.line({
     actor: ctx.actor,
     kind: 'agent_removed',
-    words: `Deleted the agent ${agent.name}. Its conversations stay in Activity.`,
+    words: `Deleted the agent ${agent.name}. Its conversations stay in Logs.`,
     data: { removed: id },
     user: ctx.user ?? null,
   })

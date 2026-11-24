@@ -155,7 +155,7 @@ export interface DraftView {
   always: string | null // the standing permission's sentence, when offered
 }
 
-// What this Mac still needs, for the first open and Settings › Permissions, On this computer.
+// What this Mac still needs, for the first open and Settings › Rules, On this computer.
 export interface SetupView {
   claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
   route: 'subscription' | 'key'
@@ -172,7 +172,7 @@ export interface SetupView {
   }
 }
 
-// A rule as Settings › Permissions lists it, in code's own words.
+// A rule as Settings › Rules lists it, in code's own words.
 export interface RuleView {
   id: string
   words: string
@@ -445,7 +445,7 @@ export interface SavedView {
   about: string | null // the question the view answers
 }
 
-// The person's own data (Settings › Data): what the world holds and weighs, and its backups.
+// The person's own data (Settings › Backup and restore): what the world holds and weighs, and its backups.
 export interface BackupView {
   name: string
   at: string // when it was taken

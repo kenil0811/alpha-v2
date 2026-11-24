@@ -451,7 +451,7 @@ function TaskPage({
               return true
             }}
           >
-            It can’t be brought back; Activity keeps what it held.
+            It can’t be brought back; Logs keep what it held.
           </Confirm>
         </div>
       </div>

@@ -7,7 +7,8 @@ import { useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Section } from './ui/section.tsx'
 
-// Settings' Schedules: every schedule in one shared table, each opening its page.
+// Settings › Automations: every schedule in one shared table, each opening its page. A module's
+// Setup and the model's own words still call them schedules.
 export function Schedules({ version }: { version: number }) {
   // every module's schedules as one table from the core: On or Paused changes in its cell
   const [data, setData] = useState<KeptTable | null>(null)
@@ -15,7 +16,7 @@ export function Schedules({ version }: { version: number }) {
     if (version >= 0) api.get<KeptTable>('/api/kept/schedules').then(setData, () => setData(null))
   }, [version])
   return (
-    <Section title="Schedules" about="Every schedule, what it does and when it last ran.">
+    <Section title="Automations" about="Every schedule, what it does and when it last ran.">
       {data && (
         <Embedded
           data={data}

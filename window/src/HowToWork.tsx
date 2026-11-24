@@ -1,4 +1,4 @@
-// Settings › How to work: the standing instructions the person gave.
+// Settings › Rules: the standing instructions the person gave.
 import type { InstructionView } from '@alpha/core/api'
 import { BookmarkCheck } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'

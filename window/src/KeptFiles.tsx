@@ -2,10 +2,11 @@
 // first: what brought it, when, and whether it was read. A file opens as it does from a value's
 // source.
 import type { KeptFileView } from '@alpha/core/api'
-import { File, FileSpreadsheet, FileText } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { File as FileIcon, FileSpreadsheet, FileText } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { Refusal } from './ui/act.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
@@ -22,7 +23,7 @@ const iconOf = (f: KeptFileView) =>
   ) : /pdf|text|word/.test(f.mime) ? (
     <FileText className="size-4" />
   ) : (
-    <File className="size-4" />
+    <FileIcon className="size-4" />
   )
 
 const READ: Record<KeptFileView['read'], [string, Tone]> = {
@@ -49,10 +50,20 @@ export function KeptFiles({ version, module }: { version: number; module: string
   const [find, setFind] = useState('')
   const [of, setOf] = useState(module ?? 'all') // a module's files, those of none, or all
   useEffect(() => setOf(module ?? 'all'), [module])
+  const load = useCallback(() => {
+    api.get<KeptFileView[]>('/api/files').then(setFiles, (e) => setProblem(wordsOf(e)))
+  }, [])
   // read again whenever the world changes (a folder bringing a file, a PDF read)
   useEffect(() => {
-    api.get<KeptFileView[]>('/api/files').then(setFiles, (e) => setProblem(wordsOf(e)))
-  }, [version])
+    if (version >= 0) load()
+  }, [load, version])
+  const [busy, setBusy] = useState(false)
+  const bring = async (picked: File[]) => {
+    setBusy(true)
+    for (const f of picked) await api.upload(f).catch(() => setProblem(`${f.name} did not go in.`))
+    setBusy(false)
+    load()
+  }
   if (!files) return <Refusal words={problem} />
   const words = find.trim().toLowerCase()
   const by = byModule(files)
@@ -117,11 +128,15 @@ export function KeptFiles({ version, module }: { version: number; module: string
             )
           })}
         </List>
-      ) : (
+      ) : files.length ? (
         <p className="text-ink-3 text-md">
-          {!files.length ? null : words ? 'No file has that in its name.' : 'No files here.'}
+          {words ? 'No file has that in its name.' : 'No files here.'}
         </p>
+      ) : (
+        // none yet: a place to drop the first ones
+        <DropZone busy={busy} onFiles={(f) => void bring(f)} />
       )}
+      <Refusal words={problem} />
     </Section>
   )
 }

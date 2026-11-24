@@ -83,7 +83,7 @@ export interface ServerOptions {
   kits?: { now: string | null } // what the core is still setting up after it started listening
   connectorsDir?: string // Alpha's own connectors/: the added set
   platform?: Platform // the computer's own pieces; the plain one when not given
-  // the person's own data (Settings › Data): where it is, and how the core restarts after a
+  // the person's own data (Settings › Backup and restore): where it is, and how the core restarts after a
   // restore, a bring-in or a removal (the world closed, the change applied, the process gone)
   data?: {
     home: string

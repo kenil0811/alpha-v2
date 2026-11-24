@@ -1,20 +1,21 @@
-// Settings, a page of sections. Connections and Schedules are in their own files.
-import type { CardView, ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
-import { Check, SlidersHorizontal, Sparkles } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
-import { AccountsSection, Foot } from './Accounts.tsx'
-import { Activity } from './Activity.tsx'
-import { AgentsSection } from './Agents.tsx'
+// Settings: four groups of parts in a side list on the left, one part at a time on the right.
+// Connections, Automations, Logs, Files and the rest are in their own files.
+import type { ConnectorsView, DataPageView, Health, Me, ModelView } from '@alpha/core/api'
+import { Plus, SlidersHorizontal } from 'lucide-react'
+import { Fragment, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { AccountsSection } from './Accounts.tsx'
 import { api, Problem, wordsOf } from './api.ts'
+import { startAsk } from './ask.ts'
 import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
-import { Modules, when } from './Modules.tsx'
+import { Logs } from './Logs.tsx'
+import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
 import { ReadReport } from './ReadReport.tsx'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
-import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
+import { useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { SetUpPart } from './story/StoryCard.tsx'
 import { TokenForm } from './TokenForm.tsx'
@@ -29,49 +30,67 @@ import {
 import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { pastedKey, SecretField } from './ui/field.tsx'
-import { Info } from './ui/info.tsx'
-import { List, Row, Tile } from './ui/list.tsx'
-import { Pill } from './ui/pill.tsx'
+import { List, Row } from './ui/list.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
-import { SideItem, SideList } from './ui/side-list.tsx'
+import { SideHead, SideItem, SideList } from './ui/side-list.tsx'
+import { STATE_CARDS, StateCard } from './ui/state-card.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { WaitingRules } from './WaitingRules.tsx'
 
-// Settings: how Alpha runs, a list of sections on the left and one section at a time. The tabs
-// from Agents to How to work were Intelligence's; they sit here until their own homes (Governance,
-// the agents) take them.
-const TABS = [
-  ['model', 'LLM'],
-  ['data', 'Data'],
-  ['appearance', 'Appearance'],
-  ['permissions', 'Permissions'],
-  ['activity', 'Activity'],
-  ['read', 'What Alpha read'],
-  ['people', 'People'],
-  ['connections', 'Connections'],
-  ['files', 'Files'],
-  ['agents', 'Agents'],
-  ['modules', 'Modules'],
-  ['schedules', 'Schedules'],
-  ['work', 'How to work'],
-  ['setup', 'Set up Alpha'],
-] as const
+// Settings' parts under four headings; a part's id is its address (#/settings/connections). A
+// group of one part is its line alone. Agents have their own screen and modules the rail.
+const GROUPS: { name: string; parts: [string, string][] }[] = [
+  {
+    name: 'General',
+    parts: [
+      ['appearance', 'Appearance'],
+      ['people', 'Members'],
+      ['setup', 'Set up Alpha'],
+      ['alpha', 'Alpha'],
+    ],
+  },
+  {
+    name: 'Intelligence',
+    parts: [
+      ['usage', 'Usage'],
+      ['model', 'Models'],
+      ['schedules', 'Automations'],
+      ['connections', 'Connections'],
+    ],
+  },
+  { name: 'Rules', parts: [['rules', 'Rules']] },
+  {
+    name: 'Data',
+    parts: [
+      ['logs', 'Logs'],
+      ['read', 'What Alpha read'],
+      ['backup', 'Backup and restore'],
+      ['files', 'Files'],
+    ],
+  },
+]
+
+// Old addresses (bookmarks, links in cards) and the part they mean now.
+const MOVED: Record<string, string> = {
+  llm: 'model',
+  permissions: 'rules',
+  work: 'rules',
+  data: 'backup',
+  activity: 'logs',
+}
 
 export function Settings({
   tab,
   open,
   version,
-  cards,
 }: {
   tab: string | null
   open: string | null
   version: number
-  cards: CardView[]
 }) {
   const [view, setView] = useState<ConnectorsView | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -86,33 +105,34 @@ export function Settings({
   useEffect(() => {
     api.get<Me>('/api/me').then(setMe, () => undefined)
   }, [])
-  // a member does not see the owner's Data, and sees only their own password in People; People
-  // only where people sign in
+  // a member does not see the owner's backups, and sees only their own password in Members;
+  // Members only where people sign in
   const member = me?.user.role === 'member'
-  const hidden = new Set([...(member ? ['data'] : []), ...(me?.signIn ? [] : ['people'])])
-  const tabs = (TABS as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
-  const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? TABS[0][0]
+  const hidden = new Set([...(member ? ['backup'] : []), ...(me?.signIn ? [] : ['people'])])
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    parts: g.parts.filter(([id]) => !hidden.has(id)),
+  })).filter((g) => g.parts.length > 0)
+  const parts = groups.flatMap((g) => g.parts)
+  const asked = MOVED[tab ?? ''] ?? tab
+  const at = parts.find(([id]) => id === asked)?.[0] ?? parts[0]?.[0] ?? 'appearance'
   if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />
   const body: Record<string, ReactNode> = {
-    work: <HowToWork version={version} />,
-    agents: <AgentsSection version={version} />,
-    schedules: <Schedules version={version} />,
-    connections: <Connections view={view} open={open} version={version} onChange={load} />,
-    files: <KeptFiles version={version} module={open} />,
-    modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
-    permissions: <Permissions version={version} owner={!member} />,
-    model: (
-      <>
-        <UsageSection />
-        <ModelSection />
-      </>
-    ),
-    activity: <Activity version={version} cards={cards} />,
-    read: <ReadReport version={version} />,
-    setup: <SetUpPart />,
-    people: <AccountsSection owner={!member} />,
-    data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
+    people: <AccountsSection owner={!member} />,
+    setup: <SetUpPart />,
+    alpha: <AlphaPart me={me} />,
+    usage: <UsageSection />,
+    model: <ModelSection />,
+    schedules: <Schedules version={version} />,
+    connections: (
+      <Connections view={view} open={open} version={version} owner={!member} onChange={load} />
+    ),
+    rules: <RulesPart version={version} owner={!member} />,
+    logs: <Logs version={version} />,
+    read: <ReadReport version={version} />,
+    backup: <DataSection />,
+    files: <KeptFiles version={version} module={open} />,
   }
   // the bar holds Settings' icon tile and title
   const head = (
@@ -134,43 +154,83 @@ export function Settings({
         {head}
         <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
           <SideList label="Settings" className="max-md:flex-row max-md:flex-wrap">
-            {tabs.map(([id, name]) => (
-              <SideItem key={id} on={id === at} onClick={() => go(id)}>
-                {name}
-              </SideItem>
+            {groups.map((g) => (
+              <Fragment key={g.name}>
+                {g.parts.length > 1 ? (
+                  <SideHead>{g.name}</SideHead>
+                ) : (
+                  <div className="h-3 max-md:hidden" />
+                )}
+                {g.parts.map(([id, name]) => (
+                  <SideItem key={id} on={id === at} onClick={() => go(id)}>
+                    {name}
+                  </SideItem>
+                ))}
+              </Fragment>
             ))}
           </SideList>
           <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
-        <Foot me={me} />
       </div>
     </div>
   )
 }
 
-// Permissions: what Alpha has on this Mac (Claude's sign-in, the readers' downloads, Contacts and
-// Calendar, Chrome), then what it does without asking because the person said Always.
-function Permissions({ version, owner }: { version: number; owner: boolean }) {
-  const [view, reload] = useSetup()
+// Alpha itself: the version running and, where people sign in, who is with Sign out. No Check for
+// updates until an install has a feed to ask.
+function AlphaPart({ me }: { me: Me | null }) {
+  const [health, setHealth] = useState<Health | null>(null)
+  useEffect(() => {
+    api.get<Health>('/api/health').then(setHealth, () => undefined)
+  }, [])
+  return (
+    <Section title="Alpha">
+      <List>
+        <Row
+          title={health ? `Alpha ${health.version}` : 'Alpha'}
+          sub={health?.build ? `Version ${health.build}` : undefined}
+        />
+        {me?.signIn && (
+          <Row
+            title={`Signed in as ${me.user.name}`}
+            actions={
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  void api.post('/api/session/out').finally(() => window.location.replace('/'))
+                }}
+              >
+                Sign out
+              </Button>
+            }
+          />
+        )}
+      </List>
+    </Section>
+  )
+}
+
+// Rules: New rule at the head, starting the sentence with Alpha; the website switch above the
+// list (the owner's), what waits for a Save, every rule; then how the person asked things done.
+function RulesPart({ version, owner }: { version: number; owner: boolean }) {
   return (
     <>
-      {owner && (
-        <Section title="On this computer" about="What Alpha may reach on this computer.">
-          {view ? (
-            <SetupList view={view} onChange={reload} />
-          ) : (
-            <p className="text-ink-2 text-md">Not known on this Alpha.</p>
-          )}
-        </Section>
-      )}
       <Section
         title="Rules"
-        about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule applies once you save it on its card."
+        about="What Alpha may and may not do, yours and what it noticed. New rule starts the conversation; a rule applies once you save it on its card."
+        action={
+          <Button size="sm" onClick={() => startAsk('From now on, ')}>
+            <Plus className="size-3.5" />
+            New rule
+          </Button>
+        }
       >
         {owner && <AskSites />}
         <WaitingRules version={version} />
         <Standing version={version} />
       </Section>
+      <HowToWork version={version} />
     </>
   )
 }
@@ -234,12 +294,15 @@ function DataSection() {
   }
   if (!view)
     return (
-      <Section title="Data" about="Your backups.">
+      <Section title="Backup and restore" about="Your backups.">
         {problem ? <p className="text-ink-2 text-md">{problem}</p> : <Waiting className="p-0" />}
       </Section>
     )
   return (
-    <Section title="Data" about="Your last ten backups. Go back to any of them, or take one now.">
+    <Section
+      title="Backup and restore"
+      about="Your last ten backups. Go back to any of them, or take one now."
+    >
       <div>
         <Button
           size="sm"
@@ -299,9 +362,9 @@ function DataSection() {
   )
 }
 
-// The route: the person's own Claude subscription, signed in with Claude's own sign-in
-// on this Mac, or the firm's API key, kept in the Keychain. The choice is this install's. Each way
-// says its state and acts on its own row.
+// The ways to the model, a small card each: the person's own Claude subscription, signed in with
+// Claude's own sign-in on this Mac, or the firm's API key, kept in the Keychain. The choice is this
+// install's. Each card's dot says whether it is the one in use and ready.
 function ModelSection() {
   const [model, setModel] = useState<ModelView | null>(null)
   const [setup, loadSetup] = useSetup()
@@ -317,63 +380,37 @@ function ModelSection() {
       route,
     )
   const onServer = model?.token !== null && model?.token !== undefined
-  const kept = model?.hasKey
-    ? onServer
-      ? 'Key saved on this server'
-      : "Key saved in this Mac's Keychain"
-    : 'No key yet'
   return (
     <Section
-      title="Model"
+      title="Models"
       about={`Alpha thinks with ${model ? (MODEL_NAMES[model.desk] ?? model.desk) : '…'}.`}
     >
       {model && (
-        <List>
+        <div className={STATE_CARDS}>
           {model.providers.map((p) => {
             const subscription = p.route === 'subscription'
-            const state = subscription
-              ? setup &&
-                (setup.claude.signedIn
-                  ? `Signed in${setup.claude.email ? ` as ${setup.claude.email}` : ''}`
-                  : 'Not signed in')
-              : kept
+            const signedIn = !!setup?.claude.signedIn
+            const ready = subscription ? signedIn || !!model.token : model.hasKey
             return (
-              <Row
+              <StateCard
                 key={p.route}
-                className={cn(
-                  p.chosen && 'bg-accent-soft/40 shadow-[inset_3px_0_0_var(--color-accent)]',
-                )}
-                lead={
-                  <Tile>
-                    {p.chosen ? (
-                      <Check className="size-4 text-accent" />
-                    ) : (
-                      <Sparkles className="size-4" />
-                    )}
-                  </Tile>
-                }
-                title={
-                  <span className="flex items-center gap-2">
-                    {p.title}
-                    <Info
-                      help={[modelHelp(p.route, onServer), `It reaches ${p.can}.`, p.cannot]
-                        .filter(Boolean)
-                        .join('\n\n')}
-                    />
-                    {p.chosen && <Pill tone="accent">In use</Pill>}
-                  </span>
-                }
+                state={!p.chosen ? 'off' : ready ? 'good' : 'warn'}
+                says={!p.chosen ? 'Not in use' : ready ? 'In use' : 'In use, not ready'}
+                title={p.title}
+                about={[modelHelp(p.route, onServer), `It reaches ${p.can}.`, p.cannot]
+                  .filter(Boolean)
+                  .join('\n\n')}
                 sub={
-                  <>
-                    <div className="text-ink-2">{state}</div>
-                    {on === p.route && <Refusal words={problem} />}
-                  </>
+                  subscription
+                    ? signedIn && setup?.claude.email
+                    : model.hasKey &&
+                      (onServer ? 'Key saved on this server' : "Key saved in this Mac's Keychain")
                 }
-                actions={
+                act={
                   <>
-                    {subscription && setup && !setup.claude.signedIn && model.token === null && (
+                    {subscription && setup && !signedIn && model.token === null && (
                       <Button size="sm" variant="primary" disabled={waiting} onClick={signIn}>
-                        {waiting ? 'Waiting for the browser…' : 'Sign in'}
+                        {waiting ? 'Waiting…' : 'Sign in'}
                       </Button>
                     )}
                     {!p.chosen && (subscription || model.hasKey) && (
@@ -384,6 +421,7 @@ function ModelSection() {
                   </>
                 }
               >
+                {on === p.route && <Refusal words={problem} />}
                 {subscription && model.token !== null && (
                   <TokenForm has={model.token} onSaved={setModel} />
                 )}
@@ -394,16 +432,16 @@ function ModelSection() {
                     onSave={(key) => choose(p.route, key)}
                   />
                 )}
-              </Row>
+              </StateCard>
             )
           })}
-        </List>
+        </div>
       )}
     </Section>
   )
 }
 
-// A key route's own key: typed on its row, saved to the Keychain on Save.
+// A key route's own key: typed on its card, saved to the Keychain on Save.
 function KeyForm({
   busy,
   title,
@@ -416,14 +454,14 @@ function KeyForm({
   const [key, setKey] = useState('')
   return (
     <form
-      className="flex items-center gap-2 px-4 pb-3 pl-15"
+      className="flex items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault()
         void onSave(key.trim()).then((ok) => ok && setKey(''))
       }}
     >
       <SecretField
-        className="w-72"
+        className="min-w-0 flex-1"
         aria-label="API key"
         placeholder="Paste the key"
         value={key}

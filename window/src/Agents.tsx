@@ -1,5 +1,5 @@
-// The firm's agents: Settings › Agents lists them with the Chief of staff first, and an
-// agent's page shows what it is, its memories and its skills. An agent is made and changed in a
+// The firm's agents: Agents lists them with the Chief of staff first, and an agent's page shows
+// what it is, its memories and its skills. An agent is made and changed in a
 // conversation with the Chief of staff, so nothing here is a form to fill in.
 import type { AgentDetail, AgentView, MemoryView, Stream } from '@alpha/core/api'
 import { Bot, Check, MessageSquare, Plus, Trash2, X } from 'lucide-react'
@@ -15,10 +15,8 @@ import { Button, IconButton } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
-import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
-import { Section } from './ui/section.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
 
@@ -43,60 +41,6 @@ function inOrder(all: AgentView[]): AgentView[] {
   const rank = (a: AgentView) => (a.chief ? -1 : GROUP[a.from.kind])
   return [...all].sort(
     (a, b) => rank(a) - rank(b) || (a.from.name ?? '').localeCompare(b.from.name ?? ''),
-  )
-}
-
-// Each group under a heading: From Alpha, From a kit by its name, Made here.
-function groupsOf(agents: AgentView[]): { title: string | null; agents: AgentView[] }[] {
-  const out: { title: string | null; agents: AgentView[] }[] = []
-  for (const a of agents) {
-    const title = a.chief ? null : a.from.kind === 'here' ? 'Your own' : `From ${a.from.name}`
-    const last = out.at(-1)
-    if (last && last.title === title) last.agents.push(a)
-    else out.push({ title, agents: [a] })
-  }
-  return out
-}
-
-export function AgentsSection({ version }: { version: number }) {
-  const agents = useAgents(version)
-  return (
-    <Section
-      title="Agents"
-      about="Each one has its own job, memory and conversation. Ask the Chief of staff to make one: say what it should do and when to use it."
-    >
-      {groupsOf(agents).map((g) => (
-        <div key={g.title ?? 'chief'} className="flex flex-col gap-1.5">
-          {g.title && <p className="text-ink-3 text-sm">{g.title}</p>}
-          <AgentList agents={g.agents} />
-        </div>
-      ))}
-    </Section>
-  )
-}
-
-function AgentList({ agents }: { agents: AgentView[] }) {
-  return (
-    <List>
-      {agents.map((a) => (
-        <Row
-          key={a.id}
-          className="relative hover:bg-canvas"
-          lead={
-            <Tile>
-              <Bot className="size-4" />
-            </Tile>
-          }
-          title={
-            <a href={`#/agent/${a.id}`} className="after:absolute after:inset-0">
-              {a.name}
-            </a>
-          }
-          sub={`${a.title} · ${a.description}`}
-          actions={<span className="text-ink-3 text-sm">{MODEL_NAMES[a.model] ?? a.model}</span>}
-        />
-      ))}
-    </List>
   )
 }
 
@@ -371,7 +315,7 @@ export function AgentPage({
           busy={busy}
           done={{
             words: `${a.name} is deleted. Its conversations are in`,
-            where: { label: 'Activity', href: '#/settings/activity' },
+            where: { label: 'Logs', href: '#/settings/logs' },
           }}
           onClose={() => setAsking(false)}
           onYes={() => {
@@ -380,11 +324,11 @@ export function AgentPage({
               await api.post(`/api/agents/${a.id}/remove`)
               gone.current = true
               // on Agents the list goes back to the Chief of staff by itself
-              if (!inAgents) window.location.hash = '#/settings/agents'
+              if (!inAgents) window.location.hash = '#/conversation'
             })
           }}
         >
-          Its memory and files go with it. Its conversations stay in Activity.
+          Its memory and files go with it. Its conversations stay in Logs.
         </Confirm>
       )}
     </Record>

@@ -36,13 +36,13 @@ function parentOf(h: Here): Crumb | null {
       return place.tab === 'details' ? { label: 'Setup', href: `#/module/${place.id}/setup` } : HOME
     case 'item':
       return place.kind === 'schedule'
-        ? { label: 'Schedules', href: '#/settings/schedules' }
+        ? { label: 'Automations', href: '#/settings/schedules' }
         : place.kind === 'run'
-          ? { label: 'Activity', href: '#/settings/activity' }
-          : { label: 'Permissions', href: '#/settings/permissions' }
-    // an agent's page is one of Settings › Agents
+          ? { label: 'Logs', href: '#/settings/logs' }
+          : { label: 'Rules', href: '#/settings/rules' }
+    // an agent's page is one of Agents'
     case 'agent':
-      return { label: 'Agents', href: '#/settings/agents' }
+      return { label: 'Agents', href: '#/conversation' }
     // a computer's page is one of Connections › Your computers
     case 'computer':
       return { label: 'Connections', href: '#/settings/connections' }

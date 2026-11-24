@@ -42,7 +42,7 @@ export const StoryPress = z.object({
   at_most: z.number().default(40), // the runner's own bound, never the person's
 })
 
-// A member added by the owner, as Settings › People and the Your people chapter add one.
+// A member added by the owner, as Settings › Members and the Your people chapter add one.
 export const MemberAdd = z.object({ name: z.string(), email: z.string() })
 
 export const StoryChecks = [

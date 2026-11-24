@@ -8,7 +8,7 @@ import { api } from './api.ts'
 import { type Hiding, ModuleMenu, shownTops } from './ModuleMenu.tsx'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { openLink } from './opened.ts'
-import type { Place } from './place.ts'
+import { inAgents, type Place } from './place.ts'
 import { landingOf } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { useContextMenu } from './ui/popover.tsx'
@@ -90,7 +90,7 @@ export function entriesOf(
       label: 'Agents',
       href: '#/conversation',
       icon: <MessageSquare className="size-4" />,
-      on: place.at === 'conversation',
+      on: inAgents(place),
     },
     {
       id: 'tasks',

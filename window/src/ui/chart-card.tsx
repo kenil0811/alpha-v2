@@ -1,4 +1,4 @@
-// The spend card on Settings › LLM: a title, the card's own controls, and a drop-down that draws
+// The spend card on Settings › Usage: a title, the card's own controls, and a drop-down that draws
 // the same numbers as columns over time, bars, a donut or a table, with the window's one chart
 // pieces (ui/chart.tsx). Each part has one colour, kept across the looks, and a key under the
 // drawing saying its value (ui-rules L19).

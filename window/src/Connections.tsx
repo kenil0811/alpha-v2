@@ -1,7 +1,5 @@
-// Settings' Connections: every mail, calendar and contacts account one line with one Add, as Set
-// up Alpha's Your accounts has them, then a tile per other connector with its accounts, the apps
-// left out, the sign-in apps, and the
-// folders. Connecting is the person's own act here: what they type goes to the Keychain, never to
+// Settings' Connections: a small card per connector with its accounts, then this computer's own
+// (its browser, PDF reader, Chrome, staying awake), the sign-in apps, and the folders. Connecting is the person's own act here: what they type goes to the Keychain, never to
 // the model.
 import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'
 import { CalendarDays, Folder, Mail, Network, Plug, Trash2, UserRound } from 'lucide-react'
@@ -9,20 +7,18 @@ import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { AccountList, Excluded, useAccounts } from './AccountLines.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { Computers } from './Computers.tsx'
-import { ConnectionInTile, ConnectionLine, TileFoot, useConnection } from './ConnectionLine.tsx'
+import { ConnectionInTile, ConnectionLine, useConnection } from './ConnectionLine.tsx'
+import { ThisComputer } from './SetupPanel.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
 import { Sites } from './Sites.tsx'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
-import { cutTip } from './ui/cut-tip.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Field, SecretField } from './ui/field.tsx'
-import { FRAME } from './ui/frame.tsx'
-import { List, Tile } from './ui/list.tsx'
+import { List } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
-import { updatedWords } from './ui/update-now.tsx'
+import { STATE_CARDS, StateCard } from './ui/state-card.tsx'
 
 // The pictures a connector can ask for (its manifest's icon).
 export const ICONS: Record<ConnectorView['icon'], ReactNode> = {
@@ -38,11 +34,13 @@ export function Connections({
   view,
   open,
   version,
+  owner,
   onChange,
 }: {
   view: ConnectorsView
   open: string | null
   version: number
+  owner: boolean // this computer's cards are the owner's
   onChange: () => void
 }) {
   // a connector that names a place on a computer (a folder) is on that computer's page; mail,
@@ -66,14 +64,14 @@ export function Connections({
     <>
       <Section
         title="Connections"
-        about="Your accounts, read by Alpha; what you type stays in the Keychain."
+        about="Your accounts and this computer, read by Alpha; what you type stays in the Keychain."
       >
         {view.connectors.some(isLine) && lines.view && (
           <div className="rounded-lg border border-line bg-surface px-4 py-3">
             <AccountList view={lines.view} connectors={view} onChange={again} />
           </div>
         )}
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] items-start gap-3">
+        <div className={STATE_CARDS}>
           {accounts.map((c) => (
             <ConnectorTile
               key={c.name}
@@ -89,6 +87,7 @@ export function Connections({
               onChange={onChange}
             />
           ))}
+          {owner && <ThisComputer />}
         </div>
         {orphans.length > 0 && (
           <List>
@@ -111,9 +110,9 @@ export function Connections({
   )
 }
 
-// A connector as a tile, every one the same shape: its icon, name and account (or Not connected)
-// at the top with its state and ⋮ at the right, then any problem, then its one act at the foot,
-// Connect or Read now. Two or more accounts list under the top, each the same way.
+// A connector as a small card: a dot for its state, its name and its one act on
+// one line: Connect with no account, Disconnect with one that works, else what it needs. Two or
+// more accounts list under the name, each the same way; its form opens across the whole row.
 function ConnectorTile({
   connector: c,
   connections,
@@ -155,80 +154,42 @@ function ConnectorTile({
         onChange={onChange}
       />
     )
+  const many = connections.length > 1
+  const all = many && connections.every((k) => k.state === 'connected')
   return (
-    <TileFrame
-      connector={c}
-      wide={open}
+    <StateCard
+      state={!many ? 'off' : all ? 'good' : 'warn'}
+      says={!many ? 'Not connected' : all ? 'Connected' : 'One needs you'}
+      title={c.title}
       sub={
-        connections.length > 1
+        many
           ? `${connections.length} accounts`
           : c.onComputer
             ? 'Turn it on in Alpha Bridge on your computer'
-            : 'Not connected'
+            : null
       }
-      right={
-        <span className="flex shrink-0 items-center gap-1.5">
-          {/* none connected yet: Connect at the right of its one row, never a foot of its own */}
-          {!open && canAdd && connections.length === 0 && (
-            <Button size="sm" onClick={() => setOpen(true)}>
-              Connect
+      act={
+        <>
+          {!open && canAdd && (
+            <Button size="sm" variant={many ? 'ghost' : 'default'} onClick={() => setOpen(true)}>
+              {many ? 'Add another' : 'Connect'}
             </Button>
           )}
-          {added && connections.length === 0 && (
-            <DeleteConnector connector={c} onChange={onChange} />
-          )}
-        </span>
+          {added && !many && <DeleteConnector connector={c} onChange={onChange} />}
+        </>
       }
+      wide={open}
     >
       {form}
       {connections.map((k) => (
         <ConnectionInTile key={k.id} connection={k} onChange={onChange} />
       ))}
-      {!open && canAdd && connections.length > 0 && (
-        <TileFoot>
-          <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
-            Add another
-          </Button>
-        </TileFoot>
-      )}
-    </TileFrame>
+    </StateCard>
   )
 }
 
-// The one shape every tile has: icon, name and a line under it, what sits at the right, then the
-// rest; a tile with its form open takes the whole width.
-function TileFrame({
-  connector: c,
-  sub,
-  right,
-  wide,
-  children,
-}: {
-  connector: ConnectorView
-  sub: string
-  right?: ReactNode
-  wide: boolean
-  children?: ReactNode
-}) {
-  return (
-    <div className={cn(FRAME, 'flex min-w-0 flex-col gap-2 px-3.5 py-3', wide && 'col-span-full')}>
-      <div className="flex items-center gap-3">
-        <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-base text-ink">{c.title}</div>
-          <div className="truncate text-ink-3 text-sm" {...cutTip(sub)}>
-            {sub}
-          </div>
-        </div>
-        {right}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-// A connector with one account, the usual: the account under its name, its state and ⋮ at the
-// right, its problem, and Read now at the foot.
+// A connector with one account, the usual: its account under its name; Disconnect while it works,
+// else what it needs (Sign in, Try again); Details, Read now and Add another under ⋮.
 function SoloTile({
   connector: c,
   connection: k,
@@ -242,28 +203,26 @@ function SoloTile({
   onAdd: (() => void) | undefined
   onChange: () => void
 }) {
-  const p = useConnection(k, onChange, { menuShown: true, onAdd, words: false, quiet: true })
-  // under its name: its account and when it was last read, or its problem in their place, so every
-  // card is the same one row; its notes are under ⋮ › Details
-  const read = k.lastSyncAt ? `Read ${updatedWords(k.lastSyncAt)}` : null
+  const p = useConnection(k, onChange, { card: true, onAdd, quiet: true })
   return (
-    <TileFrame
-      connector={c}
-      sub={k.health ?? [k.account, p.where, read].filter(Boolean).join(' · ')}
-      wide={!!form}
-      right={
-        <span className="flex shrink-0 items-center gap-1.5">
-          {/* connected says itself by when it was read; any other state by its pill */}
-          {(k.state !== 'connected' || (k.computer && !k.computer.online)) && p.pill}
-          {!form && p.act}
+    <StateCard
+      state={p.state}
+      says={p.says}
+      title={c.title}
+      sub={p.where ? `${k.account} · ${p.where}` : k.account}
+      act={
+        <>
+          {p.act}
           {p.menu}
-        </span>
+        </>
       }
+      wide={!!form}
     >
-      {/* its one row; its notes only when Details is asked for under ⋮ */}
-      {form ?? p.body}
+      {p.problem}
+      {p.body}
+      {form}
       {p.confirm}
-    </TileFrame>
+    </StateCard>
   )
 }
 
@@ -406,7 +365,7 @@ export function ConnectForm({
         <p className="text-ink-3 text-sm">
           {appSet
             ? `${asPerson.title}’s sign-in page opens in your browser. Sign in there as this address; Alpha never sees your password.`
-            : `Set up ${asPerson.title}’s sign-in app under Sign-in apps first, with your IT if you are not its admin.`}
+            : `Set up ${asPerson.title}’s sign-in app under Sign-in apps first.`}
         </p>
       )}
       {c.secret && (

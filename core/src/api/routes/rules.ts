@@ -1,4 +1,4 @@
-// Rules: as Settings › Permissions lists them, and the person's own
+// Rules: as Settings › Rules lists them, and the person's own
 // acts on them: Revoke, and Approve or Dismiss on what Alpha noticed. A rule is made only on its
 // Save card (cards.ts, the engine's answer).
 import { z } from 'zod'
@@ -88,7 +88,7 @@ export function registerRules(ctx: Ctx): void {
     }
   }
 
-  // as a list of sentences under Settings › Permissions, or a table: read here; a rule's page
+  // as a list of sentences under Settings › Rules, or a table: read here; a rule's page
   // acts on it
   app.get('/api/kept/rules', async (): Promise<KeptTable> => {
     const rules = world.rules.list().map((r) => ({ r, v: ruleOut(r) }))

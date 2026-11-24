@@ -1,5 +1,5 @@
 // Signing in to Alpha: the page's own routes, reached without a session,
-// and Settings › People for the owner. A session is an HttpOnly cookie; a link to set a password
+// and Settings › Members for the owner. A session is an HttpOnly cookie; a link to set a password
 // is shown to the owner once, to pass on. Only an Alpha told to (sign_in in alpha.yaml) asks.
 import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
@@ -109,7 +109,7 @@ export function registerSession(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // Your own password, changed in Settings › People with the current one: the browser it was
+  // Your own password, changed in Settings › Members with the current one: the browser it was
   // changed in stays signed in, every other one is signed out.
   app.post('/api/session/password', async (req) => {
     if (!options.signIn) throw new Refused('Signing in is not set up in this Alpha.')
@@ -129,7 +129,7 @@ export function registerSession(ctx: Ctx): void {
     return reply.redirect(signsIn.startPerson('microsoft'))
   })
 
-  // Settings › People, the owner's.
+  // Settings › Members, the owner's.
   app.get('/api/accounts', async () => {
     owner()
     return world.accounts.list()

@@ -313,7 +313,7 @@ export class Accounts {
     )
   }
 
-  // A person's own new password, given their current one (Settings › People). Every other browser
+  // A person's own new password, given their current one (Settings › Members). Every other browser
   // signed in as them is signed out; the one they changed it in stays in.
   async changePassword(
     userId: string,

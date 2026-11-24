@@ -3,17 +3,14 @@
 // sign-in itself, on the provider's own page in their browser. An app's secret (Intuit's) is typed
 // once and kept by Alpha: the field shows it is kept, never what it is.
 import type { SignInAppView } from '@alpha/core/api'
-import { KeyRound } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { api } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { CodeLine } from './ui/code-line.tsx'
 import { Field, SecretField } from './ui/field.tsx'
-import { Frame } from './ui/frame.tsx'
-import { Tile } from './ui/list.tsx'
-import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
+import { STATE_CARDS, StateCard } from './ui/state-card.tsx'
 
 // A connection's sign-in: the provider's page opens in the person's browser (the core opens it on
 // this Mac; else the window does).
@@ -29,9 +26,9 @@ export function SignInApps({ apps, onChange }: { apps: SignInAppView[]; onChange
   return (
     <Section
       title="Sign-in apps"
-      about="Your organisation’s own app for signing in: your IT sets it up once, then each person signs in with their own account, and Alpha reaches only what they can."
+      about="Your organisation’s own app for signing in: set up once, then each person signs in with their own account, and Alpha reaches only what they can."
     >
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+      <div className={STATE_CARDS}>
         {apps.map((a) => (
           <AppTile key={a.provider} app={a} onChange={onChange} />
         ))}
@@ -40,27 +37,23 @@ export function SignInApps({ apps, onChange }: { apps: SignInAppView[]; onChange
   )
 }
 
+// One sign-in app as a small card: green set up, grey not yet; Set up or Change on its line.
 function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => void }) {
   const [open, setOpen] = useState(false)
   return (
-    <Frame className="flex flex-col gap-3 has-[form]:col-span-full">
-      <div className="flex items-center gap-3">
-        <Tile>
-          <KeyRound className="size-4" />
-        </Tile>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-base text-ink">{a.title}</div>
-          <div className="text-ink-3 text-sm">
-            {a.set ? 'Set up for your organisation' : 'Your IT sets it up once'}
-          </div>
-        </div>
-        <Pill tone={a.set ? 'good' : 'warn'}>{a.set ? 'Set up' : 'Not set up'}</Pill>
-        {!open && (
+    <StateCard
+      state={a.set ? 'good' : 'off'}
+      says={a.set ? 'Set up' : 'Not set up'}
+      title={a.title}
+      act={
+        !open && (
           <Button size="sm" variant={a.set ? 'ghost' : 'default'} onClick={() => setOpen(true)}>
             {a.set ? 'Change' : 'Set up'}
           </Button>
-        )}
-      </div>
+        )
+      }
+      wide={open}
+    >
       {open && (
         <AppSetup
           app={a}
@@ -71,7 +64,7 @@ function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => voi
           onCancel={() => setOpen(false)}
         />
       )}
-    </Frame>
+    </StateCard>
   )
 }
 

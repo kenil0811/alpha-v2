@@ -1,5 +1,5 @@
 // Rules waiting on their Save card: listed for a module (its own
-// and those of all of Alpha) and for Settings › Permissions (every one); Approve and Decline are
+// and those of all of Alpha) and for Settings › Rules (every one); Approve and Decline are
 // the card's own answers, by their meaning, so a rule comes out exactly as saved on its card.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

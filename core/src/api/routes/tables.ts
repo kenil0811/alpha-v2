@@ -325,7 +325,7 @@ export function registerTables(ctx: Ctx): void {
       ? `${theirs === n ? (n === 1 ? 'It holds' : 'They hold') : `${theirs} of them hold`} values you typed. `
       : ''
     return {
-      words: `${typed}${parts.length ? `${n === 1 ? 'Its' : 'Their'} ${and} go with ${n === 1 ? 'it' : 'them'}. ` : ''}Bring back, in Activity, returns ${n === 1 && !parts.length ? 'it' : 'them all'} for ${config.limits().keep_removed_days} days.`,
+      words: `${typed}${parts.length ? `${n === 1 ? 'Its' : 'Their'} ${and} go with ${n === 1 ? 'it' : 'them'}. ` : ''}Bring back, in Logs, returns ${n === 1 && !parts.length ? 'it' : 'them all'} for ${config.limits().keep_removed_days} days.`,
     }
   })
 

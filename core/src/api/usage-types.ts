@@ -1,4 +1,4 @@
-// What Settings › LLM shows of a month's spend: its total, then split every way, largest first;
+// What Settings › Usage shows of a month's spend: its total, then split every way, largest first;
 // each split counts every row, so each adds up to the total (by person, the owner's alone: a member
 // sees their own line and everyone else's together). Its own file, beside the window's contract in
 // types.ts, which is kept from growing.

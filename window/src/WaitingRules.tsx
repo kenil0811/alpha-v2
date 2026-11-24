@@ -1,4 +1,4 @@
-// Rules waiting on their Save card: a group in Settings › Permissions, each rule as it would hold,
+// Rules waiting on their Save card: a group in Settings › Rules, each rule as it would hold,
 // with the tick and the cross (Approve and Decline).
 // Both answer the card itself, by its yes and no as their words, so the rule, its journal line
 // and its Always count come out as on the card. Nothing waiting: nothing shows.

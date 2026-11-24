@@ -81,7 +81,7 @@ describe('a desk turn', () => {
   })
 })
 
-describe('Settings › LLM › Usage', () => {
+describe('Settings › Usage', () => {
   it('gives a month split every way, largest first, each adding up to the total', async () => {
     const m = world.shape.makeModule('Garden', { actor: { kind: 'alpha' } })
     const opus = (usd: number) => [

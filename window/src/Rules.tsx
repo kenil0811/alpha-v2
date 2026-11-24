@@ -1,4 +1,4 @@
-// Settings › Permissions, the rules: the one switch at the top, and every rule below it.
+// Settings › Rules: the one switch at the top, and every rule below it.
 import type { KeptTable, RowView } from '@alpha/core/api'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
@@ -7,6 +7,7 @@ import { openLink } from './opened.ts'
 import { TableView } from './TableView.tsx'
 import { useAct } from './ui/act.tsx'
 import { List, Row } from './ui/list.tsx'
+import { notify } from './ui/notice.tsx'
 import { Switch } from './ui/switch.tsx'
 
 // Whether agents and their scripts ask before a new site, by a switch: off on a fresh install.
@@ -36,9 +37,12 @@ export function AskSites() {
             named
             onChange={(v) =>
               act(async () => {
-                setOn(
-                  (await api.post<{ on: boolean }>('/api/rules/ask-before-sites', { on: v })).on,
-                )
+                const now = (
+                  await api.post<{ on: boolean }>('/api/rules/ask-before-sites', { on: v })
+                ).on
+                setOn(now)
+                // turned off, it says so (L33); the switch above is the way back
+                if (!now) notify({ words: 'Agents no longer ask before opening a new website.' })
               })
             }
           />
@@ -50,7 +54,8 @@ export function AskSites() {
 
 // The rules: every allow and deny across Alpha, yours and what Alpha noticed, each
 // with where it holds and how often it was used; a revoked one stays listed as history. A rule's
-// page revokes it, or approves or dismisses what Alpha noticed. Shown under Permissions.
+// page revokes it, or approves or dismisses what Alpha noticed. Its New starts the same sentence
+// as New rule at the part's head.
 export function Standing({ version }: { version: number }) {
   const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {

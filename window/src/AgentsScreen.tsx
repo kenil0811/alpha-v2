@@ -1,6 +1,6 @@
 // Agents: the agents down the left, and the chosen one's Chat or its Setup, switched in the bar's
-// centre. Setup is the agent's own page, the same as Settings › Agents opens; picking another
-// agent keeps the part on screen.
+// centre. Setup is the agent's own page, the same as #/agent/<id> opens; picking another agent
+// keeps the part on screen.
 import type { AgentView, Stream } from '@alpha/core/api'
 import { AgentPage, AgentRail } from './Agents.tsx'
 import { Conversation } from './Conversation.tsx'

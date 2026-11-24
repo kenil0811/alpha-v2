@@ -1,6 +1,6 @@
 // How to work: the standing instructions the desk reads at the start of every conversation, one
 // file for each person and one for everyone, a line each ("- …"), some under a heading of their own
-// ("## About you"). Settings › How to work shows and removes them.
+// ("## About you"). Settings › Rules shows and removes them.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { World } from './world.ts'

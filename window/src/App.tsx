@@ -446,12 +446,7 @@ export function App() {
                       onName={setPersonName}
                     />
                   ) : place.at === 'settings' ? (
-                    <Settings
-                      tab={place.section}
-                      open={place.open}
-                      version={version}
-                      cards={stream?.cards ?? []}
-                    />
+                    <Settings tab={place.section} open={place.open} version={version} />
                   ) : moduleHereId ? (
                     <ModuleScreen
                       moduleId={moduleHereId}

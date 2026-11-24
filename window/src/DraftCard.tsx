@@ -107,7 +107,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
             <div className="text-ink text-md">{draft.always}?</div>
             <div className="text-ink-3 text-sm">
               This one goes now, and the next ones without asking you, each shown on Home. Revoke it
-              any time in Settings › Permissions.
+              any time in Settings › Rules.
             </div>
             <Actions>
               <Button

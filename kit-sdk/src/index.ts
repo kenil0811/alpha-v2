@@ -274,7 +274,7 @@ export const CALLS: Call[] = [
     }),
     answer: 'nothing',
     words:
-      'a line on Activity; what needs the person is a card; with rows, each can be opened, and the choice sets that field in one click',
+      'a line in Logs; what needs the person is a card; with rows, each can be opened, and the choice sets that field in one click',
     effect: null,
     since: 1,
   },
@@ -311,7 +311,7 @@ export const CALLS: Call[] = [
     params: ['words'],
     args: z.looseObject({ words: z.string() }),
     answer: 'nothing',
-    words: 'a step in Activity',
+    words: 'a step in Logs',
     effect: null,
     since: 1,
   },
@@ -363,7 +363,7 @@ export function reference(): string {
     `- Trigger kinds: ${TRIGGER_KINDS.join(', ')}.`,
     `- Card kinds: ${CARD_KINDS.join(', ')}.`,
     `- The sandbox runs Node ${NODE_MAJOR}.`,
-    '- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Activity and in Settings › Modules.',
+    '- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Logs.',
     '',
   ].join('\n')
 }

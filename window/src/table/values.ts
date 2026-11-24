@@ -104,10 +104,10 @@ export function money(amount: number, currency: string, compact = false): string
   }).format(amount)
 }
 
-// The notice once rows are deleted: Activity brings them back (L33, R6).
+// The notice once rows are deleted: Logs bring them back (L33, R6).
 export const rowsGone = (n: number) => ({
   words: `${n === 1 ? 'The row is' : `${n} rows are`} deleted. Bring ${n === 1 ? 'it' : 'them'} back from`,
-  where: { label: 'Activity', href: '#/settings/activity' },
+  where: { label: 'Logs', href: '#/settings/logs' },
 })
 
 // Where a value goes outside Alpha: a link or a web address in words opens in the

@@ -279,9 +279,9 @@ export class Gatekeeper {
       restsOn: !call.subagent && cur.message ? [`your message: “${cur.message}”`] : [],
       cannotUndo:
         remove.length || removingTable
-          ? 'Removed rows are gone from the table; Activity keeps that they were there.'
+          ? 'Removed rows are gone from the table; Logs keep that they were there.'
           : removingTasks.length
-            ? 'Removed tasks are gone with the tasks beneath them; Activity keeps that they were there.'
+            ? 'Removed tasks are gone with the tasks beneath them; Logs keep that they were there.'
             : null,
       ownEntries,
       askedIn: typeof input.asked_in === 'string' ? input.asked_in : null,
