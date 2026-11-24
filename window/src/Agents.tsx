@@ -22,7 +22,7 @@ import { Section } from './ui/section.tsx'
 import { Voice } from './ui/voice.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
-import { YesNo } from './ui/yes-no.tsx'
+import { TickOrCross } from './ui/yes-no.tsx'
 
 export const CHIEF = 'chief'
 
@@ -570,8 +570,8 @@ function Instructions({ id, text }: { id: string; text: string }) {
             <Voice value={draft} onChange={setDraft} className="absolute top-1.5 right-1.5" />
           </div>
           <span className="flex gap-1">
-            <YesNo yes={false} words="Cancel" onClick={() => setDraft(null)} />
-            <YesNo
+            <TickOrCross yes={false} words="Cancel" onClick={() => setDraft(null)} />
+            <TickOrCross
               yes
               words="Save"
               busy={busy || !draft.trim() || draft.trim() === text.trim()}
