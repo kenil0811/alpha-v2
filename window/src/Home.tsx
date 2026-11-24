@@ -3,14 +3,16 @@
 // has something (Vikas, 23 Nov). The date and the greeting are in the bar (HomeHead). The modules
 // are in the rail; the conversation has its own place on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
-import { ArrowUp, CheckCheck, Inbox, ListChecks, LoaderCircle, Sparkles } from 'lucide-react'
+import { ArrowUp, CheckCheck, Inbox, ListChecks, Sparkles } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardGrid, type GridCard } from './CardGrid.tsx'
 import { fromWhom, mainOf, NeedsYou } from './NeedsYou.tsx'
 import { shownScreens } from './plugin/screens.ts'
+import { ReadLine } from './ReadReport.tsx'
 import { StoryCard, stepsDone, useStory } from './story/StoryCard.tsx'
-import { TaskList } from './Tasks.tsx'
+import { TaskList } from './TaskLine.tsx'
+import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
 import { Group } from './ui/groups.tsx'
 import { Voice } from './ui/voice.tsx'
@@ -169,11 +171,13 @@ export function Home({
         <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
 
         {stream?.settingUp && (
-          <p className="flex items-center gap-2 text-ink-2 text-md">
-            <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
-            Setting up {stream.settingUp}
+          <p className="text-md">
+            <Busy>Setting up {stream.settingUp}</Busy>
           </p>
         )}
+
+        {/* what Alpha has read so far, while a read runs, opening What Alpha read */}
+        {!!stream?.reading.length && <ReadLine version={last} />}
 
         {/* a plugin's row, while something of its waits for the person */}
         {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}
@@ -218,6 +222,7 @@ function AskBox({
     <form onSubmit={send} className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pr-1.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
         <input
+          data-composer
           ref={area}
           value={words}
           onChange={(e) => setWords(e.target.value)}

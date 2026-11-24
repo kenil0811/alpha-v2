@@ -12,7 +12,7 @@ import { Field } from './field.tsx'
 import { Info } from './info.tsx'
 import { Voice } from './voice.tsx'
 import { Words } from './words.tsx'
-import { YesNo } from './yes-no.tsx'
+import { TickOrCross } from './yes-no.tsx'
 
 // A detail that is only a list (each line "- …") is the things the question is about, each one
 // picked or not with a box (Vikas, 23 Nov); none when the detail is words.
@@ -150,13 +150,13 @@ export function Question({
                 <div className="flex flex-wrap justify-end gap-2">
                   {options.length === 2 ? (
                     <>
-                      <YesNo
+                      <TickOrCross
                         yes={false}
                         words={answerWords(second)}
                         busy={busy}
                         onClick={() => onAnswer(second)}
                       />
-                      <YesNo
+                      <TickOrCross
                         yes
                         words={answerWords(first)}
                         busy={busy || (!!items && picked.size === 0)}
