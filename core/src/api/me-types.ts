@@ -47,7 +47,13 @@ export interface Layout {
   viewOf: Record<string, ViewOf> // a table's view for this person: table id → how it is drawn; none opens on the first list's own layout
   tabs: Record<string, TabsKept> // a module's table tabs for this person: module id → their order, the hidden and the pinned
   records: Record<string, RecordKept> // a record page for this person: table id, or person or company → its hidden properties and tabs
+  cardWidth: Record<string, CardWidth> // a Home card's width for this person: card key → its share of the row; none is the card's own
 }
+
+// A card's share of Home's row: the whole, a half, a third, a quarter; an eighth and a sixteenth
+// are squares, an icon and a number.
+export const CARD_WIDTHS = ['1', '1/2', '1/3', '1/4'] as const
+export type CardWidth = (typeof CARD_WIDTHS)[number]
 
 // A module's table tabs as one person keeps them (ui-rules M1, T19): their order (table ids, the
 // ones not named after, as they came), the tables hidden from the header, and the part or setup

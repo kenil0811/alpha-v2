@@ -10,8 +10,9 @@ export type Crumb = { label: string; href: string }
 
 // The bar over each screen, at the shared 48px: the screen's switch or name centred; at its left a
 // ‹ to the page above and the path from Home to it, each part a way there (Home / Deals), the
-// middle cut short with … when long; at its right, on Home what comes next today,
-// and Alpha's face, which opens the assistant while it is closed.
+// middle cut short with … when long; on Home the date and the greeting there instead, with no ‹
+// and no name; at its right, on Home what comes next today, and Alpha's face, which opens the
+// assistant while it is closed.
 // Find is ⌘K, from anywhere.
 export function Bar({
   name,
@@ -20,6 +21,7 @@ export function Bar({
   ask,
   trail,
   next,
+  lead,
 }: {
   name: string
   middle: (at: HTMLElement | null) => void
@@ -27,6 +29,7 @@ export function Bar({
   ask: { mood: Mood; open: () => void } | null
   trail: Crumb[] // Home to the page above this one; none on Home
   next?: ReactNode // on Home, what comes next today, before the face
+  lead?: ReactNode // on Home, the date and the greeting, in place of the ‹ and the name
 }) {
   const back = trail.at(-1)
   return (
@@ -35,7 +38,9 @@ export function Bar({
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {back ? (
+        {lead ? (
+          <div className="flex min-w-0 flex-col justify-center">{lead}</div>
+        ) : back ? (
           <nav
             aria-label="Where you are"
             className="-ml-2 flex min-w-0 items-center text-ink-3 text-md"
@@ -86,7 +91,7 @@ export function Bar({
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        {!plain && (
+        {!plain && !lead && (
           <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">
             {name}
           </h1>

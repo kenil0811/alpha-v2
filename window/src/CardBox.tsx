@@ -4,7 +4,7 @@
 // letter shows whole. Out of Conversation.tsx so that screen only shrinks (the window file wall).
 import type { CardView } from '@alpha/core/api'
 import { TriangleAlert } from 'lucide-react'
-import { useContext, useState } from 'react'
+import { type ReactNode, useContext, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
@@ -100,14 +100,22 @@ export function CardBox({
   card,
   onChange,
   whole = false,
+  bare = false,
+  pager,
 }: {
   id: string
   card: CardView
   onChange: (c: CardView) => void
   whole?: boolean // on its own page: shown whole, with no way to itself
+  bare?: boolean // inside a card of its own (Needs you): its body only
+  pager?: ReactNode // there, the page numbers under it
 }) {
   return (
-    <CardPlace.Provider value={whole ? { open: null, whole } : { open: `#/card/${id}`, whole }}>
+    <CardPlace.Provider
+      value={
+        bare ? { open: null, whole, bare, pager } : { open: whole ? null : `#/card/${id}`, whole }
+      }
+    >
       <CardBody id={id} card={card} onChange={onChange} />
     </CardPlace.Provider>
   )

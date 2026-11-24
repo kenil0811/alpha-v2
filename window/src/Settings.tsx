@@ -16,6 +16,7 @@ import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
+import { SetUpPart } from './story/StoryCard.tsx'
 import { TokenForm } from './TokenForm.tsx'
 import {
   applyTextSize,
@@ -58,6 +59,7 @@ const TABS = [
   ['modules', 'Modules'],
   ['schedules', 'Schedules'],
   ['work', 'How to work'],
+  ['setup', 'Set up Alpha'],
 ] as const
 
 export function Settings({
@@ -107,6 +109,7 @@ export function Settings({
     ),
     activity: <Activity version={version} cards={cards} />,
     read: <ReadReport version={version} />,
+    setup: <SetUpPart />,
     people: <AccountsSection owner={!member} />,
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,

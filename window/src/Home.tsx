@@ -1,21 +1,20 @@
-// Home: the date, the greeting, the ask box, what needs the person while something waits (cards
-// answered right here), and today's tasks. The modules are in the rail; the conversation has its
-// own place in the rail and on the right of every screen.
+// Home: the ask box, then its cards: Needs you while something waits (each answered right here),
+// Set up Alpha until it is done, today's tasks and the ones just completed, each card only while it
+// has something. The date and the greeting are in the bar (HomeHead). The modules
+// are in the rail; the conversation has its own place on the right of every screen.
 import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
-import { ArrowUp, KeyRound } from 'lucide-react'
+import { ArrowUp, CheckCheck, Inbox, ListChecks, Sparkles } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { Cards } from './CardBox.tsx'
+import { CardGrid, type GridCard } from './CardGrid.tsx'
+import { fromWhom, NeedsYou } from './NeedsYou.tsx'
 import { shownScreens } from './plugin/screens.ts'
 import { ReadLine } from './ReadReport.tsx'
-import { signInWith } from './SignInApps.tsx'
-import { StoryRow } from './story/StoryRow.tsx'
+import { StoryCard, stepsDone, useStory } from './story/StoryCard.tsx'
 import { TaskList } from './TaskLine.tsx'
 import { Busy } from './ui/busy.tsx'
 import { Button } from './ui/button.tsx'
-import { Group, Line } from './ui/groups.tsx'
-import { useLeaving } from './ui/motion.ts'
-import { Segmented } from './ui/segmented.tsx'
+import { Group } from './ui/groups.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
 function NotLoaded({ onTry }: { onTry: () => void }) {
@@ -29,30 +28,34 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
   )
 }
 
-// The agents the waiting cards come from, each with how many, in the team's order; a sign-in,
-// which no agent raised, shows under All only.
-function byAgent(cards: CardView[], agents: AgentView[]) {
-  return agents.flatMap((a) => {
-    const count = cards.filter((c) => c.agent === a.id).length
-    return count ? [{ id: a.id, name: a.name, count }] : []
+// The date, and the greeting under it, at the left of Home's bar.
+export function HomeHead() {
+  const day = new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
   })
+  return (
+    <div className="flex min-w-0 flex-col leading-tight">
+      <span className="truncate text-ink-3 text-xs">{day}</span>
+      <h1 className="truncate font-serif text-ink text-lg">{greeting()}</h1>
+    </div>
+  )
 }
 
-function greeting(name: string): string {
+// no name in it
+function greeting(): string {
   const h = new Date().getHours()
-  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-  return name ? `${part}, ${name}` : part
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
 export function Home({
   stream,
-  name,
   agents,
   onAsked,
 }: {
   stream: Stream | null
-  name: string
-  agents: AgentView[] // for Needs you's filter by agent
+  agents: AgentView[] // Needs you's faces
   onAsked: () => void // the answer opens on the right
 }) {
   const [tasks, setTasks] = useState<TasksView | null>(null)
@@ -62,6 +65,7 @@ export function Home({
   const [words, setWords] = useState('')
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
+  const [story, setStory] = useStory(last)
   const load = useCallback(() => {
     api.get<TasksView>('/api/tasks?list=finished').then(setFinished, () => undefined)
     api.get<TasksView>('/api/tasks?list=today').then(
@@ -78,119 +82,33 @@ export function Home({
     load()
   }, [load, last])
 
-  const [from, setFrom] = useState('all') // Needs you's cards from one agent, or all
-  const all = stream?.cards ?? []
-  const by = byAgent(all, agents)
-  const one = by.length > 1 && by.some((a) => a.id === from) ? from : 'all'
-  // a card being answered stays drawn until it has left (ui/motion.ts)
-  const cards = useLeaving(one === 'all' ? all : all.filter((c) => c.agent === one), (c) => c.id)
-  const signIns = one === 'all' ? (stream?.attention ?? []) : []
-  const waiting = all.length + (stream?.attention ?? []).length
+  const from = fromWhom(stream?.cards ?? [], stream?.attention ?? [], agents)
+  const waiting = (stream?.cards.length ?? 0) + (stream?.attention.length ?? 0)
   const changeCard = (card: CardView) => {
     setWords(`About “${card.words.replace(/\?$/, '')}”: `)
     ask.current?.focus()
   }
 
-  return (
-    <div className="@container h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-ink-3 text-sm">
-              {new Date().toLocaleDateString(undefined, {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
-            </p>
-            <h1 className="mt-1 font-serif text-2xl text-ink">{greeting(name)}</h1>
-          </div>
-          <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
-        </div>
-
-        {stream?.settingUp && (
-          <p className="text-md">
-            <Busy>Setting up {stream.settingUp}</Busy>
-          </p>
-        )}
-
-        {/* what Alpha has read so far, while a read runs, opening What Alpha read */}
-        {!!stream?.reading.length && <ReadLine version={last} />}
-
-        {/* Set up Alpha, until the person finishes it or declines */}
-        <StoryRow version={last} />
-
-        {/* a plugin's row, while something of its waits for the person */}
-        {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}
-
-        {/* only while something waits */}
-        {(waiting > 0 || cards.length > 0) && (
-          <Group title="Needs you" count={waiting}>
-            {by.length > 1 && (
-              <div>
-                <Segmented
-                  label="From"
-                  value={one}
-                  onChange={setFrom}
-                  options={[
-                    { value: 'all', label: `All ${waiting}` },
-                    ...by.map((a) => ({ value: a.id, label: `${a.name} ${a.count}` })),
-                  ]}
-                />
-              </div>
-            )}
-            <Cards cards={cards} onChange={changeCard} />
-            {signIns.map((a) => (
-              <Line
-                key={a.connector}
-                icon={<KeyRound className="size-3.5 text-warn" />}
-                head={a.waiting ? 'Waiting on your side' : 'Sign-in'}
-                words={
-                  a.waiting
-                    ? `${a.title}: ${a.waiting}`
-                    : a.inBrowser
-                      ? `${a.title} needs you to sign in: it opens in Chrome`
-                      : a.signsInWith
-                        ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
-                        : `${a.title} needs you to sign in again`
-                }
-                {...(a.waiting
-                  ? { href: '#/settings/connections' }
-                  : a.inBrowser
-                    ? {
-                        onClick: () => {
-                          void api.post(`/api/connections/${a.connection}/sign-in`)
-                        },
-                      }
-                    : a.signsInWith
-                      ? {
-                          onClick: () => {
-                            void signInWith(a.connection)
-                          },
-                        }
-                      : { href: `#/settings/connections?connect=${a.connector}` })}
-              />
-            ))}
-          </Group>
-        )}
-
-        {finished && finished.lines.length > 0 && (
-          <Group
-            title="Recently completed tasks"
-            action={
-              <button
-                type="button"
-                className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
-                onClick={() => void api.post('/api/tasks/clear-completed').then(load)}
-              >
-                Clear
-              </button>
-            }
-          >
-            <TaskList lines={finished.lines} onChange={load} />
-          </Group>
-        )}
-
+  // a card shows only when it has something: no empty frames
+  const grid: GridCard[] = []
+  if (waiting > 0)
+    grid.push({
+      key: 'needs',
+      width: '1/2', // wide enough that a question stays within two lines
+      node: <NeedsYou from={from} onChange={changeCard} />,
+    })
+  // Set up Alpha, until the person finishes it or declines
+  if (story?.row)
+    grid.push({
+      key: 'set-up',
+      width: '1/4',
+      node: <StoryCard story={story} onChange={setStory} />,
+    })
+  if (failed || (tasks?.lines.length ?? 0) > 0)
+    grid.push({
+      key: 'tasks',
+      width: '1/4',
+      node: (
         <Group
           title="Today's tasks"
           action={
@@ -205,6 +123,48 @@ export function Home({
           {failed && <NotLoaded onTry={load} />}
           {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} onChange={load} />}
         </Group>
+      ),
+    })
+  if (finished?.lines.length)
+    grid.push({
+      key: 'finished',
+      width: '1/4',
+      node: (
+        <Group
+          title="Recently completed tasks"
+          action={
+            <button
+              type="button"
+              className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+              onClick={() => void api.post('/api/tasks/clear-completed').then(load)}
+            >
+              Clear
+            </button>
+          }
+        >
+          <TaskList lines={finished.lines} onChange={load} />
+        </Group>
+      ),
+    })
+
+  return (
+    <div className="@container h-full overflow-y-auto">
+      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-7 pb-12">
+        <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
+
+        {stream?.settingUp && (
+          <p className="text-md">
+            <Busy>Setting up {stream.settingUp}</Busy>
+          </p>
+        )}
+
+        {/* what Alpha has read so far, while a read runs, opening What Alpha read */}
+        {!!stream?.reading.length && <ReadLine version={last} />}
+
+        {/* a plugin's row, while something of its waits for the person */}
+        {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}
+
+        <CardGrid cards={grid} />
       </div>
     </div>
   )

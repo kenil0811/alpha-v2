@@ -17,6 +17,7 @@ export const NO_LAYOUT: Layout = {
   viewOf: {},
   tabs: {},
   records: {},
+  cardWidth: {},
 }
 
 export const LayoutContext = createContext<{

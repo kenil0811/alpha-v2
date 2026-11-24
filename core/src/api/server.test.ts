@@ -433,6 +433,7 @@ describe('the api over a world', () => {
       viewOf: {},
       tabs: {},
       records: {},
+      cardWidth: {},
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -450,6 +451,7 @@ describe('the api over a world', () => {
         pageSize: 100,
         listOrder: { t1: ['v2', 'all', 'v1'] },
         viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
+        cardWidth: { needs: '1/3', tasks: '1' },
       },
     })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
@@ -466,6 +468,7 @@ describe('the api over a world', () => {
       viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
       tabs: {},
       records: {},
+      cardWidth: { needs: '1/3', tasks: '1' },
     })
     expect(
       (
@@ -487,6 +490,26 @@ describe('the api over a world', () => {
         })
       ).statusCode,
     ).toBe(400)
+    // a card's width is one of the six; none gives it back its own, and another card's stays
+    expect(
+      (
+        await a.inject({
+          method: 'POST',
+          url: '/api/layout',
+          headers: ok,
+          payload: { cardWidth: { tasks: '2/3' } },
+        })
+      ).statusCode,
+    ).toBe(400)
+    await a.inject({
+      method: 'POST',
+      url: '/api/layout',
+      headers: ok,
+      payload: { cardWidth: { tasks: null } },
+    })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().layout.cardWidth).toEqual({
+      needs: '1/3',
+    })
     // each table's order and view is kept on its own: another table's leaves it be, none forgets it
     await a.inject({
       method: 'POST',

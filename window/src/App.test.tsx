@@ -149,7 +149,7 @@ describe('the window', () => {
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
   })
 
-  it('names the workspace once for the Alpha, and counts on its tile what is new in Activity', () => {
+  it('names the workspace once for the Alpha, and with no count on its tile', () => {
     const rail = (here: Partial<WorkspaceHere>) =>
       renderToString(
         <WorkspaceContext.Provider value={{ ...NO_WORKSPACE, ...here }}>
@@ -166,7 +166,8 @@ describe('the window', () => {
           />
         </WorkspaceContext.Provider>,
       )
-    expect(rail({ news: 7 })).toContain('aria-label="Kenil&#x27;s workspace, 7 new in Activity"')
+    // no count on the tile: what waits is on Home
+    expect(rail({})).toContain('aria-label="Kenil&#x27;s workspace"')
     const named = rail({ workspace: { name: 'Bakery HQ', picture: null } })
     expect(named).toContain('aria-label="Bakery HQ"')
     expect(named).not.toContain('Kenil&#x27;s workspace')

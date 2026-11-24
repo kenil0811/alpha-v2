@@ -2,10 +2,12 @@ import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import { atNumber } from '../../world/shape/numbers.ts'
 import {
+  cardWidths,
   drawnTables,
   keptRecords,
   keptTabs,
   listOrders,
+  setCardWidth,
   setDrawn,
   setListOrder,
   setRecord,
@@ -19,6 +21,7 @@ import {
   workspacePicture,
 } from '../../world/workspace.ts'
 import type { Ctx } from '../ctx.ts'
+import { CARD_WIDTHS, type CardWidth } from '../me-types.ts'
 import type { FoundRow, Layout, Me, ViewOf } from '../types.ts'
 import { listed } from '../views.ts'
 
@@ -48,6 +51,12 @@ export function registerMe(ctx: Ctx): void {
       viewOf: drawnTables(world.db, user.id) as Record<string, ViewOf>,
       tabs: keptTabs(world.db, user.id),
       records: keptRecords(world.db, user.id),
+      // a width that no longer reads is as good as none
+      cardWidth: Object.fromEntries(
+        Object.entries(cardWidths(world.db, user.id)).filter(([, w]) =>
+          (CARD_WIDTHS as readonly string[]).includes(w),
+        ),
+      ) as Record<string, CardWidth>,
     }
   }
 
@@ -91,6 +100,8 @@ export function registerMe(ctx: Ctx): void {
           .regex(/^data:image\/(png|jpeg|webp);base64,/)
           .nullable()
           .optional(),
+        // each card named is kept on its own (none gives it back its own width)
+        cardWidth: z.record(z.string(), z.enum(CARD_WIDTHS).nullable()).optional(),
       })
       .parse(req.body)
     setWorkspace(world.db, given, { kind: 'person', id: user.id })
@@ -146,6 +157,8 @@ export function registerMe(ctx: Ctx): void {
               .nullable(),
           )
           .optional(),
+        // each card named is kept on its own (none gives it back its own width)
+        cardWidth: z.record(z.string(), z.enum(CARD_WIDTHS).nullable()).optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -183,6 +196,8 @@ export function registerMe(ctx: Ctx): void {
       setTabs(world.db, user.id, module, tabs)
     for (const [scope, r] of Object.entries(given.records ?? {}))
       setRecord(world.db, user.id, scope, r)
+    for (const [card, width] of Object.entries(given.cardWidth ?? {}))
+      setCardWidth(world.db, user.id, card, width)
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
     return layoutOf()
