@@ -172,7 +172,9 @@ export const moduleTabs = (
   current: ModuleTab | null,
   kept: TabsKept = NO_TABS, // the person's own: the tables they hid and the ones they pinned
 ): Tab[] => [
-  ...[...m.pages]
+  // a record's page is drawn on each record, never a tab of the module (M1)
+  ...m.pages
+    .filter((p) => !p.record)
     .sort((a, b) => Number(!!b.front) - Number(!!a.front))
     .map((p) => ({
       key: `p:${p.name}`,

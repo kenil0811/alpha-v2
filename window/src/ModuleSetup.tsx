@@ -1,5 +1,5 @@
-// A module's Setup, its last tab: what runs on its own in it, every table it has and the files on
-// its rows, and no more. The rest about a module is its details, a page of its own a link on Setup opens: where
+// A module's Setup, its last tab and its one place: what runs on its own in it, every table it
+// has, the files on its rows and the rules that hold in it, and no more. The rest about a module is its details, a page of its own a link on Setup opens: where
 // it comes from, what it is for, the agents it brings, the notes Alpha reads first, what is the
 // person's against the module's own, and on a developer's Alpha, Update from its folder.
 // The core calls a module's package a kit; a person never reads that word.
@@ -8,13 +8,15 @@ import type {
   Me,
   ModuleFileView,
   ModuleView,
+  RuleView,
   ScheduleView,
   YoursView,
 } from '@alpha/core/api'
-import { CalendarClock, ChevronRight, FileText, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronRight, FileText, Plus, Trash2 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
+import { startAsk } from './ask.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { originWords, when } from './Modules.tsx'
 import { TableTab } from './TableTab.tsx'
@@ -23,6 +25,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
 import { Select } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
@@ -33,25 +36,28 @@ import { Switch } from './ui/switch.tsx'
 import { updatedWords } from './ui/update-now.tsx'
 import { Words } from './ui/words.tsx'
 
-// A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, its
-// content; no card around it.
 // a part's place on the page, for a link to it (a notice's Find it in Setup › Tables)
 export const partId = (title: string) => `setup-${title.toLowerCase().replaceAll(' ', '-')}`
 
+// A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, a button
+// at the right of the title's line where the part adds something, its content; no card around it.
 export function Part({
   title,
   about,
+  action,
   children,
 }: {
   title: string
   about?: string
-  children: ReactNode
+  action?: ReactNode
+  children?: ReactNode
 }) {
   return (
     <section id={partId(title)} className="flex scroll-mt-4 flex-col">
       <div className="mb-2.5 flex items-center gap-1.5">
         <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
         {about && <Info help={about} />}
+        {action && <div className="ml-auto flex items-center gap-2">{action}</div>}
       </div>
       {children}
     </section>
@@ -65,6 +71,7 @@ export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => vo
         <Schedules m={m} onChange={onChange} />
         <Tables m={m} />
         <Files m={m} />
+        <Rules m={m} />
         <a
           href={`#/module/${m.id}/details`}
           className="flex items-center gap-1 self-start text-accent text-md hover:underline"
@@ -137,24 +144,32 @@ function KitAgents({ m }: { m: ModuleView }) {
   )
 }
 
+// The module's schedules, listed only when it has some; Add schedule starts the sentence with
+// Alpha, where schedules are made.
 function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   const agents = useAgents(0)
   return (
-    <Part title="Schedules">
-      <div className="flex flex-col gap-2">
-        {m.schedules.length > 1 && (
-          <div className="flex justify-end">
+    <Part
+      title="Schedules"
+      action={
+        <>
+          {m.schedules.length > 1 && (
             <AllSchedules moduleId={m.id} schedules={m.schedules} onChange={onChange} />
-          </div>
-        )}
-        {m.schedules.length > 0 && (
-          <List>
-            {m.schedules.map((a) => (
-              <OneSchedule key={a.id} a={a} agents={agents} onChange={onChange} />
-            ))}
-          </List>
-        )}
-      </div>
+          )}
+          <Button size="sm" onClick={() => startAsk(`In ${m.name}, every `)}>
+            <Plus className="size-3.5" />
+            Add schedule
+          </Button>
+        </>
+      }
+    >
+      {m.schedules.length > 0 && (
+        <List>
+          {m.schedules.map((a) => (
+            <OneSchedule key={a.id} a={a} agents={agents} onChange={onChange} />
+          ))}
+        </List>
+      )}
     </Part>
   )
 }
@@ -308,24 +323,38 @@ function Tables({ m }: { m: ModuleView }) {
 }
 
 // The files on the module's rows, the newest first, each with its row and when it came there; the
-// rest in Settings › Files on this module. No part for a module with none.
+// rest in Settings › Files on this module. A file dropped here is kept, and Alpha is asked which
+// rows it goes on, since a file sits on a row.
 const FEW = 12
 
 function Files({ m }: { m: ModuleView }) {
   const [got, setGot] = useState<{ files: ModuleFileView[]; count: number } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
   useEffect(() => {
     api
       .get<{ files: ModuleFileView[]; count: number }>(`/api/modules/${m.id}/files?limit=${FEW}`)
       .then(setGot, () => setGot(null))
   }, [m])
-  if (!got?.files.length) return null
+  const bring = async (picked: File[]) => {
+    setBusy(true)
+    setProblem(null)
+    const kept: string[] = []
+    for (const f of picked)
+      await api.upload(f).then(
+        (k) => kept.push(k.name),
+        () => setProblem(`${f.name} did not go in.`),
+      )
+    setBusy(false)
+    if (kept.length) startAsk(`Put ${kept.join(', ')} on the right rows in ${m.name}`)
+  }
   return (
-    <Part title="Files">
-      <ul className="flex flex-col">
-        {got.files.map((f) => (
-          <li
+    <Part title="Files" about={`The files on ${m.name}'s rows. Drop one here and Alpha files it.`}>
+      <DropZone onFiles={(f) => void bring(f)} busy={busy}>
+        {got?.files.map((f) => (
+          <div
             key={`${f.hash}-${f.row.id}`}
-            className="flex items-center gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+            className="flex items-center gap-3 px-1.5 py-1 text-md"
           >
             <FileText className="size-4 shrink-0 text-ink-3" />
             <a
@@ -341,10 +370,11 @@ function Files({ m }: { m: ModuleView }) {
               {f.row.name}
             </a>
             <span className="w-28 shrink-0 text-right text-ink-3">{updatedWords(f.at)}</span>
-          </li>
+          </div>
         ))}
-      </ul>
-      {got.count > got.files.length && (
+      </DropZone>
+      <Refusal words={problem} />
+      {got && got.count > got.files.length && (
         <a
           href={`#/settings/files?module=${m.id}`}
           className="mt-2 flex items-center gap-1 self-start text-accent text-md hover:underline"
@@ -352,6 +382,47 @@ function Files({ m }: { m: ModuleView }) {
           See all in Files
           <ChevronRight className="size-3.5" />
         </a>
+      )}
+    </Part>
+  )
+}
+
+// The rules that hold in this module, each opening its page; New rule starts the sentence with
+// Alpha, for this module, as Settings › Rules does.
+function Rules({ m }: { m: ModuleView }) {
+  const [rules, setRules] = useState<RuleView[]>([])
+  useEffect(() => {
+    api.get<RuleView[]>(`/api/rules?module=${encodeURIComponent(m.id)}`).then(
+      (all) => setRules(all.filter((r) => r.module === m.id && !r.revokedAt)),
+      () => setRules([]),
+    )
+  }, [m])
+  return (
+    <Part
+      title="Rules"
+      about={`What Alpha may and may not do in ${m.name}.`}
+      action={
+        <Button size="sm" onClick={() => startAsk(`In ${m.name}, from now on, `)}>
+          <Plus className="size-3.5" />
+          New rule
+        </Button>
+      }
+    >
+      {rules.length > 0 && (
+        <List>
+          {rules.map((r) => (
+            <Row
+              key={r.id}
+              className="relative hover:bg-canvas"
+              title={
+                <a href={`#/rule/${r.id}`} className="after:absolute after:inset-0">
+                  {r.words}
+                </a>
+              }
+              sub={`${r.side === 'deny' ? 'Never' : 'May'} · used ${r.uses} time${r.uses === 1 ? '' : 's'}`}
+            />
+          ))}
+        </List>
       )}
     </Part>
   )
