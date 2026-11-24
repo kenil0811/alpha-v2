@@ -38,8 +38,8 @@ const columns = (t: string) =>
 
 describe('the world’s shape', () => {
   it('is schema.sql and its migrations, and a fresh world is exactly schema.sql', () => {
-    expect(MIGRATIONS).toHaveLength(11)
-    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 11 })
+    expect(MIGRATIONS).toHaveLength(12)
+    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 12 })
     expect(made('table')).toEqual(named('TABLE'))
     expect(made('index')).toEqual(named('INDEX'))
     expect(made('trigger')).toEqual(named('TRIGGER'))
@@ -162,6 +162,63 @@ describe('the world’s shape', () => {
     }[]
     expect(rows.map((r) => r.user_id)).toEqual(['u1', 'u2'])
     expect(rows.every((r) => r.done_at)).toBe(true)
+    again.close()
+  })
+
+  it('gives a world made before migration 12 its reads and what they added, from the journal', async () => {
+    const file = join(home, 'reads.sqlite')
+    const old = new DatabaseSync(file)
+    old.exec(
+      SCHEMA.replace(/CREATE TABLE read_totals \([^;]*;/, '')
+        .replace(/\n\s*reads INTEGER[^\n]*/, '')
+        .replace(/\n\s*reads_failed INTEGER[^\n]*/, ''),
+    )
+    old.exec('PRAGMA user_version = 11')
+    old.exec(
+      "INSERT INTO connections (id, connector, account, state, made_by, created_at) VALUES ('c1', 'gmail', 'sam@oak.example', 'connected', 'system', 'now')",
+    )
+    const line = (kind: string, data: object) =>
+      old
+        .prepare(
+          "INSERT INTO journal (at, actor_kind, kind, words, data) VALUES ('now', 'connector', ?, 'x', ?)",
+        )
+        .run(kind, JSON.stringify(data))
+    line('connection_read', { connection: 'c1', state: 'ok' })
+    line('connection_read', { connection: 'c1', state: 'failed' })
+    line('connection_read', { connection: 'c1', state: 'ok' })
+    line('connection_read', { connection: 'other', state: 'ok' })
+    line('landed', {
+      table: 't1',
+      added: 3,
+      changed: 1,
+      connector: 'gmail',
+      account: 'sam@oak.example',
+    })
+    line('landed', {
+      table: 't1',
+      added: 2,
+      changed: 0,
+      connector: 'gmail',
+      account: 'sam@oak.example',
+    })
+    line('landed', {
+      table: 't1',
+      added: 9,
+      changed: 0,
+      connector: 'gmail',
+      account: 'jo@oak.example',
+    })
+    old.close()
+    const again = new DatabaseSync(file)
+    const { migrate } = await import('./schema.ts')
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(MIGRATIONS.length)
+    expect(again.prepare('SELECT reads, reads_failed FROM connections').get()).toEqual({
+      reads: 3,
+      reads_failed: 1,
+    })
+    expect(
+      again.prepare('SELECT connection_id, tbl, read, added, changed FROM read_totals').all(),
+    ).toEqual([{ connection_id: 'c1', tbl: 't1', read: 0, added: 5, changed: 1 }])
     again.close()
   })
 

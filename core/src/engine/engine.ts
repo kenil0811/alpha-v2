@@ -35,6 +35,10 @@ export class Engine {
       (user, agent, task) => this.desk(user, agent, task),
       (user, agent, task) => this.closeLane(user, agent, task),
     )
+    // a read under way counted something: every window's What Alpha read line, fetched again
+    if (options.connectors)
+      options.connectors.onCount = () =>
+        this.events.emit('event', { type: 'read', user: '' } satisfies EngineEvent)
     if (options.hands?.runner)
       options.hands.runner.give = (by, task) => {
         const user = world.user(by)

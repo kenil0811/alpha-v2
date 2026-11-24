@@ -580,20 +580,6 @@ export interface UndoView {
   left: string[]
 }
 
-export type LiveEvent =
-  | { type: 'lines'; agent?: string; task?: string }
-  | {
-      type: 'live'
-      turn: string
-      text: string
-      doing: string | null
-      parts: ({ kind: 'text'; text: string } | { kind: 'step'; words: string })[]
-      agent?: string
-      task?: string
-    }
-  | { type: 'busy'; turn: string; agent?: string; task?: string }
-  | { type: 'idle'; agent?: string; task?: string }
-
 // A task as a list shows it: its state, due, priority, owner and where it sits.
 export interface TaskLineView {
   id: string
@@ -646,4 +632,6 @@ export interface TaskView extends TaskLineView {
 }
 
 export type * from './agent-types.ts'
+export type * from './live-types.ts'
+export type * from './read-types.ts'
 export type * from './story-types.ts'

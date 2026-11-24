@@ -195,6 +195,13 @@ export async function learnedAct(
     }
     // the person's Keep, pressed here: written to How to work as theirs
     if (kept.length) host.keep(who.id, kept)
+    // what they dropped, counted for What Alpha read (a kept line is its own How to work line)
+    const dropped = open.filter((a) => drop.includes(a.id)).length
+    if (dropped)
+      host.journal(`Dropped ${dropped} line(s) in What I learned.`, {
+        person: who.id,
+        learned: { dropped },
+      })
     return { on: false }
   }
   if (body.retry) {
@@ -215,6 +222,10 @@ export async function learnedAct(
       { Status: answer === 'Not this' ? 'Asking' : 'Agreed' },
       `their answer in What I learned: ${choice}`,
     )
+    host.journal(`Answered a playback in What I learned: ${answer}.`, {
+      person: who.id,
+      learned: { answer: answer === 'Not this' ? 'no' : 'yes' },
+    })
     // Not this reopens the questions on that workflow until it can be restated (call 18)
     if (answer === 'Not this') void think(host, who)
     return { on: false }

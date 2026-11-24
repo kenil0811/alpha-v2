@@ -279,6 +279,7 @@ export function App() {
           void refresh()
           setVersion((v) => v + 1)
         }
+        if (e.type === 'read') return // What Alpha read's own line listens for it
         // what is under way shows only in that agent's own conversation
         const here = e.type === 'lines' || ((e.agent ?? CHIEF) === chosenRef.current && !e.task)
         if (e.type === 'busy' && here) setBusyTurn(e.turn)

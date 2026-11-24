@@ -29,6 +29,23 @@ CREATE TABLE IF NOT EXISTS computer_links (
 );
 `
 
+// What each connection's reads brought, by table ('files' for the files they kept), as schema.sql
+// has it too.
+export const READ_TOTALS = `
+CREATE TABLE IF NOT EXISTS read_totals (
+  connection_id TEXT NOT NULL,
+  tbl TEXT NOT NULL,
+  name TEXT NOT NULL,
+  read INTEGER NOT NULL DEFAULT 0,
+  added INTEGER NOT NULL DEFAULT 0,
+  changed INTEGER NOT NULL DEFAULT 0,
+  same INTEGER NOT NULL DEFAULT 0,
+  skipped INTEGER NOT NULL DEFAULT 0,
+  left_out INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (connection_id, tbl)
+) STRICT;
+`
+
 export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   SCHEMA,
   // 2, 15 Nov 2026: where a connection's sign-in went, as its provider names it (a QuickBooks
@@ -116,5 +133,35 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     db.prepare('INSERT OR IGNORE INTO story (user_id, done_at) SELECT id, ? FROM users').run(
       new Date().toISOString(),
     )
+  },
+  // 12, 24 Nov 2026: what each connection's reads brought, kept as running totals by table
+  // (connectors/tally.ts), and how many reads it had and how many failed; What Alpha read reads
+  // them. Backfilled from the journal: the reads and failures each read's line names, and the rows
+  // its landed lines added and changed; what a read met and left out before this was not counted.
+  (db) => {
+    db.exec(READ_TOTALS)
+    const cols = (
+      db.prepare("SELECT name FROM pragma_table_info('connections')").all() as { name: string }[]
+    ).map((c) => c.name)
+    if (!cols.includes('reads'))
+      db.exec('ALTER TABLE connections ADD COLUMN reads INTEGER NOT NULL DEFAULT 0')
+    if (!cols.includes('reads_failed'))
+      db.exec('ALTER TABLE connections ADD COLUMN reads_failed INTEGER NOT NULL DEFAULT 0')
+    db.exec(`UPDATE connections SET
+      reads = (SELECT count(*) FROM journal WHERE kind = 'connection_read'
+        AND json_extract(data, '$.connection') = connections.id),
+      reads_failed = (SELECT count(*) FROM journal WHERE kind = 'connection_read'
+        AND json_extract(data, '$.connection') = connections.id
+        AND json_extract(data, '$.state') = 'failed')`)
+    db.exec(`INSERT OR IGNORE INTO read_totals (connection_id, tbl, name, added, changed)
+      SELECT c.id, json_extract(j.data, '$.table'), coalesce(t.name, 'A table'),
+        sum(coalesce(json_extract(j.data, '$.added'), 0)),
+        sum(coalesce(json_extract(j.data, '$.changed'), 0))
+      FROM journal j
+      JOIN connections c ON c.connector = json_extract(j.data, '$.connector')
+        AND c.account = json_extract(j.data, '$.account')
+      LEFT JOIN tables t ON t.id = json_extract(j.data, '$.table')
+      WHERE j.kind = 'landed' AND json_extract(j.data, '$.table') IS NOT NULL
+      GROUP BY c.id, json_extract(j.data, '$.table')`)
   },
 ]

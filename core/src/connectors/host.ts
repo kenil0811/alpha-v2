@@ -9,13 +9,15 @@ import { type Connection, ownerOf } from '../world/connections.ts'
 import type { World } from '../world/world.ts'
 import { tableOf } from './places.ts'
 import type { SignIn } from './signin.ts'
+import type { Count } from './tally.ts'
 
 export interface HostDeps {
   world: World
   secrets: SecretStore
   signIn: SignIn | undefined
   browser: (() => BrowserEngine) | undefined
-  leftOut: (connection: string, count: number) => void // counted for the read under way
+  // what the read under way met, by table (tally.ts): its counts, added to
+  count: (connection: string, table: string, name: string, c: Partial<Count>) => void
 }
 
 function hashOf(bytes: Uint8Array): string {
@@ -42,13 +44,18 @@ export function hostFor(d: HostDeps, c: Connector, conn: Connection): Host {
     land: (tableName, items, options) => {
       const t = tableOf(d.world, c, tableName)
       if (!t) throw new Problem(`The table ${tableName} is not there.`)
-      return d.world.records.land(
+      const out = d.world.records.land(
         t.id,
         items,
         { connector: c.manifest.name, account: conn.account },
         { actor },
         options,
       )
+      // what it met and did not bring in: rows a person removed before, or a read that only keeps
+      // rows up to date
+      const skipped = items.length - out.added - out.changed - out.same
+      d.count(conn.id, t.id, t.name, { ...out, read: items.length, skipped })
+      return out
     },
     gone: (tableName, keys, options) => {
       const t = tableOf(d.world, c, tableName)
@@ -73,6 +80,7 @@ export function hostFor(d: HostDeps, c: Connector, conn: Connection): Host {
     keepFile: (name, bytes, mime) => {
       const known = d.world.files.file(hashOf(bytes))
       takeIn(d.world, bytes, name, mime, { actor })
+      d.count(conn.id, 'files', 'Files', { read: 1, ...(known ? { same: 1 } : { added: 1 }) })
       return { isNew: !known }
     },
     journal: (words, data) => {
@@ -84,6 +92,9 @@ export function hostFor(d: HostDeps, c: Connector, conn: Connection): Host {
       })
     },
     // counted for the read under way, and said on the connection when it ends (rules N1)
-    leftOut: (_table, count) => d.leftOut(conn.id, count),
+    leftOut: (table, n) => {
+      const t = table === 'files' ? null : tableOf(d.world, c, table)
+      d.count(conn.id, t?.id ?? table, t?.name ?? 'Files', { read: n, leftOut: n })
+    },
   }
 }

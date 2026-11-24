@@ -26,6 +26,7 @@ export interface Connection {
   place: string | null // where its sign-in went, as its provider names it (a QuickBooks company)
   computer: string | null // the person's computer it runs on, through the Bridge; none: here
   leftOut: number | null // what its last read left out as on the never-use list (N1)
+  createdAt: string // when its person allowed it
 }
 
 // Whose sign-ins a connection reads with: the person who set it up, or the firm's.
@@ -48,6 +49,7 @@ interface ConnectionRow {
   place: string | null
   computer: string | null
   left_out: number | null
+  created_at: string
 }
 
 function toConnection(r: ConnectionRow): Connection {
@@ -67,6 +69,7 @@ function toConnection(r: ConnectionRow): Connection {
     place: r.place ?? null,
     computer: r.computer ?? null,
     leftOut: r.left_out ?? null,
+    createdAt: r.created_at,
   }
 }
 
@@ -254,6 +257,8 @@ export class Connections {
       const c = this.get(id)
       if (!c) throw new Refused('That connection is not there.')
       run(this.db, 'DELETE FROM connections WHERE id = ?', id)
+      // what its reads brought goes with it; the rows they made stay
+      run(this.db, 'DELETE FROM read_totals WHERE connection_id = ?', id)
       append(this.db, {
         actor: ctx.actor,
         kind: 'disconnected',

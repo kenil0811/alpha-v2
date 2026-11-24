@@ -17,6 +17,7 @@ export type TurnPart = { kind: 'text'; text: string } | { kind: 'step'; words: s
 
 export type DeskEvent =
   | { type: 'lines' }
+  | { type: 'read' } // a read under way counted something: What Alpha read's line, fetched again
   | { type: 'live'; turn: string; text: string; doing: string | null; parts: TurnPart[] }
   | { type: 'busy'; turn: string }
   | { type: 'idle'; outcome?: 'ok' | 'stopped' | 'failed' }

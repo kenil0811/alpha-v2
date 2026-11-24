@@ -23,6 +23,7 @@ import { config } from '../config.ts'
 import { Registry, type ToolEntry } from '../engine/registry.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
+import { addRead } from '../world/read-totals.ts'
 import type { World } from '../world/world.ts'
 import { waits } from './computers.ts'
 import { hostFor } from './host.ts'
@@ -33,6 +34,7 @@ import { readThrough } from './reads.ts'
 import { rulesFor } from './rules.ts'
 import { describeConnections, entriesOf } from './served.ts'
 import type { SignIn } from './signin.ts'
+import { count, readLine, type Tally, tallyWords, totals } from './tally.ts'
 
 export interface ServiceOptions {
   secrets: SecretStore
@@ -155,15 +157,29 @@ export class ConnectorService {
         secrets: this.options.secrets,
         signIn: this.signIn,
         browser: this.options.browser,
-        leftOut: (id, count) => this.left.set(id, (this.left.get(id) ?? 0) + count),
+        count: (id, table, name, n) => {
+          count(this.tallies.get(id) ?? this.tallies.set(id, {}).get(id) ?? {}, table, name, n)
+          this.counted()
+        },
       },
       c,
       conn,
     )
   }
 
-  // What each read under way left out as on the never-use list, by its connection.
-  private left = new Map<string, number>()
+  // What each read under way brought, by its connection (tally.ts): its counts so far in What
+  // Alpha read while it runs, then added to its connection's totals and said on its journal line.
+  private tallies = new Map<string, Tally>()
+  tallyOf = (id: string): Tally | null =>
+    this.running.has(id) ? (this.tallies.get(id) ?? {}) : null
+  // told when a read under way counts something, at most once a second (the window's live line)
+  onCount: (() => void) | null = null
+  private countedAt = 0
+  private counted(): void {
+    if (!this.onCount || Date.now() - this.countedAt < 1000) return
+    this.countedAt = Date.now()
+    this.onCount()
+  }
 
   // A tool's call, by its effect: one that changes something is never tried again when its fate
   // is unknown; a read keeps its retries.
@@ -372,19 +388,27 @@ export class ConnectorService {
       }
     }
     const started = Date.now()
-    // each read is a line for Activity: how long it took and whether it brought anything
-    const read = (state: 'ok' | 'failed', words: string, quiet: boolean) =>
-      this.world.line({
-        actor: { kind: 'connector', id: c.manifest.name },
-        kind: 'connection_read',
+    // each read is a line for Activity: how long it took, what it counted and who allowed the
+    // connection; its counts are added to the connection's totals (What Alpha read)
+    const read = (state: 'ok' | 'failed', words: string, quiet: boolean) => {
+      const tally = this.tallies.get(id) ?? {}
+      readLine(this.world, c.manifest.name, c.manifest.title, conn, {
+        ms: Date.now() - started,
+        state,
+        quiet,
         words,
-        data: { connection: id, name: c.manifest.title, ms: Date.now() - started, state, quiet },
+        tally,
       })
-    this.left.set(id, 0)
+      addRead(this.world.db, id, tally, state === 'failed')
+      this.tallies.delete(id)
+      this.onCount?.() // its counts are the totals now, and it reads no more
+    }
+    this.tallies.set(id, {})
     try {
       landIn(this.world, c)
       const result = await c.sync(this.call(c, conn))
-      const leftOut = this.left.get(id) ?? 0
+      const tally = this.tallies.get(id) ?? {}
+      const { leftOut, skipped } = totals(tally)
       const health = judgeHealth(
         { rows: conn.lastRows, lastNewAt: conn.lastNewAt },
         result,
@@ -406,16 +430,13 @@ export class ConnectorService {
         { actor: { kind: 'connector', id: c.manifest.name } },
         leftOut,
       )
-      const left = leftOut ? ` Left out ${leftOut} on the never-use list.` : ''
-      read(
-        'ok',
-        result.sawNew
-          ? `Read ${conn.account}: something new.${left}`
-          : `Read ${conn.account}: nothing new.${left}`,
-        !result.sawNew,
-      )
+      // a read that left something out or passed something over is never folded away
+      read('ok', tallyWords(conn.account, tally), !result.sawNew && !leftOut && !skipped)
     } catch (err) {
-      if (err instanceof Problem && err.kind === 'away') return waits(this.world, c, conn)
+      if (err instanceof Problem && err.kind === 'away') {
+        this.tallies.delete(id)
+        return waits(this.world, c, conn)
+      }
       this.tried.set(id, Date.now())
       this.fail(c, conn, err)
       read(

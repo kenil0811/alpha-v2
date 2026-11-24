@@ -657,8 +657,25 @@ CREATE TABLE connections (
   place TEXT, -- where its sign-in went, as the provider names it (a QuickBooks company)
   computer TEXT, -- the person's computer it runs on, through the Bridge; none: here
   left_out INTEGER, -- what its last read left out as on the never-use list (N1), counted
+  reads INTEGER NOT NULL DEFAULT 0, -- how many reads it had (What Alpha read)
+  reads_failed INTEGER NOT NULL DEFAULT 0, -- and how many of them failed
   UNIQUE (connector, account)
 );
+
+-- What each connection's reads brought, by table ('files' for the files they kept), added up as
+-- each read ends (connectors/tally.ts); What Alpha read reads them. Gone with the connection.
+CREATE TABLE read_totals (
+  connection_id TEXT NOT NULL,
+  tbl TEXT NOT NULL,
+  name TEXT NOT NULL,
+  read INTEGER NOT NULL DEFAULT 0,
+  added INTEGER NOT NULL DEFAULT 0,
+  changed INTEGER NOT NULL DEFAULT 0,
+  same INTEGER NOT NULL DEFAULT 0,
+  skipped INTEGER NOT NULL DEFAULT 0,
+  left_out INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (connection_id, tbl)
+) STRICT;
 
 -- A person's paired computers (the Bridge): the public half of the key each made, and when it was
 -- last seen; a removed one is turned away. A pairing link is kept by its code's hash, used once.

@@ -2,6 +2,8 @@
 // and says what it saw. The runner (run.ts) judges every step's checks here.
 import { join } from 'node:path'
 import { z } from 'zod'
+import type { BaseCtx } from '../api/ctx.ts'
+import { readReport } from '../api/read-report.ts'
 import { schedules } from '../modules/schedules.ts'
 import { printPage } from '../pages/pages.ts'
 import { businessCase } from '../world/shape/manifest.ts'
@@ -39,6 +41,15 @@ export const Check = z.union([
   ...InterviewChecks, // an interview, and plugins switched on or not (interview-checks.ts)
   ...AccountChecks, // the account lines (account-steps.ts)
   ...StoryChecks, // where a person's Set up Alpha stands, and what its screens say (story-steps.ts)
+  // What Alpha read's counts for one table, summed over its sources (api/read-report.ts)
+  z.object({
+    read_report: z.object({
+      table: z.string(),
+      read: z.number(),
+      kept: z.number(),
+      left_out: z.number(),
+    }),
+  }),
   // asks between agents, by how they answered
   z.object({ asks: z.object({ count: z.number(), status: z.string().optional() }) }),
   // where a table sits in its module: a main table, part of a row, or setup
@@ -135,6 +146,18 @@ export interface Outcome {
 }
 
 export async function judge(world: World, user: User, check: Check): Promise<Outcome> {
+  if ('read_report' in check) {
+    const c = check.read_report
+    const ts = readReport({ world, engine: {}, user } as unknown as BaseCtx).sources.flatMap((s) =>
+      s.tables.filter((t) => t.name === c.table),
+    )
+    const sum = (k: 'read' | 'kept' | 'leftOut') => ts.reduce((a, t) => a + t[k], 0)
+    return {
+      check: `What Alpha read says ${c.table}: read ${c.read}, kept ${c.kept}, left out ${c.left_out}`,
+      ok: sum('read') === c.read && sum('kept') === c.kept && sum('leftOut') === c.left_out,
+      saw: `read ${sum('read')}, kept ${sum('kept')}, left out ${sum('leftOut')}`,
+    }
+  }
   if ('page' in check) {
     const m = world.shape.module(check.page.module)
     const words = m

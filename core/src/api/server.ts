@@ -33,6 +33,7 @@ import { registerKits } from './routes/kits.ts'
 import { registerMe } from './routes/me.ts'
 import { registerModules } from './routes/modules.ts'
 import { registerPeople } from './routes/people.ts'
+import { registerReadReport } from './routes/read-report.ts'
 import { registerReadNow } from './routes/readnow.ts'
 import { registerRows } from './routes/rows.ts'
 import { registerRules } from './routes/rules.ts'
@@ -235,6 +236,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerConnectors(ctx)
   registerConnect(ctx)
   registerReadNow(ctx)
+  registerReadReport(ctx)
   registerSignIn(ctx)
   registerAgents(ctx)
   registerSchedules(ctx)
@@ -286,7 +288,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       const id = (who.get(req) ?? owner).id
       // a change to the world reaches every window; a person's streaming reply only theirs
       const send = (e: EngineEvent) => {
-        if (e.type === 'lines' || e.user === id)
+        if (e.type === 'lines' || e.type === 'read' || e.user === id)
           socket.send(JSON.stringify({ ...e, user: undefined }))
       }
       engine.events.on('event', send)
