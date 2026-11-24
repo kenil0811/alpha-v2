@@ -11,7 +11,7 @@ import { IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Renamable } from './ui/rename.tsx'
-import { YesNo } from './ui/yes-no.tsx'
+import { TickOrCross } from './ui/yes-no.tsx'
 
 export function CheckCard({ card, check }: { card: CardView; check: CheckView }) {
   const [busy, setBusy] = useState(false)
@@ -53,7 +53,7 @@ export function CheckCard({ card, check }: { card: CardView; check: CheckView })
                       <IconButton label="Change" disabled={busy} onClick={start}>
                         <Pencil className="size-3.5" />
                       </IconButton>
-                      <YesNo
+                      <TickOrCross
                         yes
                         words="Keep"
                         busy={busy}
