@@ -1,0 +1,6 @@
+{
+  "visits": [
+    { "url": "https://quotes.example/new", "title": "New quote", "at": "2026-11-11T09:00:00Z" },
+    { "url": "https://quotes.example/new", "title": "New quote", "at": "2026-11-13T09:00:00Z" }
+  ]
+}

@@ -1,0 +1,16 @@
+name: edge-history-is-read
+title: A person who browses in Edge and Chrome lends their browsing, and Alpha reads both, naming each
+why: >
+  The 23 Nov window review asked why the onboarding never read Edge's history. Edge was read;
+  nothing on Get to know you said so, and a browser was named by a pattern over its whole path. A
+  made-up person's computer, its history recorded in Edge and in Chrome, never this Mac's.
+plugins: [interviews]
+fixtures: edge-history-is-read
+steps:
+  - bridge: { lend: '{tmp}/Office' }
+  - bridge: { browsing: true }
+    checks:
+      - rows_in: { table: Sites, count: 2 }
+      - field: { table: Sites, key: harborsupply.example, field: Browsers, equals: Edge }
+      - field: { table: Sites, key: quotes.example, field: Browsers, equals: Chrome }
+      - errors: 0

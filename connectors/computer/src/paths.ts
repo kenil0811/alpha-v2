@@ -10,28 +10,39 @@ const win = process.platform === 'win32'
 // the person's folder: ALPHA_COMPUTER_HOME stands in for it where a journey records a computer
 const me = () => process.env.ALPHA_COMPUTER_HOME ?? homedir()
 
-// The Chromium browsers' own folders, each holding its profiles (Default, Profile 1…).
+// The Chromium browsers' own folders, each holding its profiles (Default, Profile 1…), by name.
+const MAC: [string, string][] = [
+  ['Google/Chrome', 'Chrome'],
+  ['Microsoft Edge', 'Edge'],
+  ['BraveSoftware/Brave-Browser', 'Brave'],
+  ['Arc/User Data', 'Arc'],
+  ['Vivaldi', 'Vivaldi'],
+  ['Chromium', 'Chromium'],
+]
+const WIN: [string, string][] = [
+  ['Google/Chrome/User Data', 'Chrome'],
+  ['Microsoft/Edge/User Data', 'Edge'],
+  ['BraveSoftware/Brave-Browser/User Data', 'Brave'],
+  ['Vivaldi/User Data', 'Vivaldi'],
+  ['Chromium/User Data', 'Chromium'],
+]
+// Where a browser keeps its profiles on a Mac, by its name (a recorded computer is a Mac's).
+export const macFolder = (name: string): string =>
+  (MAC.find(([, n]) => n === name) ?? MAC[0])?.[0] ?? 'Google/Chrome'
+
 export function browserRoots(env: NodeJS.ProcessEnv = process.env, home = me()): string[] {
   const roots = mac
-    ? [
-        'Google/Chrome',
-        'Microsoft Edge',
-        'BraveSoftware/Brave-Browser',
-        'Arc/User Data',
-        'Vivaldi',
-        'Chromium',
-      ].map((p) => join(home, 'Library', 'Application Support', p))
+    ? MAC.map(([p]) => join(home, 'Library', 'Application Support', p))
     : win
-      ? [
-          'Google/Chrome/User Data',
-          'Microsoft/Edge/User Data',
-          'BraveSoftware/Brave-Browser/User Data',
-          'Vivaldi/User Data',
-          'Chromium/User Data',
-        ].map((p) => join(env.LOCALAPPDATA ?? join(home, 'AppData', 'Local'), p))
+      ? WIN.map(([p]) => join(env.LOCALAPPDATA ?? join(home, 'AppData', 'Local'), p))
       : []
   return roots.filter((r) => existsSync(r))
 }
+
+// A browser's name by the folder its profiles sit in, never by a pattern over the whole path (a
+// person's folder named /Users/marcia is not Arc's).
+export const browserName = (root: string): string =>
+  [...MAC, ...WIN].find(([p]) => root.endsWith(join(...p.split('/'))))?.[1] ?? 'Chrome'
 
 // Each profile's history file under a browser's folder.
 export function historyFiles(root: string): { browser: string; file: string }[] {
@@ -47,19 +58,6 @@ export function historyFiles(root: string): { browser: string; file: string }[] 
     .map((n) => ({ browser, file: join(root, n, 'History') }))
     .filter((h) => existsSync(h.file))
 }
-
-const browserName = (root: string) =>
-  /Edge/i.test(root)
-    ? 'Edge'
-    : /Brave/i.test(root)
-      ? 'Brave'
-      : /Arc/i.test(root)
-        ? 'Arc'
-        : /Vivaldi/i.test(root)
-          ? 'Vivaldi'
-          : /Chromium/i.test(root)
-            ? 'Chromium'
-            : 'Chrome'
 
 // Claude Code's and Codex's session folders.
 export const claudeDir = (home = me()) => join(home, '.claude', 'projects')

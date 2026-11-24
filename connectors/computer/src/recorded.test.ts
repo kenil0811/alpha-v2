@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { visitsIn } from './history.ts'
-import { claudeDir, historyFiles } from './paths.ts'
+import { browserName, claudeDir, historyFiles } from './paths.ts'
 import { claudeRequests, webConversations } from './read.ts'
 import { recordedHome } from './recorded.ts'
 
@@ -63,4 +63,37 @@ it('leaves nothing to read where nothing was recorded', () => {
   const home = recordedHome(answers({}), join(dir, 'home'), NOW)
   expect(existsSync(chrome(home))).toBe(false)
   expect(claudeRequests(claudeDir(home), 90, NOW)).toEqual([])
+})
+
+// Edge seemed unread: each browser's history is read and named by the folder it sits in, and a
+// person's folder named like a browser names nothing.
+it('reads Edge’s history beside Chrome’s, each by its own name', () => {
+  const visit = (url: string, at: string) => ({ url, title: 'Page', at })
+  const home = recordedHome(
+    answers({
+      'browsing/history-any.json': {
+        visits: [visit('https://chrome.example/', '2026-01-10T10:00:00Z')],
+      },
+      'browsing/history-edge.json': {
+        browser: 'Edge',
+        visits: [visit('https://edge.example/', '2026-01-11T10:00:00Z')],
+      },
+    }),
+    join(dir, 'marcia'), // "arc" is in the name: it must not make Edge's history Arc's
+    NOW,
+  )
+  const support = join(home, 'Library', 'Application Support')
+  const files = [join(support, 'Google', 'Chrome'), join(support, 'Microsoft Edge')].flatMap((r) =>
+    historyFiles(r),
+  )
+  expect(visitsIn(files, 90, NOW).map((v) => [v.browser, v.url])).toEqual([
+    ['Chrome', 'https://chrome.example/'],
+    ['Edge', 'https://edge.example/'],
+  ])
+})
+
+it('names each browser by where its profiles sit', () => {
+  expect(browserName('/Users/marcia/Library/Application Support/Google/Chrome')).toBe('Chrome')
+  expect(browserName('/Users/marcia/Library/Application Support/Arc/User Data')).toBe('Arc')
+  expect(browserName('/Users/sam/Library/Application Support/Microsoft Edge')).toBe('Edge')
 })
