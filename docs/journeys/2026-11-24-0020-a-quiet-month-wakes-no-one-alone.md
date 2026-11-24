@@ -1,9 +1,9 @@
-# Journey a-quiet-month-wakes-no-one: 2026-11-22 19:53
+# Journey a-quiet-month-wakes-no-one: 2026-11-24 00:20
 
 A month after the owner goes through Set up Alpha, the Interviewer's check finds nothing new and wakes no one
 
 Fresh tenant, model claude-opus-5-5, on Claude Code, Alpha's prompt alone, with interviews switched on.
-**Passed** in 8 s, $0.00.
+**Passed** in 0 s, $0.00.
 
 
 ## 1. The owner went through welcome
@@ -16,12 +16,12 @@ Took 0.1 s.
 Took 0.0 s.
 
 
-## 3. The owner went through connect
+## 3. The owner skipped computer
 
 Took 0.0 s.
 
 
-## 4. The owner went through know
+## 4. The owner went through connect
 
 Took 0.0 s.
 
@@ -31,30 +31,35 @@ Took 0.0 s.
 Took 0.0 s.
 
 
-## 6. The owner went through What I learned: nothing to answer
-
-Took 8.0 s.
-
-
-## 7. The owner went through done
+## 6. The owner went through learned
 
 Took 0.0 s.
 
-- pass: the owner's story: done; no Home row (saw 200: welcome, workspace, connect, know, people, learned, done; at null; done; row none)
+
+## 7. The owner went through What I learned: nothing to answer
+
+Took 0.0 s.
+
+
+## 8. The owner went through done
+
+Took 0.0 s.
+
+- pass: the owner's story: done; no Home row (saw 200: welcome, workspace, computer, connect, people, learned, questions, plate, done; at null; done; row none)
 - pass: Interviewer keeps 1 schedule(s) with a check (saw A short interview (check))
 - pass: errors: 0 (saw 0)
 
-## 8. The scheduler's tick: Nothing new.
+## 9. The scheduler's tick: Nothing new.
 
 Took 0.2 s.
 
 - pass: Interviewer's last run matches /Nothing new/ (saw Nothing new.)
-- pass: the owner's story: no Home row (saw 200: welcome, workspace, connect, know, people, learned, done; at null; done; row none)
+- pass: the owner's story: no Home row (saw 200: welcome, workspace, computer, connect, people, learned, questions, plate, done; at null; done; row none)
 - pass: the task A short interview, 0 of them (saw none)
 - pass: 0 cards in Needs you (saw none)
 - pass: errors: 0 (saw 0)
 
-The journal verifies, rows included: 29 lines.
+The journal verifies, rows included: 21 lines.
 
 ## The world after
 
@@ -75,11 +80,4 @@ Questions: Question (text), Person (text), Options (text), Answer (text), Rests 
 
 Interview sources: Source (text), Person (text), State (choice), Found (text), Card (text)
 
-- source "Mail" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]
-- source "Calendar" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]
-- source "Contacts" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]
-- source "A folder" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]
-- source "Browsing" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]
-- source "Apps" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]
-- source "AI work" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]
 - source "What you have in Alpha" [assumed], person "Kenil" [assumed], state "Skipped" [assumed], found "" [assumed]

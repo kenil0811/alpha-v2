@@ -75,12 +75,17 @@ export interface PluginHost {
   }
   // A route of its own under /api/plugins/<name>/, answering the window as the person.
   route(method: 'GET' | 'POST', path: string, answer: (input: Input) => Promise<unknown>): void
-  // A chapter of its own in Set up Alpha, placed after Connect or after Your people, for the
+  // A chapter of its own in Set up Alpha, placed after Your accounts or after Invite team, for the
   // owner or for everyone: its screen read and its act done as the person, at /api/story/<key>.
   chapter(chapter: Chapter): void
   // The workspace: its name, who the work is for in the owner's own words, and its website, as
   // the owner gave them in Set up Alpha's Your workspace.
-  workspace(): { name: string | null; for: string | null; site: string | null }
+  workspace(): {
+    name: string | null
+    for: string | null
+    site: string | null
+    use: 'business' | 'personal' | null // said in Set up Alpha's About you
+  }
   // Lines a person kept on a screen of its own chapter in Set up Alpha (their Keep pressed there),
   // written to How to work as theirs: For you, or For everyone here only when they are the owner,
   // under the heading. Called only from that chapter's act, as the person who pressed Keep.
@@ -175,7 +180,8 @@ export interface Chapter {
   after: 'connect' | 'people'
   who: 'owner' | 'everyone'
   screen(input: Input): Promise<{ says?: string } & Record<string, unknown>>
-  act(input: Input): Promise<{ on: boolean } & Record<string, unknown>>
+  // on: the story moves on; nothing: nothing happened on it, so it is marked skipped, never done
+  act(input: Input): Promise<{ on: boolean; nothing?: boolean } & Record<string, unknown>>
 }
 
 export interface Input {

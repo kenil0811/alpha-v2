@@ -37,7 +37,7 @@ import { actorName, type Table, type WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
 import { CORE_CHAPTERS, unmarkChapter } from '../world/story.ts'
-import { workspaceFor, workspaceName, workspaceSite } from '../world/workspace.ts'
+import { workspaceFor, workspaceName, workspaceSite, workspaceUse } from '../world/workspace.ts'
 import type { User, World } from '../world/world.ts'
 
 export const PLUGINS_DIR = join(import.meta.dirname, '..', '..', '..', 'plugins')
@@ -440,6 +440,7 @@ export class Plugins {
         name: workspaceName(world.db),
         for: workspaceFor(world.db),
         site: workspaceSite(world.db),
+        use: workspaceUse(world.db),
       }),
       keep: (person, lines) => {
         const who = world.user(person)

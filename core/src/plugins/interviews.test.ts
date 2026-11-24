@@ -81,7 +81,7 @@ const MAIL = {
   ],
 } as unknown as Connector
 
-it('adds Get to know you and What I learned to Set up Alpha: reads what is left on, drafts once, asks the blanks as a set', async () => {
+it('adds What I learned, A few questions and Off your plate to Set up Alpha: reads what is connected, drafts once, asks the blanks as a set', async () => {
   const user = world.owner('Kenil')
   const prompts: string[] = []
   // the model, stood in for: each draft as the person's answers so far make it
@@ -162,10 +162,11 @@ it('adds Get to know you and What I learned to Set up Alpha: reads what is left 
   )
 
   expect(plugins.chapters.map((c) => [c.key, c.after, c.who])).toEqual([
-    ['know', 'connect', 'everyone'],
     ['learned', 'people', 'everyone'],
+    ['questions', 'people', 'everyone'],
+    ['plate', 'people', 'everyone'],
   ])
-  const [know, learned] = plugins.chapters as [
+  const [learned, questions] = plugins.chapters as [
     (typeof plugins.chapters)[number],
     (typeof plugins.chapters)[number],
   ]
@@ -187,13 +188,8 @@ it('adds Get to know you and What I learned to Set up Alpha: reads what is left 
     throw new Error('The draft never came.')
   }
 
-  // one screen of every source, with how much there is; switched off, a source is never read
-  const screen = (await know.screen(input())) as unknown as {
-    sources: { key: string; has: string; available: boolean }[]
-  }
-  expect(screen.sources.find((s) => s.key === 'mail')).toMatchObject({ available: true })
-  expect(screen.sources.find((s) => s.key === 'mail')?.has).toMatch(/3 mails/)
-  expect(await know.act(input({ off: ['alpha'] }))).toEqual({ on: true })
+  // what is connected is read, a source turned off never; then one draft
+  expect(await learned.act(input({ read: { off: ['alpha'] } }))).toEqual({ on: false })
   const sources = world.shape.ownTable(
     world.shape.ownModule('Your work')?.id ?? '',
     'Interview sources',
@@ -204,13 +200,8 @@ it('adds Get to know you and What I learned to Set up Alpha: reads what is left 
       .slice(0, 2),
   )
   expect(states).toContainEqual(['Mail', 'Kenil'])
-  // what each source found, as the person sees it: a line or two, with no ids
-  const shown = (await know.screen(input())) as unknown as {
-    found: { key: string; shown?: string[] }[]
-  }
-  const mailShown = shown.found.find((f) => f.key === 'mail')?.shown ?? []
-  expect(mailShown[0]).toMatch(/^Most from: client\d@example\.com \(1\)/)
-  expect(mailShown.join(' ')).not.toMatch(/row r_/)
+  const read = (await learned.screen(input())) as unknown as { found: { name: string }[] }
+  expect(read.found.map((f) => f.name)).toContain('Mail')
 
   // one draft: the line that cites nothing left out, one blank asked, numbers from code
   let v = await settled()
@@ -220,9 +211,9 @@ it('adds Get to know you and What I learned to Set up Alpha: reads what is left 
   expect(v.question?.words).toMatch(/how long/)
   expect(v.playbacks).toEqual([])
 
-  // the set answered: the answers go back together, and the playback comes
+  // the set answered on A few questions: the answers go back together, and the playback comes
   expect(
-    await learned.act(input({ answer: { id: v.question?.id, choice: 'About 45 minutes each' } })),
+    await questions.act(input({ answer: { id: v.question?.id, choice: 'About 45 minutes each' } })),
   ).toEqual({ on: false })
   v = await settled()
   expect(prompts).toHaveLength(2)

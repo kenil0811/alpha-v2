@@ -3,9 +3,9 @@ title: The owner of a small firm goes through Set up Alpha, allows what Alpha ma
 why: >
   Onboarding redesigned (Kenil's calls, 22 Nov): Set up Alpha is a story of chapters drawn by code,
   never a chat (calls 1 to 3). Welcome, Your workspace with who the work is for in the owner's own
-  words, Connect with counts from code, Get to know you on one consent screen where a source
-  switched off is never read or cited (calls 15, 16), Your people, What I learned with About you,
-  the blanks and each workflow's playback (calls 17, 18), Done. Nothing lands in How to work
+  words, Connect with counts from code, connecting being the permission to read, so a source
+  not connected is never read or cited (calls 15, 16; one page, 23 Nov), Invite
+  team, What I learned, A few questions and Off your plate (calls 17, 18), Done. Nothing lands in How to work
   without the person's Keep, a declined proposal never comes back, hours are computed in code or
   marked estimated with their basis, every report row cites what it rests on, and none of it sits
   in Needs you. A made-up renovation firm, on recorded mail, events, contacts and browsing, and a
@@ -20,10 +20,10 @@ steps:
       # a fresh Alpha's owner is in the story, its interview chapters there with interviews on, and
       # no Claude chapter while a model is set (calls 4, 7)
       - story:
-          chapters: [welcome, workspace, connect, know, people, learned, done]
+          chapters: [welcome, workspace, computer, connect, people, learned, questions, plate, done]
           at: welcome
           done: false
-  # the person's computer: a folder lent (to be switched off), Calendar, Contacts and browsing
+  # the person's computer: a folder lent (to be turned off), Calendar, Contacts and browsing
   - bridge:
       lend: '{tmp}/Office'
       put: { name: Oak Street staff bonus plan.csv, text: "Name,Bonus\nLee,1200\n" }
@@ -46,19 +46,21 @@ steps:
         for: 'Oak Street Builders, my renovation firm: me, Lee who runs the sites, and four carpenters.'
         site: '{site}'
     checks:
-      - story: { at: connect }
+      - story: { at: computer }
+  - story: { chapter: computer }
   # Connect: what landed, counted by code, never in a model's words (calls 8, 13)
   - story: { chapter: connect }
     checks:
       - story_says: { chapter: connect, matches: '31' }
-  # Get to know you: one screen, every source on but the folder, read together (calls 15, 16)
-  - story: { chapter: know, body: { off: [folder] } }
+  # Invite team fills the time the reading and the draft take (calls 19, 22)
+  - story: { chapter: people, body: { add: [{ name: Lee, email: lee@oakstreetbuilders.example }] } }
+  # connecting is the permission: what is connected is read as What I learned opens, but the
+  # folder, turned off in Interview sources (calls 15, 16; rules I3)
+  - story: { chapter: learned, body: { read: { off: [folder] } } }
     checks:
       - rows_in: { table: Sites, at_least: 3 }
       - rows_in: { table: AI requests, at_least: 3 }
       - errors: 0
-  # Your people fills the time the draft takes (calls 19, 22)
-  - story: { chapter: people, body: { add: [{ name: Lee, email: lee@oakstreetbuilders.example }] } }
   - story:
       chapter: learned
       # About you (call 18): the first line dropped, the rest kept
@@ -86,7 +88,7 @@ steps:
       - each_has: { table: Workflows, part: Proposals }
       # hours from code, or estimated with what they rest on (rules I2)
       - numbers: { table: Workflows, field: Hours a month }
-      # the folder was switched off: nothing rests on it, and no name only it held appears (I3)
+      # the folder was turned off: nothing rests on it, and no name only it held appears (I3)
       - never_cited: { module: Your work, source: Files }
       - nowhere: { matches: 'bonus plan', module: Your work }
       # nothing in How to work without the person's Keep

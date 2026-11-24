@@ -1,11 +1,12 @@
 name: an-owner-who-works-alone-says-who-alpha-is-for
-title: Someone who works alone, with no site, says in Your workspace that Alpha is just for them; their lines land in For you, and no mail provider is taken for their site
+title: Someone who works alone, with no site, says in About you that Alpha is for personal work; their lines land in For you, and no mail provider is taken for their site
 why: >
   Onboarding redesigned (Kenil's calls, 22 Nov, call 20, carrying the 18 Nov call 10) for an owner
-  who works alone. A site is never guessed from a mail provider's domain, so Your workspace offers
-  none; the drafts leave out what does not apply, and kept lines land in How to work › For you,
-  since there is no one else here. A made-up freelance bookkeeper with a Gmail address, who lets
-  Alpha read nothing.
+  who works alone, on one page since 23 Nov: About you asks business or personal. A site is never
+  guessed from a mail provider's domain, so About you offers none; connecting their mail is the
+  permission to learn from it (rules I3); and since Alpha is for their personal work, kept lines
+  land in How to work › For you, never For everyone here. A made-up Gmail address, its recorded mail
+  the only thing read.
 plugins: [interviews]
 steps:
   - connect: { connector: gmail, account: jo.reyes@gmail.com }
@@ -13,23 +14,24 @@ steps:
     checks:
       # no site offered from a mail provider's domain
       - story_says: { chapter: workspace, never: 'gmail\.com' }
-  - story: { chapter: workspace, body: { for: 'Just me. I do the books for a handful of small shops in town, on my own.' } }
+  - story: { chapter: workspace, body: { use: personal } }
+  - story: { chapter: computer, skip: true }
   - story: { chapter: connect }
-  - story: { chapter: know, body: { off: [mail, calendar, contacts, alpha] } }
-  # Your people: no one to add, so skipped
+  # Invite team: no one to add, so skipped
   - story: { chapter: people, skip: true }
+  # their mail is read, nothing else
+  - story: { chapter: learned, body: { read: { off: [calendar, contacts, alpha] } } }
   - story:
       chapter: learned
       answers:
         - match: 'system|software|tool'
-          choice: 'Ledgerly for my clients’ books, and a spreadsheet for each client.'
+          choice: 'A spreadsheet for each client, and my mail.'
     checks:
       # a mail provider is never read as their site
       - web_calls: { matches: 'gmail\.com', count: 0 }
-      # their lines, for them alone, each kept; nothing for everyone, and no firm or team made up
-      - how_to_work: { for: me, kept: true, at_least: 1, matches: 'book' }
+      # their lines, for them alone, each kept; nothing for everyone
+      - how_to_work: { for: me, kept: true, at_least: 1 }
       - how_to_work: { for: everyone, count: 0 }
-      - nowhere: { matches: '\bfirm\b|your team', module: Your work }
       - errors: 0
   - story: { chapter: done }
     checks:

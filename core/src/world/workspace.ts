@@ -13,6 +13,7 @@ const NAME = 'workspace_name'
 const PICTURE = 'workspace_picture'
 const FOR = 'workspace_for'
 const SITE = 'workspace_site'
+const USE = 'workspace_use'
 const DATA = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+=*)$/
 export const PICTURE_MAX = 100_000 // a data address's length: the window sends a 96px square
 
@@ -46,6 +47,21 @@ export function workspaceFor(db: Db): string | null {
 // The workspace's own website, as the owner confirmed or gave it.
 export function workspaceSite(db: Db): string | null {
   return read(db, SITE)
+}
+
+// Whether Alpha is used for a business or for personal work (Set up Alpha's About you): a
+// business may need its admin's approval later, to connect what the firm owns.
+export type WorkspaceUse = 'business' | 'personal'
+export function workspaceUse(db: Db): WorkspaceUse | null {
+  const v = read(db, USE)
+  return v === 'business' || v === 'personal' ? v : null
+}
+
+// A workspace's name guessed from a mail domain: harbor-reno.com is Harbor Reno.
+export function nameOfDomain(domain: string): string | null {
+  const first = domain.toLowerCase().split('.')[0] ?? ''
+  const words = first.split(/[-_]+/).filter(Boolean)
+  return words.length ? words.map((w) => w[0]?.toUpperCase() + w.slice(1)).join(' ') : null
 }
 
 // A site as given (an address or a bare domain), as an https address; none when it is not one.
@@ -85,6 +101,7 @@ interface Change {
   picture?: string | null | undefined
   for?: string | null | undefined
   site?: string | null | undefined
+  use?: WorkspaceUse | null | undefined
 }
 
 // A new name or picture; none puts the person's name or initial back. One journal line.
@@ -119,6 +136,12 @@ function changeWorkspace(db: Db, change: Change, actor: Actor): void {
     write(db, SITE, site)
     said.push(
       site ? `Gave this workspace’s website: ${site}` : 'Took this workspace’s website off.',
+    )
+  }
+  if (change.use !== undefined) {
+    write(db, USE, change.use)
+    said.push(
+      change.use ? `Said Alpha is for ${change.use} work here.` : 'Took business or personal off.',
     )
   }
   if (said.length) append(db, { actor, kind: 'shaped', words: said.join(' ') })

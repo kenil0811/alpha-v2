@@ -32,29 +32,9 @@ export declare function sourcesFor(
   has: string
   available: boolean
 }[]
-export declare const knowScreen: (
-  host: PluginHost,
-  who: Who,
-) => {
-  says: string
-  sources: {
-    key: string
-    name: string
-    reads: string
-    has: string
-    available: boolean
-  }[]
-  reading: boolean
-  found: {
-    key: string
-    name: string
-    on: boolean
-    words: string
-    shown?: string[]
-  }[]
-}
-export declare function readAll(host: PluginHost, who: Who, off: string[]): Promise<void>
-export declare const KnowBody: z.ZodObject<
+export declare function startReading(host: PluginHost, who: Who): void
+export declare function readThenDraft(host: PluginHost, who: Who, off: string[]): Promise<void>
+export declare const ReadBody: z.ZodObject<
   {
     off: z.ZodDefault<z.ZodArray<z.ZodString>>
   },

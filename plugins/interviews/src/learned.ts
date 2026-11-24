@@ -1,12 +1,18 @@
-// Set up Alpha's What I learned (the redesign of 22 Nov, calls 17 to 19): About you lines to keep,
-// edit or drop, each with what it rests on; the blanks as a set, one at a time with no wait
-// between, their answers going back together; then each workflow by hours a month with its
-// playback in place. Nothing lands in How to work without the person's Keep, here; a dropped line
-// and a declined proposal never come back (rules I4).
+// Set up Alpha's three steps of the interview (the redesign of 22 Nov, calls 17 to 19; split in
+// three on one page, 23 Nov): What I learned, About you's lines each approved or
+// declined; A few questions, the blanks one at a time with no wait between, their answers going back
+// together; and Off your plate, the work by hours a month, the first few with their playback and
+// Build it. Nothing lands in How to work without the person's approval, here; a declined line and
+// a declined proposal never come back (rules I4). A step with nothing in it says why, and going
+// on from it is a skip, never done.
 import { type PluginHost, Refusal, type Row } from '@alpha/plugin-sdk'
 import { z } from 'zod'
 import { think } from './draft.ts'
-import { keepStory, storyOf, type Who } from './know.ts'
+import { keepStory, ReadBody, readThenDraft, startReading, storyOf, type Who } from './know.ts'
+
+export type Step = 'learned' | 'questions' | 'plate'
+// the work offered on Off your plate, the most hours first
+const OFFERED = 3
 
 const mine = (host: PluginHost, table: string, who: Who): Row[] =>
   host.own.rows(table).filter((r) => r.values.Person === who.name)
@@ -21,8 +27,13 @@ const lines = (v: unknown) =>
     .map((x) => x.trim())
     .filter(Boolean)
 
-export function learnedScreen(host: PluginHost, who: Who) {
+export function learnedScreen(host: PluginHost, who: Who, step: Step = 'learned') {
+  // what is connected is read, in the background, as soon as these steps are drawn
+  startReading(host, who)
   const st = storyOf(host, who.id)
+  const busy = st.drafting || st.reading
+  // Alpha's own setup is always there: only something the person connected counts as read
+  const read = st.found.some((f) => f.on && f.key !== 'alpha')
   const questions = mine(host, 'Questions', who)
   const open = questions.filter((q) => !String(q.values.Answer ?? '').trim())
   const next = open[0]
@@ -30,9 +41,27 @@ export function learnedScreen(host: PluginHost, who: Who) {
     (a, b) => Number(a.values.Rank ?? 99) - Number(b.values.Rank ?? 99),
   )
   const props = host.own.rows('Proposals')
+  const about = mine(host, 'About you', who)
+  // what each step says where it has nothing, plainly: never an empty step
+  const empty = busy
+    ? null
+    : !read
+      ? 'Nothing is connected yet, so I have nothing to learn from. Connect your mail or calendar above, and this fills in by itself.'
+      : step === 'learned' && !about.length
+        ? 'I didn’t learn anything worth saving from what I read.'
+        : step === 'questions' && !questions.length
+          ? 'Nothing to ask: what I read was enough.'
+          : null
   return {
-    says: 'Here’s what I learned. Keep what’s right.',
-    drafting: st.drafting || st.reading,
+    says: {
+      learned: 'Here’s what I learned about you. Approve what’s right.',
+      questions: 'A few questions only you can answer.',
+      plate: 'Here’s what I could take off your plate.',
+    }[step],
+    empty,
+    // nothing is connected, so the step has nothing to show: the window passes it by (no empty step)
+    nothing: !busy && !read,
+    drafting: busy,
     problem: st.problem,
     // what was read, as Get to know you showed it, while the draft is written
     found: st.found
@@ -48,7 +77,7 @@ export function learnedScreen(host: PluginHost, who: Who) {
           of: questions.length,
         }
       : null,
-    about: mine(host, 'About you', who).map((a) => ({
+    about: about.map((a) => ({
       id: a.id,
       line: String(a.values.Line ?? ''),
       for: a.values.For === 'Everyone here' ? 'everyone' : 'me',
@@ -56,7 +85,7 @@ export function learnedScreen(host: PluginHost, who: Who) {
       state: String(a.values.State ?? 'Proposed'),
       decided: a.values.State !== 'Proposed',
     })),
-    workflows: flows.map((w) => {
+    workflows: (step === 'plate' ? flows.slice(0, OFFERED) : flows).map((w) => {
       const made = props.filter((p) => p.values.Workflow === w.id)
       return {
         id: w.id,
@@ -101,6 +130,8 @@ export const LearnedBody = z.object({
     .optional(),
   playback: z.object({ id: z.string(), choice: z.string().trim().min(1).max(2000) }).optional(),
   retry: z.boolean().optional(), // write the draft again, after one that did not come
+  read: ReadBody.optional(), // read what is connected again now, then draft
+  built: z.boolean().optional(), // Off your plate: something sent to the Module builder from it
 })
 
 // What the person did on the screen; {} goes on.
@@ -108,7 +139,12 @@ export async function learnedAct(
   host: PluginHost,
   who: Who,
   body: z.infer<typeof LearnedBody>,
-): Promise<{ on: boolean }> {
+  step: Step = 'learned',
+): Promise<{ on: boolean; nothing?: boolean }> {
+  if (body.read) {
+    await readThenDraft(host, who, body.read.off)
+    return { on: false }
+  }
   if (body.answer) {
     const { id, choice } = body.answer
     const q = mine(host, 'Questions', who).find((x) => x.id === id)
@@ -168,5 +204,14 @@ export async function learnedAct(
   }
   // gone through: a short interview's news is spent
   if (storyOf(host, who.id).since) keepStory(host, who.id, { since: null })
-  return { on: true }
+  // a step with nothing in it is skipped, never done
+  const flows = new Set(mine(host, 'Workflows', who).map((w) => w.id))
+  const has = {
+    learned: () => mine(host, 'About you', who).length > 0,
+    questions: () => mine(host, 'Questions', who).length > 0,
+    plate: () =>
+      !!body.built ||
+      host.own.rows('Proposals').some((p) => flows.has(String(p.values.Workflow ?? ''))),
+  }[step]
+  return has() ? { on: true } : { on: true, nothing: true }
 }

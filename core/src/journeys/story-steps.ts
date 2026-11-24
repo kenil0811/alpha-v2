@@ -9,13 +9,16 @@
 //   GET  /api/story/<chapter>  the chapter's screen: { key, title, says, words, ... }
 //   POST /api/story/<chapter>  its act (a body as the chapter takes it), then on to the next
 //   POST /api/story/<chapter>/skip
-//   GET  /api/story/learned    { drafting, question: { id, words, options } | null,
-//                                about: [{ id, line, decided }], playbacks: [{ id, words, choices,
-//                                decided }] }
-//   POST /api/story/learned    { answer: { id, choice } } | { about: { drop: [ids], keep: 'rest' } }
-//                              | { playback: { id, choice } } | {} to go on
-// Chapters: the owner's welcome, claude (only while no model is set), workspace, connect, know and
-// learned (interviews on), people, done; a member's welcome, here, connect, know, learned, done.
+//   GET  /api/story/learned    { drafting, question: { id, words, options } | null,   (also
+//                                about: [{ id, line, decided }], playbacks: [{ id, words,   questions
+//                                choices, decided }] }                                       and plate)
+//   POST /api/story/learned    { about: { drop: [ids], keep: 'rest' } } | { read: { off } } | {}
+//   POST /api/story/questions  { answer: { id, choice } } | {} to go on
+//   POST /api/story/plate      { playback: { id, choice } } | {} to go on
+// Steps, on one page: the owner's welcome, workspace, claude (only while
+// no model is set), computer, connect, people, then learned, questions and plate (interviews on),
+// done; a member's welcome, here, computer, connect, learned, questions, plate, done. A step
+// pressed on with nothing on it is skipped, never done.
 import { z } from 'zod'
 import type { buildServer } from '../api/server.ts'
 import { cardAgent } from '../modules/agent-marks.ts'
@@ -143,7 +146,10 @@ export async function storyStep(
     }
   }
   if (!step.chapter) return { ok: false, what: '**A story step names no chapter.**' }
-  if (step.chapter === 'learned' && (step.answers || step.drop !== undefined))
+  if (
+    ['learned', 'questions', 'plate'].includes(step.chapter) &&
+    (step.answers || step.drop !== undefined)
+  )
     return learned(step, app, h, who)
   const url = `/api/story/${step.chapter}${step.skip ? '/skip' : ''}`
   const out = await post(app, url, filled(step.body ?? {}, h.fill))
@@ -170,8 +176,9 @@ interface Learned {
 
 const pause = (ms: number) => new Promise((ok) => setTimeout(ok, ms))
 
-// What I learned, as the person goes through it: each question as it comes, About you's lines,
-// each playback; then on.
+// The interview's three steps, in order, as the person goes through them: About you's lines on
+// What I learned, then each question as it comes on A few questions, then each playback on Off your
+// plate, going on from each before the next (a step opens only once the one before is through).
 async function learned(
   step: z.infer<typeof StoryPress>,
   app: App,
@@ -188,47 +195,67 @@ async function learned(
     return h.fill(step.answers?.[at]?.choice ?? step.otherwise)
   }
   const by = Date.now() + h.limit
-  for (let n = 0; n < step.at_most; ) {
-    const v = await get<Learned>(app, '/api/story/learned')
-    if (!v.body || v.status >= 400)
-      return { ok: false, what: `**${who} has no What I learned to go through (${v.status}).**` }
-    if (v.body.drafting) {
-      if (Date.now() > by) return { ok: false, what: `**The draft was still being written.**` }
+  let problemSeen: string | null = null
+  // a step's screen once its draft is written
+  const screen = async (key: string): Promise<Learned | string> => {
+    for (;;) {
+      const v = await get<Learned>(app, `/api/story/${key}`)
+      if (!v.body || v.status >= 400) return `**${who} has no ${key} to go through (${v.status}).**`
+      if (!v.body.drafting) {
+        if (v.body.problem) problemSeen = v.body.problem
+        return v.body
+      }
+      if (Date.now() > by) return '**The draft was still being written.**'
       await pause(2000)
-      continue
     }
-    n++
-    const q = v.body.question
-    if (q) {
-      const choice = pick(q.words)
-      await post(app, '/api/story/learned', { answer: { id: q.id, choice } })
-      said.push(`“${q.words.slice(0, 80)}”: ${choice}`)
-      continue
-    }
-    const open = v.body.about.filter((l) => !l.decided)
-    if (open.length) {
-      const drop = open.slice(0, step.drop ?? 0).map((l) => l.id)
-      await post(app, '/api/story/learned', { about: { drop, keep: 'rest' } })
-      said.push(`About you: dropped ${drop.length}, kept ${open.length - drop.length}`)
-      continue
-    }
-    const p = v.body.playbacks.find((x) => !x.decided)
-    if (p) {
-      const choice = pick(p.words)
-      await post(app, '/api/story/learned', { playback: { id: p.id, choice } })
-      said.push(`“${p.words.slice(0, 80)}”: ${choice}`)
-      continue
-    }
-    const on = await post(app, '/api/story/learned', {})
-    const failed = v.body.problem ? ` (**the draft: ${v.body.problem}**)` : ''
-    return on.ok
-      ? {
-          ok: !failed,
-          what: `${who} went through What I learned: ${said.join('; ') || 'nothing to answer'}${failed}`,
-        }
-      : { ok: false, what: `${said.join('; ')}; **could not go on: ${problem(on.raw)}**` }
   }
-  return { ok: false, what: `${said.join('; ')}; **still asking after ${step.at_most}.**` }
+  const on = async (key: string) => {
+    const out = await post(app, `/api/story/${key}`, {})
+    return out.ok ? null : `**could not go on from ${key}: ${problem(out.raw)}**`
+  }
+  // What I learned
+  const l = await screen('learned')
+  if (typeof l === 'string') return { ok: false, what: l }
+  const open = l.about.filter((x) => !x.decided)
+  if (open.length) {
+    const drop = open.slice(0, step.drop ?? 0).map((x) => x.id)
+    await post(app, '/api/story/learned', { about: { drop, keep: 'rest' } })
+    said.push(`About you: dropped ${drop.length}, kept ${open.length - drop.length}`)
+  }
+  const stuck = await on('learned')
+  if (stuck) return { ok: false, what: `${said.join('; ')}; ${stuck}` }
+  // A few questions, one at a time
+  for (let n = 0; n < step.at_most; n++) {
+    const v = await screen('questions')
+    if (typeof v === 'string') return { ok: false, what: v }
+    const q = v.question
+    if (!q) break
+    const choice = pick(q.words)
+    const out = await post(app, '/api/story/questions', { answer: { id: q.id, choice } })
+    if (!out.ok) return { ok: false, what: `**the answer was refused: ${problem(out.raw)}**` }
+    said.push(`“${q.words.slice(0, 80)}”: ${choice}`)
+  }
+  const stuck2 = await on('questions')
+  if (stuck2) return { ok: false, what: `${said.join('; ')}; ${stuck2}` }
+  // Off your plate, each playback
+  for (let n = 0; n < step.at_most; n++) {
+    const v = await screen('plate')
+    if (typeof v === 'string') return { ok: false, what: v }
+    const p = v.playbacks.find((x) => !x.decided)
+    if (!p) break
+    const choice = pick(p.words)
+    const out = await post(app, '/api/story/plate', { playback: { id: p.id, choice } })
+    if (!out.ok)
+      return { ok: false, what: `**the playback's answer was refused: ${problem(out.raw)}**` }
+    said.push(`“${p.words.slice(0, 80)}”: ${choice}`)
+  }
+  const stuck3 = await on('plate')
+  if (stuck3) return { ok: false, what: `${said.join('; ')}; ${stuck3}` }
+  const failed = problemSeen ? ` (**the draft: ${problemSeen}**)` : ''
+  return {
+    ok: !failed,
+    what: `${who} went through What I learned: ${said.join('; ') || 'nothing to answer'}${failed}`,
+  }
 }
 
 type Saw = { check: string; ok: boolean; saw: string }

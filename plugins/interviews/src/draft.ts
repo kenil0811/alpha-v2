@@ -141,8 +141,9 @@ export function readableFor(host: PluginHost, who: Who, st: Story): Readable {
   for (const p of st.site) {
     texts.push(new URL(p.url).host, p.text)
   }
-  // who the work is for, in the owner's own words in Your workspace: theirs to cite, as an answer
-  const own = host.workspace().for
+  // who the work is for, in the owner's own words, or business or personal as About you says it:
+  // theirs to cite, as an answer
+  const own = forWords(host.workspace())
   if (own) {
     r.answers.set('workspace', own)
     texts.push(own)
@@ -167,6 +168,11 @@ export function readableFor(host: PluginHost, who: Who, st: Story): Readable {
 }
 
 // What the model is given: who, the workspace, every line it may cite, the answers, the report.
+// Who the work is for, as the owner said it: their own words where they gave them (Your workspace,
+// before 23 Nov), else business or personal from About you.
+const forWords = (ws: ReturnType<PluginHost['workspace']>): string | null =>
+  ws.for ?? (ws.use === 'personal' ? 'Personal work' : ws.use === 'business' ? 'A business' : null)
+
 function promptOf(host: PluginHost, who: Who, st: Story): string {
   const days = config.lookback_days
   const ws = host.workspace()
@@ -174,8 +180,8 @@ function promptOf(host: PluginHost, who: Who, st: Story): string {
   const out: string[] = [
     `Person: ${who.name}${who.owner ? ', the owner of this workspace' : ''}.`,
     ...(ws.name ? [`Workspace: ${ws.name}.`] : []),
-    ...(ws.for
-      ? [`answer workspace: who the work is for, in the owner’s own words: “${ws.for}”`]
+    ...(forWords(ws)
+      ? [`answer workspace: who the work is for, as the owner said it: “${forWords(ws)}”`]
       : []),
     '',
   ]
@@ -290,8 +296,10 @@ export function apply(host: PluginHost, who: Who, d: Draft, r: Readable): string
     return !why
   }
   const seen = new Set(mine(host, 'About you', who).map((a) => sameAs(String(a.values.Line ?? ''))))
-  // an owner who works alone keeps who the work is for as their own (the 18 Nov plan, call 10)
-  const alone = /^\s*just me\b/i.test(host.workspace().for ?? '')
+  // an owner who works alone, or uses Alpha for personal work, keeps who the work is for as their
+  // own (the 18 Nov plan, call 10)
+  const ws = host.workspace()
+  const alone = /^\s*just me\b/i.test(ws.for ?? '') || ws.use === 'personal'
   for (const a of d.about) if (alone && a.for === 'everyone') a.for = 'me'
   const lines = d.about.filter(
     (a) =>

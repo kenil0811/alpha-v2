@@ -336,6 +336,19 @@ kit is Your work, a managed module holding each person's report (Workflows, thei
 Proposals) and the About you lines put to them, and it carries the Interviewer, an agent titled
 "Learns how you work and what would help".
 
+**Set up Alpha** (23 Nov) is the first run as one continuous
+page over the window: a slim progress bar and Later at the top, each step opening under the one
+before once that is done or skipped. The core owns which steps a person has and how each stands
+(the `story` table, `core/src/api/story.ts`): the owner's Hello, About you (the organization's name
+guessed from their mail domain, its website asked as a yes or no, business or personal), Connect
+my thinking (Claude, only while no model is set), Your computer (Alpha Bridge, before the accounts
+so the apps it finds are offered next), Your accounts and Invite team; a member's Hello, What's
+here, Your computer and Your accounts; then Done. A plugin adds steps through the host's `chapter`
+call: Interviews adds What I learned, A few questions and Off your plate after Invite team.
+Connecting a source is the permission to read it; what is connected is read in the background and
+What I learned fills in place. Every step can be skipped; a step on which nothing happened is
+marked skipped, never done, and the page always ends on something to do.
+
 ## The window
 
 The rail has Home, Agents, Tasks and the modules, with Intelligence and Settings at its foot. The
