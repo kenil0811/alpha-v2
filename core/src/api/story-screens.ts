@@ -45,15 +45,6 @@ export const PROMISES = [
   'Nothing about you is saved without your approval.',
 ]
 
-// How to bring an app's data in by hand, where Alpha has no way into it: a browser's history
-// exported, anything else exported from its settings; either brought to New module's Import.
-export function byHand(app: string): string[] {
-  const bring = 'Bring the file to me with New module › Import, and I’ll read it.'
-  return /\b(browser|chrome|safari|firefox|edge|brave|opera|arc|dia|vivaldi)\b/i.test(app)
-    ? [`In ${app}, open History and export it, or save it from Settings.`, bring]
-    : [`In ${app}, look in Settings for Export, and save what it exports.`, bring]
-}
-
 export function storyScreens(ctx: Ctx, room: StoryRoom) {
   const { world, engine, user, options, views } = ctx
   const first = () => user.name.split(/\s+/)[0] ?? user.name
@@ -111,9 +102,10 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     return null
   }
 
-  // Your accounts: the accounts, and, once a computer is paired, what Alpha Bridge found on it, each
-  // with Connect where Alpha has a way in, else how to bring it by hand, and Exclude. Nothing about
-  // turning a reader on: with no computer paired, or nothing found on it, the part is not there.
+  // Your accounts: the accounts, and, once a computer is paired, what Alpha Bridge found on it: an
+  // app Alpha can connect directly (its connector, or its site) with Connect and Exclude, any other
+  // only listed. Nothing about turning a reader on: with no computer paired, or nothing found on
+  // it, the part is not there.
   const accounts = () => {
     const tiles = connectTiles(ctx, room.onServer)
     const paired = world.computers.of(user.id).length > 0
@@ -123,11 +115,12 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         ...t,
         title: 'Found on your computer',
         reads: 'The apps Alpha Bridge found you use',
-        note: 'Connect the ones I have a way into; for the others, here is how to bring me their data.',
+        note: 'Connect the ones I can reach directly; the others are listed so you know what I saw.',
         reader: null, // never "turn it on" here: the list shows only once there is one
         apps: t.apps
           .filter((a) => a.times !== null || a.last !== null)
-          .map((a) => (a.connector || a.site ? a : { ...a, how: byHand(a.name) })),
+          // Alpha itself and its Bridge are never offered as apps to connect
+          .filter((a) => !/^alpha( bridge)?$/i.test(a.name)),
       }))
       .filter((t) => paired && t.apps.length)
     return [...tiles.filter((t) => t.kind === 'connector' || t.kind === 'calendar'), ...found]

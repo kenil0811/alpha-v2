@@ -95,8 +95,6 @@ export interface AppFound {
   site: string | null
   connector: string | null
   connected: boolean
-  // where Alpha has no way in (no connector, no site): what to do by hand, step by step
-  how?: string[]
 }
 
 export interface PeopleScreen extends Screen {

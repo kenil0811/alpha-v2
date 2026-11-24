@@ -372,7 +372,6 @@ function AppsTile({
   const { busy, problem, act } = useAct(again)
   const site = useSiteSignIn(loadSites)
   const [connecting, setConnecting] = useState<string | null>(null)
-  const [manual, setManual] = useState<string | null>(null) // the app whose steps by hand are open
   const signedIn = (s: string) => sites.some((x) => x.site === s || s.endsWith(`.${x.site}`))
   const open = connecting ? view?.connectors.find((c) => c.name === connecting) : undefined
   const app = open
@@ -419,51 +418,38 @@ function AppsTile({
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
+                {/* Connect and Exclude only where Alpha can connect the app directly: its
+                    connector, or its site signed in to; any other app is only listed */}
                 {a.connected || (a.site && signedIn(a.site)) ? (
                   <Pill tone="good">
                     <Check className="size-3" /> {a.connected ? 'Connected' : 'Signed in'}
                   </Pill>
-                ) : (
-                  // one Connect for every app: a connector's form, its site's sign-in, or, where
-                  // Alpha has no way in, the steps by hand opening under the row
-                  <Button
-                    size="sm"
-                    disabled={busy}
-                    aria-expanded={a.connector || a.site ? undefined : manual === a.name}
-                    onClick={() =>
-                      a.connector
-                        ? setConnecting(a.connector)
-                        : a.site
-                          ? void act(() => site.signIn(`https://${a.site}`))
-                          : setManual((m) => (m === a.name ? null : a.name))
-                    }
-                  >
-                    Connect
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() =>
-                    void act(() => api.post('/api/story/apps/remove', { name: a.name }))
-                  }
-                >
-                  Exclude
-                </Button>
+                ) : a.connector || a.site ? (
+                  <>
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() =>
+                        a.connector
+                          ? setConnecting(a.connector)
+                          : void act(() => site.signIn(`https://${a.site}`))
+                      }
+                    >
+                      Connect
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() =>
+                        void act(() => api.post('/api/story/apps/remove', { name: a.name }))
+                      }
+                    >
+                      Exclude
+                    </Button>
+                  </>
+                ) : null}
               </div>
-              {manual === a.name && (
-                <ol
-                  aria-label={`How to connect ${a.name}`}
-                  className="mt-1.5 flex list-decimal flex-col gap-1 pl-5 text-ink-2 text-sm"
-                >
-                  {(
-                    a.how ?? ['There is no way in to it yet: Exclude it, or leave it for later.']
-                  ).map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-              )}
             </li>
           ))}
         </ul>
