@@ -24,6 +24,7 @@ import { buildServer, type ServerOptions } from './server.ts'
 import { chaptersOf, storyView } from './story.ts'
 import { appsAmong } from './story-connect.ts'
 import type { ConnectScreen, StoryView } from './story-types.ts'
+import type { AccountsView } from './types.ts'
 
 const AS = { host: '127.0.0.1:4700', 'x-alpha-token': 't', 'x-alpha-cli': '1' }
 const TOKEN = `sk-ant-oat01-${'a'.repeat(40)}`
@@ -208,21 +209,30 @@ describe('Set up Alpha', () => {
     expect(hers.tiles.map((t) => t.key)).toEqual(['calendar'])
   })
 
-  it('has a member’s mail tile wait on the owner while the sign-in app is not set up', async () => {
-    const outlook = {
+  // a made-up mail connector of the name given, landing nothing
+  const mailConnector = (name: string, auth: 'oauth' | 'secret') =>
+    ({
       manifest: {
-        name: 'outlook',
-        title: 'Outlook',
-        auth: 'oauth',
-        oauth: { provider: 'microsoft', scopes: ['Mail.Read'] },
-        account: { label: 'Work address' },
+        name,
+        title: name,
+        auth,
+        icon: 'mail',
+        ...(auth === 'oauth'
+          ? { oauth: { provider: 'microsoft', scopes: ['Mail.Read'] } }
+          : { secret: { label: 'App password', help: 'Its app password.' } }),
+        account: { label: 'Address' },
         pace: { perMinute: 60 },
       },
       guide: 'Mail.',
       module: 'Mail',
       tables: [],
       tools: {},
-    } as unknown as Connector
+    }) as unknown as Connector
+  const serverFor = (e: Engine, user: User) =>
+    buildServer({ engine: e, user, token: 't', ports: [4700], signIn: { days: 30 } })
+
+  it('has mail one tile of account lines, a member waiting on the owner for a sign-in app', async () => {
+    const outlook = mailConnector('outlook', 'oauth')
     const secrets = new MemorySecrets()
     const signIn = new SignIn(world, { secrets, back: () => 'http://localhost:4700/back' })
     const connectors = new ConnectorService(world, { secrets, known: [outlook], signIn })
@@ -231,24 +241,57 @@ describe('Set up Alpha', () => {
       actor: { kind: 'person', id: owner.id },
       user: owner.id,
     })
-    const tile = async (user: User) =>
+    const view = async (user: User) =>
       (
-        await buildServer({
-          engine: withMail,
-          user,
-          token: 't',
-          ports: [4700],
-          signIn: { days: 30 },
-        }).inject({ url: '/api/story/connect', headers: AS })
-      )
-        .json()
-        .tiles.find((t: { key: string }) => t.key === 'outlook')
-    // the owner sets the app up on their tile; a member waits on them, with nothing to press
-    expect(await tile(owner)).toMatchObject({ connectors: ['outlook'], waits: null })
-    expect(await tile(world.user(priya.id) as User)).toMatchObject({
-      connectors: [],
-      waits: 'Waits on Kenil Shah to set up Microsoft sign-in',
+        await serverFor(withMail, user).inject({ url: '/api/connect/accounts?mine=1', headers: AS })
+      ).json() as AccountsView
+    const tiles = (
+      await serverFor(withMail, owner).inject({ url: '/api/story/connect', headers: AS })
+    ).json().tiles as { key: string }[]
+    expect(tiles[0]?.key).toBe('accounts')
+    expect(await view(owner)).toMatchObject({
+      owner: true,
+      microsoft: { loaded: true, ready: false },
     })
+    expect(await view(world.user(priya.id) as User)).toMatchObject({
+      owner: false,
+      ownerName: 'Kenil Shah',
+      microsoft: { ready: false },
+    })
+  })
+
+  it('has two Gmail accounts two lines; Disconnect keeps one off, Delete takes it away', async () => {
+    const gmail = mailConnector('gmail', 'secret')
+    const secrets = new MemorySecrets()
+    const connectors = new ConnectorService(world, { secrets, known: [gmail] })
+    const withMail = new Engine(world, { route, connectors })
+    await withMail.connect(owner, 'gmail', 'ana@harborbooks.example', 'abcd efgh ijkl mnop')
+    await withMail.connect(owner, 'gmail', 'ben@gmail.example', 'abcd efgh ijkl mnop')
+    const app = serverFor(withMail, owner)
+    const view = async () =>
+      (await app.inject({ url: '/api/connect/accounts', headers: AS })).json() as AccountsView
+    const first = await view()
+    expect(first.lines.map((l) => [l.provider, l.account])).toEqual([
+      ['google', 'ana@harborbooks.example'],
+      ['google', 'ben@gmail.example'],
+    ])
+    // Disconnect: the line stays, off, its password gone
+    const ben = first.lines[1]?.connections[0]?.id ?? ''
+    await post(app, `/api/connections/${ben}/disconnect`)
+    expect((await view()).lines[1]).toMatchObject({ state: 'off' })
+    expect(await secrets.get('gmail:ben@gmail.example')).toBeNull()
+    // Delete: gone, its connection with it
+    await post(app, '/api/connect/accounts/delete', {
+      provider: 'google',
+      account: 'ben@gmail.example',
+    })
+    expect((await view()).lines.map((l) => l.account)).toEqual(['ana@harborbooks.example'])
+    expect(world.connections.find('gmail', 'ben@gmail.example')).toBeFalsy()
+    // an app left out waits to be brought back, and comes back
+    await post(app, '/api/story/apps/remove', { name: 'Dropbox' })
+    expect((await view()).left).toEqual(['Dropbox'])
+    await post(app, '/api/connect/apps/restore', { name: 'Dropbox' })
+    expect((await view()).left).toEqual([])
   })
 
   it('opens a member’s link on their Welcome, and their password is its Start', async () => {

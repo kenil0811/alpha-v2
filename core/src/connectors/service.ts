@@ -3,7 +3,6 @@
 // tool search, one MCP server per connector. Every tool's effect goes to the gates before it
 // runs. The core names no connector: each describes itself in its manifest, and the service
 // answers for the set it was given.
-import { createHash } from 'node:crypto'
 import {
   type BrowserEngine,
   type Call,
@@ -22,11 +21,11 @@ import {
 import { bridges } from '../bridge/hub.ts'
 import { config } from '../config.ts'
 import { Registry, type ToolEntry } from '../engine/registry.ts'
-import { takeIn } from '../files/documents.ts'
-import { type Connection, ownerOf } from '../world/connections.ts'
+import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
 import { waits } from './computers.ts'
+import { hostFor } from './host.ts'
 import { neverList } from './never.ts'
 import { landIn, tableOf } from './places.ts'
 import { type CallSays, isRemote, undoSaid } from './process.ts'
@@ -148,75 +147,19 @@ export class ConnectorService {
     })
   }
 
+  // What a connector's call reaches in the core, for one connection (host.ts).
   host(c: Connector, conn: Connection): Host {
-    const actor = { kind: 'connector' as const, id: c.manifest.name }
-    const world = this.world
-    return {
-      account: conn.account,
-      // read fresh: the sign-in that names it may come after this host was made
-      get place() {
-        return world.connections.get(conn.id)?.place ?? null
+    return hostFor(
+      {
+        world: this.world,
+        secrets: this.options.secrets,
+        signIn: this.signIn,
+        browser: this.options.browser,
+        leftOut: (id, count) => this.left.set(id, (this.left.get(id) ?? 0) + count),
       },
-      // signed in as the person: a short-lived token, renewed by the core
-      secret: async () => {
-        if (c.manifest.auth !== 'oauth')
-          return conn.secretRef ? this.options.secrets.get(conn.secretRef) : null
-        if (!this.signIn) throw new Problem('Signing in is not set up in this core.')
-        return this.signIn.token(conn, c)
-      },
-      cursor: () => this.world.connections.get(conn.id)?.cursor ?? null,
-      setCursor: (cursor) => this.world.connections.setCursor(conn.id, cursor),
-      land: (tableName, items, options) => {
-        const t = tableOf(this.world, c, tableName)
-        if (!t) throw new Problem(`The table ${tableName} is not there.`)
-        return this.world.records.land(
-          t.id,
-          items,
-          { connector: c.manifest.name, account: conn.account },
-          { actor },
-          options,
-        )
-      },
-      gone: (tableName, keys, options) => {
-        const t = tableOf(this.world, c, tableName)
-        if (!t) throw new Problem(`The table ${tableName} is not there.`)
-        const itemKeys = this.world.records.itemKeys(t.id)
-        const by = options?.by
-        return this.world.records.gone(
-          t.id,
-          by
-            ? this.world.records.idsWhere(t.id, by, keys).flatMap((id) => itemKeys.get(id) ?? [])
-            : keys,
-          { connector: c.manifest.name, account: conn.account },
-          { actor },
-        )
-      },
-      // the browser as the connection's owner: their profile for its site
-      ...(this.options.browser
-        ? { browser: () => (this.options.browser as () => BrowserEngine)().as(ownerOf(conn)) }
-        : {}),
-      keys: (tableName) => {
-        const t = tableOf(this.world, c, tableName)
-        return t ? this.world.records.keys(t.id) : []
-      },
-      keepFile: (name, bytes, mime) => {
-        const known = this.world.files.file(hashOf(bytes))
-        takeIn(this.world, bytes, name, mime, { actor })
-        return { isNew: !known }
-      },
-      journal: (words, data) => {
-        this.world.line({
-          actor,
-          kind: 'connector_call',
-          words,
-          data: { ...(data ?? {}), connection: conn.id },
-        })
-      },
-      // counted for the read under way, and said on the connection when it ends (rules N1)
-      leftOut: (_table, count) => {
-        this.left.set(conn.id, (this.left.get(conn.id) ?? 0) + count)
-      },
-    }
+      c,
+      conn,
+    )
   }
 
   // What each read under way left out as on the never-use list, by its connection.
@@ -284,9 +227,7 @@ export class ConnectorService {
       )
     if (c.manifest.auth === 'secret' && !secret?.trim())
       throw new Refused(`${c.manifest.title} needs its ${c.manifest.secret?.label ?? 'password'}.`)
-    const ref = ['secret', 'oauth'].includes(c.manifest.auth)
-      ? `${name}:${account.trim().toLowerCase()}`
-      : null
+    const ref = refOf(c, account)
     if (ref && secret && c.manifest.auth === 'secret')
       await this.options.secrets.set(ref, secret.trim())
     const conn = this.world.connections.add(name, account, ref, c.manifest.title, {
@@ -352,6 +293,26 @@ export class ConnectorService {
   failed(id: string, err: unknown): void {
     const conn = this.world.connections.get(id)
     if (conn) this.fail(this.connector(conn.connector), conn, err)
+  }
+
+  // Disconnect: the kept sign-in or password goes and reads stop; the connection stays, paused and
+  // saying so, until its person connects it again (paused, so nothing asks them to sign in).
+  async signOut(id: string, user: string): Promise<void> {
+    const conn = this.world.connections.get(id)
+    if (!conn) throw new Refused('That connection is not there.')
+    if (conn.secretRef) await this.options.secrets.delete(conn.secretRef)
+    this.signIn?.forget(id)
+    const title = this.find(conn.connector)?.manifest.title ?? conn.connector
+    this.world.connections.setState(
+      id,
+      'paused',
+      SIGNED_OUT,
+      `Disconnected ${title} for ${conn.account}.`,
+      {
+        actor: { kind: 'person', id: user },
+        user,
+      },
+    )
   }
 
   async disconnect(id: string, user: string): Promise<void> {
@@ -588,6 +549,12 @@ export class ConnectorService {
 }
 
 // The same bytes are the same file.
-function hashOf(bytes: Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex')
-}
+
+// What a disconnected connection says: connecting it again is its person's.
+export const SIGNED_OUT = 'Disconnected: connect it again to read it.'
+
+// Where a connection's password or sign-in is kept, for a connector that keeps one.
+const refOf = (c: Connector, account: string): string | null =>
+  ['secret', 'oauth'].includes(c.manifest.auth)
+    ? `${c.manifest.name}:${account.trim().toLowerCase()}`
+    : null

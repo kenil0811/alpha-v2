@@ -38,6 +38,7 @@ import { Refused } from '../world/kinds.ts'
 import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
+import { accountCheck, accountStep } from './account-steps.ts'
 import { bridgeStep } from './bridge-step.ts'
 import { judge } from './checks.ts'
 import { fillSite, fixturesFor } from './fixtures.ts'
@@ -417,6 +418,10 @@ export async function runOne(
       // an act may start the model's work (the website read, the draft): it goes on behind
       passed &&= out.ok
       what = out.what
+    } else if (step.accounts) {
+      const out = await accountStep(step.accounts, storyHere)
+      passed &&= out.ok
+      what = out.what
     } else if (step.member) {
       world.accounts.add(step.member.name, step.member.email, {
         actor: { kind: 'person', id: user.id },
@@ -524,6 +529,7 @@ export async function runOne(
       const o =
         webCheck(check, site, world) ??
         (await storyCheck(check, storyHere)) ??
+        (await accountCheck(check, storyHere)) ??
         (await interviewCheck(check, { world, user, app: () => page(), plugins: on.plugins })) ??
         (await judge(world, user, check))
       passed &&= check.waits ? !o.ok : o.ok

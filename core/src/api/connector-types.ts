@@ -118,3 +118,37 @@ export interface ComputerPageView {
   lends: ConnectionView[]
   did: { id: number; at: string; words: string; failed: boolean }[] // newest first
 }
+
+// One account a person reads, as one line in Set up Alpha's Your accounts and in Settings ›
+// Connections: its address, how it stands, and what landed, counted by code. A Google account is
+// one line for its mail (an app password) and its calendar and contacts (the firm's sign-in app); a
+// Microsoft account one line for its sign-in.
+export interface AccountLine {
+  key: string // provider:address
+  provider: string // google, microsoft, or another mail connector's own name
+  title: string // Google, Microsoft, or that connector's title
+  account: string
+  // connected: a green dot; reading: its first read runs; off: disconnected by its person;
+  // failed: it asks something of the person (a sign-in, a password, their IT)
+  state: 'connected' | 'reading' | 'off' | 'failed'
+  problem: string | null // what a failed one asks, in words
+  landed: string[] // "412 mails", "30 events"
+  reads: string[] // for its ⓘ: what it reads
+  by: string // who connected it: You, a name, or Alpha
+  mine: boolean // the person's own: theirs to disconnect, reconnect and delete
+  connections: { id: string; connector: string; auth: string; state: string }[]
+  // a Google line adds its mail (an app password) or its calendar and contacts (the sign-in)
+  adds: ('mail' | 'calendar')[]
+}
+
+export interface AccountsView {
+  lines: AccountLine[]
+  left: string[] // the apps the person left out of what Alpha Bridge found, to bring back
+  // each provider: whether it comes with this Alpha, and whether its sign-in app is set up
+  google: { loaded: boolean; ready: boolean; mail: boolean }
+  microsoft: { loaded: boolean; ready: boolean }
+  other: string[] // other mail connectors, by name, for Add › Other mail
+  appPassword: { words: string; url: string | null }[] // Gmail's app password, step by step
+  owner: boolean // setting up a provider's sign-in app is the owner's
+  ownerName: string
+}

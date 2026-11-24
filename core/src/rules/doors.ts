@@ -301,6 +301,7 @@ export const DOORS: Door[] = [
       'POST /api/connections',
       'DELETE /api/connections/:id',
       'POST /api/connections/:id/sign-in',
+      'POST /api/connect/accounts/delete',
       'tool connect',
       'plugin connect',
       'bridge lend',
@@ -343,6 +344,10 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/story/decline': 'Set up Alpha put off by a person, kept with them',
   'POST /api/story/reopen': 'Set up Alpha opened again by a person, kept with them',
   'POST /api/story/apps/remove': 'an app left out of a person’s Apps you use, kept with them',
+  'POST /api/connect/apps/restore':
+    'an app left out brought back to a person’s list, kept with them',
+  'POST /api/connections/:id/disconnect':
+    'a connection paused by its person and its sign-in forgotten; nothing it read is touched',
   'POST /api/accounts/:id/link': 'the owner making a new sign-in link',
   'POST /api/accounts/:id/remove': 'the owner removing a person’s way in; their history stays',
   'POST /api/runs/:id/stop': 'stops a run under way; what it wrote stays',

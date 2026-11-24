@@ -7,6 +7,7 @@ import { printPage } from '../pages/pages.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
+import { AccountChecks } from './account-steps.ts'
 import { AgentChecks, agentCheck } from './agent-checks.ts'
 import { CellChecks, cellCheck } from './cell-checks.ts'
 import { InterviewChecks } from './interview-checks.ts'
@@ -36,6 +37,7 @@ export const Check = z.union([
   }),
   ...AgentChecks, // the firm's agents (agent-checks.ts)
   ...InterviewChecks, // an interview, and plugins switched on or not (interview-checks.ts)
+  ...AccountChecks, // the account lines (account-steps.ts)
   ...StoryChecks, // where a person's Set up Alpha stands, and what its screens say (story-steps.ts)
   // asks between agents, by how they answered
   z.object({ asks: z.object({ count: z.number(), status: z.string().optional() }) }),

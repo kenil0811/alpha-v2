@@ -10,8 +10,9 @@ import type {
   SiteView,
   TileConnection,
 } from '@alpha/core/api'
-import { CalendarDays, Check, ExternalLink, FileUp, Laptop, LayoutGrid } from 'lucide-react'
+import { CalendarDays, Check, ExternalLink, FileUp, Laptop, LayoutGrid, Mail } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { AccountList, Excluded, useAccounts } from '../AccountLines.tsx'
 import { api } from '../api.ts'
 import { ComputerReads } from '../ComputerReads.tsx'
 import { Install, lendsWords, mine, Pairing } from '../Computers.tsx'
@@ -43,10 +44,14 @@ export function Connect({
   const loadView = useCallback(() => {
     api.get<ConnectorsView>('/api/connectors').then(setView, () => undefined)
   }, [])
+  // the account lines, the person's own, and the apps they left out
+  const accounts = useAccounts(true)
+  const { load: loadAccounts } = accounts
   const again = useCallback(() => {
     loadView()
     reload()
-  }, [loadView, reload])
+    loadAccounts()
+  }, [loadView, reload, loadAccounts])
   useEffect(loadView, [])
   // what lands is counted again while the chapter is open
   useEffect(() => {
@@ -56,9 +61,18 @@ export function Connect({
   useEffect(() => next({ label: 'Continue', ready: true }), [next])
   return (
     <div className="flex flex-col gap-2">
-      {screen.tiles.map((t) => (
-        <TileBox key={t.key} tile={t} view={view} again={again} />
-      ))}
+      {screen.tiles.map((t) =>
+        t.kind === 'accounts' ? (
+          <Frame key={t.key} tile={t} icon={<Mail className="size-4" />}>
+            {accounts.view && (
+              <AccountList view={accounts.view} connectors={view} onChange={again} />
+            )}
+          </Frame>
+        ) : (
+          <TileBox key={t.key} tile={t} view={view} again={again} />
+        ),
+      )}
+      {accounts.view && <Excluded apps={accounts.view.left} onChange={again} />}
     </div>
   )
 }

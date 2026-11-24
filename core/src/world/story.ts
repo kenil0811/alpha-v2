@@ -86,29 +86,48 @@ export function reopenStory(db: Db, user: string): void {
   save(db, user, { ...progressOf(db, user), doneAt: null, declinedAt: null })
 }
 
-// The apps a person left out of Connect's Apps you use, by name: never listed for them again.
-export function appsLeftOut(db: Db, user: string): string[] {
+// What a person keeps by key, as JSON: none, or one that does not read, is the fallback.
+function pref<T>(db: Db, user: string, key: string, none: T): T {
   const r = one<{ value: string }>(
     db,
     'SELECT value FROM preferences WHERE user_id = ? AND key = ?',
     user,
-    LEFT_OUT,
+    key,
   )
   try {
-    return r ? (JSON.parse(r.value) as string[]) : []
+    return r ? (JSON.parse(r.value) as T) : none
   } catch {
-    return []
+    return none
   }
+}
+
+function keep(db: Db, user: string, key: string, value: unknown): void {
+  run(
+    db,
+    'INSERT INTO preferences (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value',
+    user,
+    key,
+    JSON.stringify(value),
+  )
+}
+
+// The apps a person left out of what Alpha Bridge found, by name: never listed for them again,
+// until they bring one back from Excluded.
+export function appsLeftOut(db: Db, user: string): string[] {
+  return pref<string[]>(db, user, LEFT_OUT, [])
 }
 
 export function leaveAppOut(db: Db, user: string, name: string): void {
   const now = appsLeftOut(db, user)
   if (now.some((n) => n.toLowerCase() === name.toLowerCase())) return
-  run(
+  keep(db, user, LEFT_OUT, [...now, name])
+}
+
+export function bringAppBack(db: Db, user: string, name: string): void {
+  keep(
     db,
-    'INSERT INTO preferences (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value',
     user,
     LEFT_OUT,
-    JSON.stringify([...now, name]),
+    appsLeftOut(db, user).filter((n) => n.toLowerCase() !== name.toLowerCase()),
   )
 }

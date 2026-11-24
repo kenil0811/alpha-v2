@@ -138,7 +138,7 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
       }))
       .filter((t) => paired && t.apps.length)
     return [
-      ...tiles.filter((t) => t.kind === 'connector' || t.kind === 'calendar'),
+      ...tiles.filter((t) => ['accounts', 'connector', 'calendar'].includes(t.kind)),
       ...reads,
       ...found,
     ]

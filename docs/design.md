@@ -348,6 +348,11 @@ call: Interviews adds What I learned, A few questions and Off your plate after I
 Connecting a source is the permission to read it; what is connected is read in the background and
 What I learned fills in place. Every step can be skipped; a step on which nothing happened is
 marked skipped, never done, and the page always ends on something to do.
+Every mail, calendar and contacts account is one line, in Your accounts and in Settings ›
+Connections alike, added from one Add (Google, Microsoft or other mail), as many as the person
+wishes: a Google account's mail (an app password) and its calendar and contacts (the firm's sign-in
+app) on one line. Disconnect pauses a line and forgets its kept sign-in; Delete removes the account,
+as removing a connection does. Apps left out of what Alpha Bridge found wait under Excluded.
 
 ## The window
 

@@ -1,6 +1,7 @@
 // What a journey is: its fixtures, the plugins its Alpha has on, and its steps, each the person's
 // own action or the scheduler's, with the checks on the world after it (run.ts runs them).
 import { z } from 'zod'
+import { AccountPress } from './account-steps.ts'
 import { Check } from './checks.ts'
 import { Interview, PluginPress } from './plugin-steps.ts'
 import { MemberAdd, StoryPress } from './story-steps.ts'
@@ -99,6 +100,8 @@ export const Journey = z.object({
       interview: Interview.optional(),
       // Set up Alpha pressed through its own routes, as the person goes through it (story-steps.ts)
       story: StoryPress.optional(),
+      // Disconnect or Delete on an account line, through the window's routes
+      accounts: AccountPress.optional(),
       // someone added to this Alpha by the owner, to join through their own story
       member: MemberAdd.optional(),
       // every waiting card of a schedule's rows decided: each row not yet decided takes this choice

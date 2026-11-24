@@ -12,6 +12,8 @@ export interface Health {
 
 export type { ActingView, CardView, ReviewView } from './card-types.ts'
 export type {
+  AccountLine,
+  AccountsView,
   BridgeDownload,
   ComputerPageView,
   ComputersView,

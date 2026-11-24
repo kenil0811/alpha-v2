@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { type Connector, chromePath } from '@alpha/connector-sdk'
 import { z } from 'zod'
 import { addFolder, loadConnector, removeFolder, unpack } from '../../connectors/discover.ts'
+import { SIGNED_OUT } from '../../connectors/service.ts'
 import { PlainPlatform } from '../../platform/index.ts'
 import { FOLDERS } from '../../signing.ts'
 import { ownerOf } from '../../world/connections.ts'
@@ -183,6 +184,15 @@ export function registerConnectors(ctx: Ctx): void {
     if (c.manifest.auth === 'oauth') {
       if (!signIn) throw new Refused('Signing in is not set up in this core.')
       const at = signIn.start(conn, c)
+      // one its person disconnected is connected again by signing in: no longer paused
+      if (conn.state === 'paused' && conn.health === SIGNED_OUT)
+        world.connections.setState(
+          id,
+          'needs_sign_in',
+          'Sign in to finish connecting.',
+          `Connecting ${c.manifest.title} again for ${conn.account}.`,
+          asPerson,
+        )
       return { url: at, opened: (options.platform ?? new PlainPlatform()).openLink(at) }
     }
     const url = c.manifest.signIn

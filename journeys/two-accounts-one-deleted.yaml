@@ -1,0 +1,20 @@
+name: two-accounts-one-deleted
+title: Two Gmail accounts are two lines; one disconnected stays, off, and once deleted is gone
+why: >
+  The 23 Nov window review (kept 24 Nov): one Add for as many accounts as wished, any number of
+  Gmail accounts, each one line; Disconnect keeps a line to connect again, Delete takes it away. On
+  recorded answers, never a real account.
+steps:
+  - connect: { connector: gmail, account: ana@harborbooks.example }
+  - connect: { connector: gmail, account: ben@harborbooks.example }
+    checks:
+      - accounts: { lines: [ana@harborbooks.example, ben@harborbooks.example], off: [] }
+  - accounts: { disconnect: ben@harborbooks.example }
+    checks:
+      - accounts:
+          lines: [ana@harborbooks.example, ben@harborbooks.example]
+          off: [ben@harborbooks.example]
+  - accounts: { delete: ben@harborbooks.example }
+    checks:
+      - accounts: { lines: [ana@harborbooks.example], off: [] }
+      - errors: 0
