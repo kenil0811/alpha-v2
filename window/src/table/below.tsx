@@ -1,6 +1,7 @@
 // Under a table's last row: three blank rows when it has none (an empty table keeps its frame, and
 // says nothing, T5), then whatever room is left in the box, so the totals row always rests on the
-// foot however few the rows (T3).
+// foot however few the rows (T3). That room is ruled as the rows are, so their lines run to the
+// foot.
 import { type RefObject, useEffect, useRef, useState } from 'react'
 
 export function useRoomBelow(box: RefObject<HTMLDivElement | null>, rows: number, span: number) {
@@ -28,10 +29,14 @@ export function useRoomBelow(box: RefObject<HTMLDivElement | null>, rows: number
         ))}
       {room > 0 && (
         <tr aria-hidden>
-          <td colSpan={span} className="p-0" style={{ height: room }} />
+          <td colSpan={span} className="p-0" style={{ height: room, backgroundImage: RULED }} />
         </tr>
       )}
     </>
   )
   return [table, below] as const
 }
+
+// a row's height (h-9.5) then its 1px line, over and over
+const RULED =
+  'repeating-linear-gradient(transparent 0 calc(var(--spacing) * 9.5), var(--hair) 0 calc(var(--spacing) * 9.5 + 1px))'

@@ -34,7 +34,7 @@ import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
 import { Field, SEARCH_PAST, SearchLine, Select } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
-import { MenuItem, MenuLine } from '../ui/popover.tsx'
+import { MenuItem, MenuLine, SubMenu } from '../ui/popover.tsx'
 import {
   hide,
   move,
@@ -57,9 +57,16 @@ import {
   TOTAL_WORDS,
   TOTALS,
 } from './engine.ts'
-import type { LayoutNow } from './layout.ts'
+import type { LayoutNow, Spill } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
 import { show } from './values.ts'
+
+// how a column shows words longer than it is wide; Overflow runs on into the empty cells after it
+const SPILLS: { to: Spill; words: string }[] = [
+  { to: 'overflow', words: 'Overflow' },
+  { to: 'wrap', words: 'Wrap' },
+  { to: 'clip', words: 'Clip' },
+]
 
 type Tone = 'good' | 'warn' | 'bad' | 'accent'
 const TONE_WORDS: Record<Tone, string> = {
@@ -269,16 +276,29 @@ export function ColumnMenu({
           {index + 1 === layout.frozen && index > 0 ? 'Unfreeze columns' : 'Freeze up to here'}
         </MenuItem>
       )}
-      <MenuItem
-        checked={layout.wrap.includes(field.id)}
-        onClick={() => {
-          layout.toggleWrap(field.id)
-          onClose()
-        }}
+      {/* words longer than the column is wide, as in a spreadsheet */}
+      <SubMenu
+        label={
+          <>
+            <WrapText className="size-3.5 text-ink-3" />
+            Long text
+          </>
+        }
+        hint={SPILLS.find((s) => s.to === layout.spillOf(field.id))?.words}
       >
-        <WrapText className="size-3.5 text-ink-3" />
-        Wrap text
-      </MenuItem>
+        {SPILLS.map((s) => (
+          <MenuItem
+            key={s.to}
+            checked={layout.spillOf(field.id) === s.to}
+            onClick={() => {
+              layout.setSpill(field.id, s.to)
+              onClose()
+            }}
+          >
+            {s.words}
+          </MenuItem>
+        ))}
+      </SubMenu>
       <MenuLine />
       <MenuItem reason={fixed} onClick={() => onInsert('left')}>
         <ArrowLeftToLine className="size-3.5 text-ink-3" />

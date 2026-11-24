@@ -205,10 +205,12 @@ export function KindPicker({
           )}
         </>
       )}
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+      {/* compact, under the button's left edge, the ✓ after the name */}
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} className="min-w-0">
         {OFFERED.map((k) => (
           <MenuItem
             key={k.kind}
+            tickAfter
             checked={k.kind === config.kind}
             reason={why(k.kind)}
             onClick={() => {

@@ -18,6 +18,7 @@ export const BLANK: ViewConfig = {
   widths: {},
   frozen: 1,
   wrap: [],
+  clip: [],
   totals: {},
   colours: { tint: null, when: [] },
 }
