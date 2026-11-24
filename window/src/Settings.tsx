@@ -19,6 +19,7 @@ import { KeptFiles } from './KeptFiles.tsx'
 import { Logs } from './Logs.tsx'
 import { when } from './Modules.tsx'
 import { modelHelp } from './model-help.ts'
+import { ReadReport } from './ReadReport.tsx'
 import { Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { useSetup, useSignIn } from './SetupPanel.tsx'
@@ -78,6 +79,7 @@ const PAGES: { name: string; parts: [string, string][] }[] = [
     name: 'Data',
     parts: [
       ['logs', 'Logs'],
+      ['read', 'What Alpha read'],
       ['backup', 'Backup and restore'],
       ['files', 'Files'],
     ],
@@ -118,9 +120,10 @@ export function Settings({
   useEffect(() => {
     api.get<Me>('/api/me').then(setMe, () => undefined)
   }, [])
-  // a member does not see the owner's parts (backups, members); Members only where people sign in
+  // a member does not see the owner's backups, and sees only their own password in Members;
+  // Members only where people sign in
   const member = me?.user.role === 'member'
-  const hidden = new Set(member ? ['backup', 'people'] : me?.signIn ? [] : ['people'])
+  const hidden = new Set([...(member ? ['backup'] : []), ...(me?.signIn ? [] : ['people'])])
   const pages = PAGES.map((p) => ({ ...p, parts: p.parts.filter(([id]) => !hidden.has(id)) }))
   const asked = MOVED[tab ?? ''] ?? tab
   const page = pages.find((p) => p.parts.some(([id]) => id === asked)) ?? pages[0]
@@ -187,7 +190,7 @@ export function Settings({
     appearance: <Appearance view={view} onChange={load} />,
     setup: <SetUpPart version={version} />,
     alpha: <AlphaPart me={me} />,
-    people: <AccountsSection />,
+    people: <AccountsSection owner={!member} />,
     usage: <UsageSection />,
     model: <ModelSection />,
     schedules: <Schedules version={version} />,
@@ -196,6 +199,7 @@ export function Settings({
     ),
     rules: <RulesPart version={version} owner={!member} />,
     logs: <Logs version={version} />,
+    read: <ReadReport version={version} />,
     backup: <DataSection />,
     files: <KeptFiles version={version} module={open} />,
   }

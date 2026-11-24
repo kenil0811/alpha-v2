@@ -10,7 +10,7 @@ import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
-import { TickCross } from './ui/yes-no.tsx'
+import { YesNo } from './ui/yes-no.tsx'
 
 export function WaitingRules({
   version,
@@ -54,7 +54,7 @@ export function WaitingRules({
             actions={
               <>
                 {on === r.card && <Refusal words={problem} />}
-                <TickCross
+                <YesNo
                   value={null}
                   disabled={busy}
                   onChange={(a) =>

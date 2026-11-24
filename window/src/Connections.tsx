@@ -203,7 +203,7 @@ function SoloTile({
   onAdd: (() => void) | undefined
   onChange: () => void
 }) {
-  const p = useConnection(k, onChange, { card: true, onAdd })
+  const p = useConnection(k, onChange, { card: true, onAdd, quiet: true })
   return (
     <StateCard
       state={p.state}
