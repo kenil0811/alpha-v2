@@ -200,6 +200,10 @@ function Line({
         title={`Delete ${l.account}?`}
         yes="Delete"
         busy={busy}
+        done={{
+          words: `${l.account} is deleted. It waits under Excluded, where Restore brings it back.`,
+          where: { label: 'Connections', href: '#/settings/connections' },
+        }}
         onClose={() => setLeaving(false)}
         onYes={() => {
           setLeaving(false)
