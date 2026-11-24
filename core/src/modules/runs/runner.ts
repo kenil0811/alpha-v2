@@ -6,7 +6,6 @@ import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
 import type { Trigger } from '@alpha/kit-sdk'
-import { config } from '../../config.ts'
 import { askModel } from '../../engine/ask.ts'
 import type { Ask } from '../../files/reading.ts'
 import { runScript, type ScriptRun } from '../../scripts/run.ts'
@@ -70,8 +69,7 @@ export class ScheduleRunner {
     this.notify = options.notify ?? (() => {})
     this.owner = options.owner ?? null
     this.ask = options.ask ?? askModel(world.paths.dir)
-    this.judgeAsk =
-      options.judge ?? options.ask ?? askModel(world.paths.dir, undefined, () => config.judging())
+    this.judgeAsk = options.judge ?? options.ask ?? askModel(world.paths.dir, 'judging')
     this.reviews = new Reviews(world, this.owner)
     this.endOrphans()
   }

@@ -16,7 +16,7 @@ import { Field } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 import { updatedWords } from './ui/update-now.tsx'
 
 const added = (at: string) =>
