@@ -156,8 +156,8 @@ export function registerAgents(ctx: Ctx): void {
   // A person's own edit of an agent's instructions is a proposal to the Chief of staff, never
   // written as typed: it fits it in with its own tool, or asks with a card where it conflicts. The
   // person's words alone are their message; the Chief of staff also reads what it is for
-  // (config/proposing.md). A shipped agent changes only with its source (G1), so it is refused
-  // here, before anything is sent.
+  // (config/proposing.md). Alpha's own agents change only with Alpha (G1), so theirs are refused
+  // here, before anything is sent; a kit agent's are the firm's to change.
   app.post('/api/agents/:id/propose', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { instructions } = z
@@ -165,7 +165,7 @@ export function registerAgents(ctx: Ctx): void {
       .parse(req.body)
     const a = world.agents.get(id)
     if (!a) throw new Refused('That agent is not there.')
-    refuseShipped(world, a)
+    refuseShipped(world, a, 'instructions')
     const read = config.proposing({
       name: a.name,
       was: instructionsOf(world, id),

@@ -1,7 +1,8 @@
 // Who may change an agent (docs/rules.md G1, G2): a shipped agent, a kit's (the made-up kit in
 // journeys/fixtures/kits/sourcing) or Alpha's own, tried through every way an agent is changed:
 // the Chief of staff or a person, another agent, the agent itself, a schedule kept for it, Undo in
-// the window, and its source's update. The ways are listed here; doors.ts lists ways into rows.
+// the window, a proposal from the window, and its source's update. A kit agent's instructions are
+// the firm's to change. The ways are listed here; doors.ts lists ways into rows.
 import { join } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
 import { config } from '../config.ts'
@@ -9,7 +10,7 @@ import { makeSchedule } from '../modules/agent-schedules.ts'
 import { instructionsOf, keepAgent, keepAgentFile, removeAgent } from '../modules/agents.ts'
 import { install, update } from '../modules/kits/index.ts'
 import { ScheduleRunner } from '../modules/runs/runner.ts'
-import { ALPHA, BUILDER_KEY, keepAlphaAgents } from '../modules/shipped.ts'
+import { ALPHA, BUILDER_KEY, keepAlphaAgents, kitInstructions } from '../modules/shipped.ts'
 import { Refused } from '../world/kinds.ts'
 import { rule } from './rule.ts'
 import type { RuleWorld } from './world.ts'
@@ -36,92 +37,110 @@ async function refused(go: () => Promise<unknown>, source: RegExp): Promise<bool
   }
 }
 
-rule('G1', 'an agent that shipped changes only with its source', {
-  cases: {
-    'the Chief of staff or a person: its instructions are refused, naming the kit': async (w) => {
-      await sourcing(w)
-      return refused(
-        () => keepAgent(w.world, 'Sourcer', { instructions: 'Look in Ohio.' }, person(w), null),
-        /Sourcing/,
-      )
-    },
-    'the agent itself: its instructions and its skills are refused': async (w) => {
-      const id = await sourcing(w)
-      const skill = '---\nname: x\ndescription: y\n---\nDo it.'
-      return (
-        (await refused(
-          () => keepAgent(w.world, 'Sourcer', { title: 'Something else' }, person(w), id),
-          /Sourcing/,
-        )) &&
-        (await refused(
-          () => keepAgentFile(w.world, 'Sourcer', 'skills/x/SKILL.md', skill, person(w), id),
-          /Sourcing/,
-        ))
-      )
-    },
-    'another agent: refused': async (w) => {
-      await sourcing(w)
-      await keepAgent(
-        w.world,
-        'Scout',
-        { title: 'Scouts', description: 'Looks around.', instructions: 'Look around.' },
-        person(w),
-        null,
-      )
-      const scout = w.world.agents.byName('Scout')?.id as string
-      return refused(
-        () => keepAgent(w.world, 'Sourcer', { instructions: 'x' }, person(w), scout),
-        /Sourcing/,
-      )
-    },
-    'a schedule kept for it: refused': async (w) => {
-      const id = await sourcing(w)
-      const runner = new ScheduleRunner(w.world, () => ({}) as BrowserEngine)
-      return refused(
-        () =>
-          makeSchedule(
-            w.world,
-            runner,
-            id,
-            { name: 'Daily', when: { every: 'day', at: '09:00' }, what: 'Look.' },
-            person(w),
-          ),
-        /Sourcing/,
-      )
-    },
-    'Undo in the window: refused, naming the kit': async (w) => {
-      const id = await sourcing(w)
-      const r = await w.post(`/api/agents/${id}/undo`, { commit: 'HEAD', path: 'AGENT.md' })
-      return r.status === 409 && /Sourcing/.test(String(r.body.problem))
-    },
-    'its instructions proposed in the window: refused before anything is sent, naming the kit':
-      async (w) => {
+rule(
+  'G1',
+  'an agent that shipped changes only with its source, but for a kit agent’s instructions',
+  {
+    cases: {
+      'the Chief of staff or a person: a kit agent’s instructions change, its title is refused':
+        async (w) => {
+          const id = await sourcing(w)
+          await keepAgent(w.world, 'Sourcer', { instructions: 'Look in Ohio.' }, person(w), null)
+          return (
+            instructionsOf(w.world, id) === 'Look in Ohio.' &&
+            (await refused(
+              () => keepAgent(w.world, 'Sourcer', { title: 'Finds farms' }, person(w), null),
+              /Sourcing/,
+            ))
+          )
+        },
+      'the agent itself: its instructions, its title and its skills are refused': async (w) => {
         const id = await sourcing(w)
-        const r = await w.post(`/api/agents/${id}/propose`, { instructions: 'Look in Ohio.' })
+        const skill = '---\nname: x\ndescription: y\n---\nDo it.'
         return (
-          r.status === 409 &&
-          /Sourcing/.test(String(r.body.problem)) &&
-          w.world.lines({ kinds: ['said'] }).length === 0
+          (await refused(
+            () => keepAgent(w.world, 'Sourcer', { instructions: 'Look anywhere.' }, person(w), id),
+            /Sourcing/,
+          )) &&
+          (await refused(
+            () => keepAgent(w.world, 'Sourcer', { title: 'Something else' }, person(w), id),
+            /Sourcing/,
+          )) &&
+          (await refused(
+            () => keepAgentFile(w.world, 'Sourcer', 'skills/x/SKILL.md', skill, person(w), id),
+            /Sourcing/,
+          ))
         )
       },
-    'its source: the kit’s update changes it': async (w) => {
-      const id = await sourcing(w)
-      await update(w.world, 'Sourcing', join(KITS, 'sourcing-2'), person(w))
-      return /Texas/.test(instructionsOf(w.world, id))
-    },
-    'Alpha’s own Module builder: refused for everyone but Alpha': async (w) => {
-      await keepAlphaAgents(w.world, person(w))
-      const builder = w.world.agents.shipped(ALPHA, BUILDER_KEY)
-      return (
-        !!builder &&
-        refused(
-          () => keepAgent(w.world, builder.name, { instructions: 'x' }, person(w), null),
-          /Alpha/,
+      'another agent: refused': async (w) => {
+        await sourcing(w)
+        await keepAgent(
+          w.world,
+          'Scout',
+          { title: 'Scouts', description: 'Looks around.', instructions: 'Look around.' },
+          person(w),
+          null,
         )
-      )
+        const scout = w.world.agents.byName('Scout')?.id as string
+        return refused(
+          () => keepAgent(w.world, 'Sourcer', { instructions: 'x' }, person(w), scout),
+          /Sourcing/,
+        )
+      },
+      'a schedule kept for it: refused': async (w) => {
+        const id = await sourcing(w)
+        const runner = new ScheduleRunner(w.world, () => ({}) as BrowserEngine)
+        return refused(
+          () =>
+            makeSchedule(
+              w.world,
+              runner,
+              id,
+              { name: 'Daily', when: { every: 'day', at: '09:00' }, what: 'Look.' },
+              person(w),
+            ),
+          /Sourcing/,
+        )
+      },
+      'Undo in the window: a skill refused, naming the kit': async (w) => {
+        const id = await sourcing(w)
+        const r = await w.post(`/api/agents/${id}/undo`, {
+          commit: 'HEAD',
+          path: 'skills/x/SKILL.md',
+        })
+        return r.status === 409 && /Sourcing/.test(String(r.body.problem))
+      },
+      'Alpha’s own agent’s instructions proposed in the window: refused before anything is sent':
+        async (w) => {
+          await keepAlphaAgents(w.world, person(w))
+          const builder = w.world.agents.shipped(ALPHA, BUILDER_KEY)
+          if (!builder) return false
+          const r = await w.post(`/api/agents/${builder.id}/propose`, { instructions: 'x' })
+          return (
+            r.status === 409 &&
+            /Alpha/.test(String(r.body.problem)) &&
+            w.world.lines({ kinds: ['said'] }).length === 0
+          )
+        },
+      'its source: the kit’s update changes it': async (w) => {
+        const id = await sourcing(w)
+        await update(w.world, 'Sourcing', join(KITS, 'sourcing-2'), person(w))
+        return /Texas/.test(instructionsOf(w.world, id))
+      },
+      'Alpha’s own Module builder: refused for everyone but Alpha': async (w) => {
+        await keepAlphaAgents(w.world, person(w))
+        const builder = w.world.agents.shipped(ALPHA, BUILDER_KEY)
+        return (
+          !!builder &&
+          refused(
+            () => keepAgent(w.world, builder.name, { instructions: 'x' }, person(w), null),
+            /Alpha/,
+          )
+        )
+      },
     },
   },
-})
+)
 
 rule('G2', 'an update keeps what is the firm’s, and a deleted shipped agent stays deleted', {
   cases: {
@@ -145,6 +164,19 @@ rule('G2', 'an update keeps what is the firm’s, and a deleted shipped agent st
         w.world.memories.list(id, w.user.id).some((m) => /2 million/.test(m.text)) &&
         w.world.agents.get(id)?.model === model &&
         files.includes('leads.md')
+      )
+    },
+    'instructions the firm changed stay through an update, the kit’s new ones beside them': async (
+      w,
+    ) => {
+      const id = await sourcing(w)
+      await keepAgent(w.world, 'Sourcer', { instructions: 'Look in Ohio.' }, person(w), null)
+      await update(w.world, 'Sourcing', join(KITS, 'sourcing-2'), person(w))
+      const line = w.world.lines({ kinds: ['agent_changed'] }).at(-1)
+      return (
+        instructionsOf(w.world, id) === 'Look in Ohio.' &&
+        /Texas/.test(kitInstructions(w.world, id) ?? '') &&
+        /keeping your own instructions/.test(line?.words ?? '')
       )
     },
     'a kit’s agent the firm deleted does not come back with its update': async (w) => {

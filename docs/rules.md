@@ -71,8 +71,8 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| G1 | An agent that shipped, Alpha's own or a kit's, changes only with its source. No one changes its instructions, title, description, skills or schedules in place: not the model, another agent, itself or a person. Each refuses in words that name the source | 11 Nov | test |
-| G2 | An update never touches an agent's memories, conversations, the files it kept itself or the model the person picked, and a shipped agent the firm deleted stays deleted | 11 Nov | test |
+| G1 | An agent that shipped, Alpha's own or a kit's, changes only with its source, but for a kit agent's instructions. No one changes a shipped agent's title, description, skills or schedules, or Alpha's own agent's instructions, in place: not the model, another agent, itself or a person; each refuses in words that name the source. A kit agent's instructions the person changes, or the Chief of staff on their word (a proposal from the window, or asked in the chat; Undo too), never an agent; from that change they are the firm's, the kit's as they stood kept beside them | 11 Nov, 25 Nov | test |
+| G2 | An update never touches an agent's memories, conversations, the files it kept itself, instructions the firm changed (the kit's new ones go beside them, and its line says so) or the model the person picked, and a shipped agent the firm deleted stays deleted | 11 Nov, 25 Nov | test |
 
 ## What leaves
 

@@ -1,8 +1,10 @@
 // Agents that ship: Alpha's own, from core/agents/, and a kit's, from its agents/ folder (kit API
 // 3). One comes in by its lasting key and changes only with its source, since the next update
-// would undo a change made here (docs/rules.md G1). An update keeps what is the firm's: its
-// memories, conversations, the files it kept itself and the model the person picked (G2). One the
-// firm deleted stays deleted.
+// would undo a change made here (docs/rules.md G1), but for a kit agent's instructions, which the
+// firm may change: from then on they are the firm's, and an update leaves them, keeping the kit's
+// new ones beside them. An update keeps what is the firm's: its memories, conversations, the files
+// it kept itself, the instructions it changed and the model the person picked (G2). One the firm
+// deleted stays deleted.
 import {
   copyFileSync,
   cpSync,
@@ -30,6 +32,9 @@ export const BUILDER_KEY = 'module-builder'
 // the files under files/ its source brought, so an update can take back what it drops
 const SHIPPED = '.shipped.json'
 const gone = (source: string, key: string) => `agent_gone:${source}:${key}`
+// a kit agent whose instructions the firm changed, and where the kit's own then go
+const own = (id: string) => `agent_own_instructions:${id}`
+export const KIT_INSTRUCTIONS = 'AGENT.kit.md'
 
 export interface Source {
   id: string // ALPHA, or the kit's module id
@@ -64,16 +69,59 @@ export function fromView(world: World, a: Pick<Agent, 'source'> | undefined | 'c
   return { ...fromOf(world, a), module: a?.source && a.source !== ALPHA ? a.source : null }
 }
 
-// Why a shipped agent's definition cannot change here, or nothing for one made here.
-export function shippedRefusal(world: World, agent: Agent | undefined): string | null {
+// Why a shipped agent's definition cannot change here, or nothing for one made here. A kit
+// agent's instructions are the firm's to change (`what`), by the person or the Chief of staff.
+export function shippedRefusal(
+  world: World,
+  agent: Agent | undefined,
+  what: 'instructions' | 'all' = 'all',
+): string | null {
   const from = fromOf(world, agent)
   if (!agent || from.kind === 'here') return null
+  if (from.kind === 'kit' && what === 'instructions') return null
+  if (from.kind === 'kit')
+    return `${agent.name} comes with ${from.name}, so its title, description, skills and schedules change only with ${from.name}'s updates, which would undo a change made here. Its instructions are the firm's to change, by the person or the Chief of staff on their word, never by an agent itself. Add to it through its memories or How to work, or make an agent of your own from it. Tell the person first what was not changed, and why, then what you did instead.`
   return `${agent.name} comes with ${from.name}, so its instructions, skills and schedules change only with ${from.name}'s updates, which would undo a change made here. Add to it through its memories or How to work, or make an agent of your own from it. Tell the person first that ${agent.name}'s own instructions were not changed, and why, then what you did instead.`
 }
 
-export function refuseShipped(world: World, agent: Agent | undefined): void {
-  const why = shippedRefusal(world, agent)
+export function refuseShipped(
+  world: World,
+  agent: Agent | undefined,
+  what: 'instructions' | 'all' = 'all',
+): void {
+  const why = shippedRefusal(world, agent, what)
   if (why) throw new Refused(why)
+}
+
+// Whether the firm changed this kit agent's instructions: an update then leaves them.
+export const ownInstructions = (world: World, id: string): boolean =>
+  !!one(world.db, 'SELECT 1 FROM meta WHERE key = ?', own(id))
+
+// Before the firm's first change to a kit agent's instructions: the kit's, as they stand, go beside
+// them (AGENT.kit.md), and from now on the instructions are the firm's.
+export function takeInstructions(world: World, agent: Agent): void {
+  if (!agent.source || agent.source === ALPHA || ownInstructions(world, agent.id)) return
+  const dir = world.agents.dirOf(agent.id)
+  const now = join(dir, 'AGENT.md')
+  if (existsSync(now)) copyFileSync(now, join(dir, KIT_INSTRUCTIONS))
+  run(
+    world.db,
+    'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING',
+    own(agent.id),
+    agent.source,
+  )
+}
+
+// A deleted agent's mark goes with it.
+export const forgetOwnInstructions = (world: World, id: string): void =>
+  void run(world.db, 'DELETE FROM meta WHERE key = ?', own(id))
+
+// The kit's own instructions for an agent whose instructions are the firm's, as its latest update
+// brought them; none otherwise.
+export function kitInstructions(world: World, id: string): string | null {
+  if (!ownInstructions(world, id)) return null
+  const f = join(world.agents.dirOf(id), KIT_INSTRUCTIONS)
+  return existsSync(f) ? readFileSync(f, 'utf8').trim() : null
 }
 
 // A shipped agent the firm deleted: remembered by its key, so its source does not bring it back.
@@ -177,7 +225,10 @@ async function refresh(
     title: a.head.title,
     description: a.head.description,
   })
+  // the firm's own instructions stay; the kit's new ones, if new, go beside them
+  const was = kitInstructions(world, known.id)
   const dir = copyIn(world, known.id, a)
+  const beside = was !== null && was !== a.instructions.trim()
   syncAgentSchedules(world, known.id, ctx.user ?? null, source.on ? 'on' : 'paused')
   const commit = await commitAll(dir, `From ${source.label}`)
   if (!commit) return null
@@ -186,12 +237,16 @@ async function refresh(
   world.line({
     actor: ctx.actor,
     kind: 'agent_changed',
-    words: `Updated ${name} from ${source.label}.`,
+    words: beside
+      ? `Updated ${name} from ${source.label}, keeping your own instructions; ${source.label}'s new ones are beside them, for the Chief of staff to bring in when you ask.`
+      : `Updated ${name} from ${source.label}.`,
     data: { changed: known.id, commit, source: source.id, key: a.key },
     user: ctx.user ?? null,
     turn: ctx.turn ?? null,
   })
-  return `Updated ${name} from ${source.label}.`
+  return beside
+    ? `Updated ${name} from ${source.label}, keeping the firm's own instructions; ${source.label}'s new ones are beside them.`
+    : `Updated ${name} from ${source.label}.`
 }
 
 // The source's instructions, skills, schedules and the checks its schedules run in place of what
@@ -199,7 +254,11 @@ async function refresh(
 // stays.
 function copyIn(world: World, id: string, a: ShippedAgent): string {
   const dir = world.agents.dirOf(id)
-  writeFileSync(join(dir, 'AGENT.md'), `${a.instructions}\n`)
+  // instructions the firm changed are theirs: the kit's go beside them
+  writeFileSync(
+    join(dir, ownInstructions(world, id) ? KIT_INSTRUCTIONS : 'AGENT.md'),
+    `${a.instructions}\n`,
+  )
   for (const sub of ['skills', 'schedules', 'checks']) {
     rmSync(join(dir, sub), { recursive: true, force: true })
     if (existsSync(join(a.dir, sub))) cpSync(join(a.dir, sub), join(dir, sub), { recursive: true })

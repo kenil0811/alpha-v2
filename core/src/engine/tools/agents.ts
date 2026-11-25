@@ -3,6 +3,7 @@
 // and a line in the conversation says so.
 import { z } from 'zod'
 import { config } from '../../config.ts'
+import { kitInstructions } from '../../modules/shipped.ts'
 import { askOfTurn } from '../../world/agents/asks.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -30,7 +31,7 @@ export function agentTools(t: Tooling): ToolEntry[] {
   return [
     tool(
       'list_agents',
-      'The team: each agent’s name, title and description. With agent: that one’s notes, and for the Chief of staff also the recent conversation it had with this person.',
+      'The team: each agent’s name, title and description. With agent: that one’s notes, and for the Chief of staff also the recent conversation it had with this person and, for a kit’s agent whose instructions the firm changed, the kit’s own instructions as its latest update brought them, to bring in when the person asks.',
       { agent: z.string().optional() },
       async (a) =>
         guard(() => {
@@ -55,6 +56,11 @@ export function agentTools(t: Tooling): ToolEntry[] {
               .slice(-20)
               .map((l) => `${l.kind === 'said' ? 'They' : nameOf(id)}: ${l.words}`)
             parts.push(`Recent conversation with this person:\n${said.join('\n') || '(none)'}`)
+            const kits = kitInstructions(world, id)
+            if (kits !== null)
+              parts.push(
+                `Its instructions are the firm’s own. Its kit’s, as its latest update brought them:\n${kits}`,
+              )
           }
           return ok(parts.join('\n\n'))
         }),

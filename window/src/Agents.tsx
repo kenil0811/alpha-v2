@@ -267,7 +267,8 @@ export function AgentPage({
         <Instructions
           id={a.id}
           text={a.instructions}
-          source={a.from.kind === 'here' ? null : a.from.name}
+          locked={a.from.kind === 'alpha' ? a.from.name : null}
+          kit={a.from.kind === 'kit' ? a.from.name : null}
         />
       )}
       <Memories id={a.id} memories={a.memories} onChange={load} />
@@ -486,21 +487,28 @@ function Memories({
 
 // An agent's instructions: a double-click edits them in place, Escape or ✕ leaving them as they
 // were. ✓ never writes them as typed: it sends them to the Chief of staff, which fits them in, or
-// asks with a card where they conflict; the person's message is their own words. A shipped
+// asks with a card where they conflict; the person's message is their own words. A kit agent's
+// are the firm's from that change, its kit's updates leaving them (rules G1, G2). Alpha's own
 // agent's are greyed, and a double-click says why, at the line clicked, as a table's fixed value
-// does (they change only with its source, rules G1).
+// does.
 function Instructions({
   id,
   text,
-  source,
+  locked,
+  kit,
 }: {
   id: string
   text: string
-  source: string | null // the kit, or Alpha, a shipped agent's instructions change with
+  locked: string | null // Alpha, whose own agent's instructions change only with it
+  kit: string | null // the kit a kit agent came with
 }) {
   const [draft, setDraft] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const { busy, problem, act } = useAct()
+  // a module's agent: its updates keep the firm's instructions
+  const keeps = kit
+    ? ` Once changed they are yours: ${kit}'s updates keep them, with its own new ones beside them for the Chief of staff to bring in when you ask.`
+    : ''
   const save = () => {
     if (draft === null || busy) return
     if (!draft.trim() || draft.trim() === text.trim()) return setDraft(null)
@@ -516,22 +524,22 @@ function Instructions({
         Instructions
         <Info
           help={
-            source
-              ? `They change with ${source}. Add to them through its memory or How to work.`
-              : 'Double-click to change them. ✓ sends your change to the Chief of staff, which fits it in, or asks you where it conflicts.'
+            locked
+              ? `They change with ${locked}. Add to them through its memory or How to work.`
+              : `Double-click to change them. ✓ sends your change to the Chief of staff, which fits it in, or asks you where it conflicts.${keeps}`
           }
         />
       </h2>
       {draft === null ? (
         // biome-ignore lint/a11y/noStaticElementInteractions: a double-click edits, as a name's does
         <div
-          className={cn('text-md', source && 'text-ink-2')}
+          className={cn('text-md', locked && 'text-ink-2')}
           onDoubleClick={(e) => {
             // why, beside the line clicked: the words may run longer than the screen
-            if (source)
+            if (locked)
               tipNow(
                 (e.target as Element).closest('p, li, h1, h2, h3, h4, pre') ?? e.currentTarget,
-                `They change only with ${source}.`,
+                `They change only with ${locked}.`,
               )
             else {
               setSent(false)

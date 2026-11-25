@@ -13,7 +13,14 @@ import type { World } from '../world/world.ts'
 import { forgetMarks } from './agent-marks.ts'
 import { commitAll, restoreFile } from './git.ts'
 import { agentSchedules, syncAgentSchedules } from './schedules.ts'
-import { ALPHA, BUILDER_KEY, markGone, refuseShipped } from './shipped.ts'
+import {
+  ALPHA,
+  BUILDER_KEY,
+  forgetOwnInstructions,
+  markGone,
+  refuseShipped,
+  takeInstructions,
+} from './shipped.ts'
 
 export const INSTRUCTIONS = 'AGENT.md'
 const PLACES = ['skills/', 'files/']
@@ -48,9 +55,16 @@ function nameOf(name: string): string {
 }
 
 // Who may change an agent: itself, or the Chief of staff. Only the Chief of staff makes one. One
-// that shipped changes only with its source, whoever asks (docs/rules.md G1).
-function mayChange(world: World, by: string | null, target: Agent | undefined): void {
-  refuseShipped(world, target)
+// that shipped changes only with its source, whoever asks, but for a kit agent's instructions,
+// which the Chief of staff (on the person's word) or the person changes, never an agent
+// (docs/rules.md G1).
+function mayChange(
+  world: World,
+  by: string | null,
+  target: Agent | undefined,
+  what: 'instructions' | 'all' = 'all',
+): void {
+  refuseShipped(world, target, by ? 'all' : what)
   if (!by) return
   if (!target) throw new Refused('Only the Chief of staff makes a new agent.')
   if (by !== target.id) throw new Refused('Only the Chief of staff changes another agent.')
@@ -65,7 +79,15 @@ export async function keepAgent(
   by: string | null, // the agent asking; none is the Chief of staff or a person
 ): Promise<string> {
   const known = world.agents.byName(name)
-  mayChange(world, by, known)
+  // only its instructions, the rest given as it is: the part of a kit agent the firm may change
+  const same = (v: string | undefined, now: string | undefined) => !v?.trim() || v.trim() === now
+  const only =
+    !!def.instructions?.trim() &&
+    same(def.name, known?.name) &&
+    same(def.title, known?.title) &&
+    same(def.description, known?.description) &&
+    (def.model === undefined || def.model === known?.model)
+  mayChange(world, by, known, only ? 'instructions' : 'all')
   const model = modelOf(def.model)
   if (!known) {
     const title = def.title?.trim()
@@ -106,6 +128,8 @@ export async function keepAgent(
   const dir = world.agents.dirOf(known.id)
   let commit: string | null = null
   if (def.instructions?.trim()) {
+    // a kit agent's are the firm's from this change: its kit's go beside them
+    takeInstructions(world, known)
     writeFileSync(join(dir, INSTRUCTIONS), `${def.instructions.trim()}\n`)
     commit = await commitAll(dir, 'Changed its instructions')
     if (commit) world.agents.touch(known.id)
@@ -182,7 +206,9 @@ export async function undoAgentChange(
 ): Promise<string> {
   const agent = id === CHIEF ? CHIEF_CARD : world.agents.get(id)
   if (!agent) throw new Refused('That agent is not there.')
-  if (id !== CHIEF) refuseShipped(world, world.agents.get(id))
+  const shipped = id === CHIEF ? undefined : world.agents.get(id)
+  if (shipped) refuseShipped(world, shipped, path === INSTRUCTIONS ? 'instructions' : 'all')
+  if (shipped && path === INSTRUCTIONS) takeInstructions(world, shipped)
   const dir = world.agents.dirOf(id)
   await restoreFile(dir, commit, path)
   const done = await commitAll(dir, `Undid a change to ${path}`)
@@ -220,6 +246,7 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   // one that shipped stays deleted: its source does not bring it back
   markGone(world, agent)
   forgetMarks(world, id)
+  forgetOwnInstructions(world, id)
   world.agents.remove(id)
   rmSync(world.agents.dirOf(id), { recursive: true, force: true })
   world.line({
