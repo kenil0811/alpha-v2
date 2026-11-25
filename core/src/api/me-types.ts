@@ -69,5 +69,8 @@ export interface TabsKept {
 // their order.
 export interface RecordKept {
   hidden: string[]
-  tabs: string[]
+  tabs: string[] // the order of the record's tabs and blocks, Summary among them ('summary')
+  // where each block shows (Vikas, 25 Nov): 0 nowhere, 1 on Summary, 2 as a tab, 3 both; a block
+  // not named takes its own place (a page of its own a tab, any other Summary)
+  places?: Record<string, number> | undefined
 }

@@ -141,7 +141,13 @@ export function registerMe(ctx: Ctx): void {
         records: z
           .record(
             z.string(),
-            z.object({ hidden: z.array(z.string()), tabs: z.array(z.string()) }).nullable(),
+            z
+              .object({
+                hidden: z.array(z.string()),
+                tabs: z.array(z.string()),
+                places: z.record(z.string().max(160), z.number().int().min(0).max(3)).optional(),
+              })
+              .nullable(),
           )
           .optional(),
         // each module named is kept on its own (none forgets it); modules not named stay as they are

@@ -180,7 +180,6 @@ function PersonPage({
     )
   if (!p) return null
   const company = p.kind === 'company'
-  const now = p.companies.filter((c) => !c.ended)
   const contact = [
     channelWords(p.contact.channels, p.contact.days),
     p.contact.last ? `last on ${date(p.contact.last)}` : '',
@@ -190,143 +189,103 @@ function PersonPage({
   const upcoming = p.history.filter((h) => !isPast(h.at))
   const past = p.history.filter((h) => isPast(h.at))
 
-  // the record page a
-  // row has, with a person's blocks
-  const activity = (all: boolean) => (
-    <div className="flex flex-col gap-5">
-      {upcoming.length > 0 && (
-        <Section small title="Coming up">
-          <History
-            lines={all ? upcoming.slice().reverse() : upcoming.slice().reverse().slice(0, 3)}
-          />
-        </Section>
-      )}
-      {!company && (
-        <Section small title="Mail and meetings" about="Newest first; each opens its row">
-          {past.length ? (
-            <History lines={all ? past : past.slice(0, 5)} />
-          ) : (
-            <p className="text-ink-3 text-md">None in what Alpha has read.</p>
-          )}
-        </Section>
-      )}
-    </div>
+  // each kind of thing its own block (Vikas, 25 Nov), each placed by the person on Summary, as a
+  // tab, both or nowhere (RecordPage)
+  const events = (all: boolean) => (
+    <History lines={all ? upcoming.slice().reverse() : upcoming.slice().reverse().slice(0, 3)} />
   )
-  const related = (
-    <div className="flex flex-col gap-5">
-      {!company && p.companies.length > 0 && (
-        <Section
-          small
-          title="Works at"
-          about="As your rows say; an earlier one is kept with its dates"
+  const mail = (all: boolean) =>
+    past.length ? (
+      <History lines={all ? past : past.slice(0, 5)} />
+    ) : (
+      <p className="text-ink-3 text-md">None in what Alpha has read.</p>
+    )
+  const worksAt = (
+    <List>
+      {p.companies.map((c) => (
+        <a
+          key={`${c.id}${c.title ?? ''}`}
+          href={`#/people/${c.id}`}
+          className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
         >
-          <List>
-            {p.companies.map((c) => (
-              <a
-                key={`${c.id}${c.title ?? ''}`}
-                href={`#/people/${c.id}`}
-                className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-              >
-                <Avatar name={c.name} organization />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-base text-ink">{c.name}</span>
-                  {c.title && <span className="block text-ink-3 text-sm">{c.title}</span>}
-                </span>
-                <span className="text-ink-3 text-sm">
-                  {c.ended ? `Before ${date(c.ended)}` : 'Now'}
-                </span>
-              </a>
-            ))}
-          </List>
-        </Section>
-      )}
-
-      {company && p.people.length > 0 && (
-        <Section small title="People there">
-          <List>
-            {p.people.map((m) => (
-              <a
-                key={m.id}
-                href={`#/people/${m.id}`}
-                className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-              >
-                <Avatar name={m.name} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-base text-ink">{m.name}</span>
-                  {m.title && <span className="block text-ink-3 text-sm">{m.title}</span>}
-                </span>
-                <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-              </a>
-            ))}
-          </List>
-        </Section>
-      )}
-
-      {p.rows.length > 0 && (
-        <Section
-          small
-          title="In your modules"
-          about="Rows that name them, by a person or an address"
+          <Avatar name={c.name} organization />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-base text-ink">{c.name}</span>
+            {c.title && <span className="block text-ink-3 text-sm">{c.title}</span>}
+          </span>
+          <span className="text-ink-3 text-sm">{c.ended ? `Before ${date(c.ended)}` : 'Now'}</span>
+        </a>
+      ))}
+    </List>
+  )
+  const peopleThere = (
+    <List>
+      {p.people.map((m) => (
+        <a
+          key={m.id}
+          href={`#/people/${m.id}`}
+          className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
         >
-          <List>
-            {p.rows.map((r) => (
-              <div
-                key={r.href}
-                className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-              >
-                <a href={r.href} className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-base text-ink">{r.name}</span>
-                    <span className="block truncate text-ink-3 text-sm">
-                      {r.module} · {r.table} · {r.field}
-                    </span>
-                  </span>
-                </a>
-                {r.field !== 'their own word' && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    data-tip="This row is someone else: it leaves with its own addresses"
-                    onClick={() => act(`${p.id}/not`, { record: r.record })}
-                  >
-                    Not this person
-                  </Button>
-                )}
-                <a href={r.href} aria-label={`Open ${r.name}`}>
-                  <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-                </a>
-              </div>
-            ))}
-          </List>
-        </Section>
-      )}
-
-      {mentions.length > 0 && (
-        <Section
-          small
-          title="Mentioned in"
-          about="Notes on rows that mention them; each opens its row"
+          <Avatar name={m.name} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-base text-ink">{m.name}</span>
+            {m.title && <span className="block text-ink-3 text-sm">{m.title}</span>}
+          </span>
+          <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+        </a>
+      ))}
+    </List>
+  )
+  const inModules = (
+    <List>
+      {p.rows.map((r) => (
+        <div
+          key={r.href}
+          className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
         >
-          <List>
-            {mentions.flatMap((m) =>
-              m.rows.map((r) => (
-                <a
-                  key={r.id}
-                  href={`#/row/${r.id}`}
-                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-base text-ink">{r.name}</span>
-                    <span className="block truncate text-ink-3 text-sm">{m.table.name}</span>
-                  </span>
-                  <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-                </a>
-              )),
-            )}
-          </List>
-        </Section>
+          <a href={r.href} className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium text-base text-ink">{r.name}</span>
+              <span className="block truncate text-ink-3 text-sm">
+                {r.module} · {r.table} · {r.field}
+              </span>
+            </span>
+          </a>
+          {r.field !== 'their own word' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              data-tip="This row is someone else: it leaves with its own addresses"
+              onClick={() => act(`${p.id}/not`, { record: r.record })}
+            >
+              Not this person
+            </Button>
+          )}
+          <a href={r.href} aria-label={`Open ${r.name}`}>
+            <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+          </a>
+        </div>
+      ))}
+    </List>
+  )
+  const mentioned = (
+    <List>
+      {mentions.flatMap((m) =>
+        m.rows.map((r) => (
+          <a
+            key={r.id}
+            href={`#/row/${r.id}`}
+            className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium text-base text-ink">{r.name}</span>
+              <span className="block truncate text-ink-3 text-sm">{m.table.name}</span>
+            </span>
+            <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+          </a>
+        )),
       )}
-    </div>
+    </List>
   )
   const knowsBlock = (
     <div className="flex flex-col gap-5">
@@ -373,29 +332,50 @@ function PersonPage({
   )
   const blocks: Block[] = [
     {
+      key: 'events',
+      title: 'Events',
+      about: 'Meetings ahead, soonest first',
+      count: upcoming.length,
+      short: events(false),
+      full: events(true),
+    },
+    {
       key: 'activity',
       title: 'Activity',
       about: 'Mail and meetings, newest first; each opens its row',
-      count: p.history.length,
-      short: activity(false),
-      full: activity(true),
+      count: company ? 0 : p.history.length - upcoming.length,
+      short: mail(false),
+      full: mail(true),
+    },
+    company
+      ? { key: 'people', title: 'People there', count: p.people.length, short: peopleThere }
+      : {
+          key: 'works',
+          title: 'Works at',
+          about: 'As your rows say; an earlier one is kept with its dates',
+          count: p.companies.length,
+          short: worksAt,
+        },
+    {
+      key: 'modules',
+      title: 'In your modules',
+      about: 'Rows that name them, by a person or an address',
+      count: p.rows.length,
+      short: inModules,
     },
     {
-      key: 'related',
-      title: 'Related',
-      count:
-        p.companies.length +
-        p.people.length +
-        p.rows.length +
-        mentions.reduce((n, m) => n + m.rows.length, 0),
-      short: related,
-      full: related,
+      key: 'mentions',
+      title: 'Mentioned in',
+      about: 'Notes on rows that mention them; each opens its row',
+      count: mentions.reduce((n, m) => n + m.rows.length, 0),
+      short: mentioned,
     },
+    // where Alpha knows them from and what merged into them: looked up, not read each visit, so
+    // it starts as a tab of its own
     {
       key: 'knows',
-      title: 'What Alpha knows',
+      title: 'Second Brain',
       count: p.from.length + p.merged.length,
-      short: knowsBlock,
       full: knowsBlock,
     },
   ]
@@ -403,7 +383,6 @@ function PersonPage({
     <RecordPage
       scope={p.kind}
       name={p.name}
-      mark={<Avatar name={p.name} organization={company} big />}
       title={
         naming ? (
           <form
@@ -446,14 +425,6 @@ function PersonPage({
             </button>
           </div>
         )
-      }
-      under={
-        company
-          ? [p.domains.join(', '), plural(p.people.length, 'person', 'people')]
-              .filter(Boolean)
-              .join(' · ')
-          : now.map((c) => (c.title ? `${c.title}, ${c.name}` : c.name)).join(' · ') ||
-            'No organization known'
       }
       head={
         <>

@@ -35,10 +35,12 @@ export interface TabsKept {
 
 // A record page as one person keeps it, for every record of a table (record:<table id>), or of
 // People's and Organizations' (record:person, record:company): the properties hidden from it (field
-// ids) and the blocks pinned as its tabs, in the order the person put them.
+// ids), the order of its tabs and blocks, and where each block shows (0 nowhere, 1 Summary, 2 a tab,
+// 3 both; Vikas, 25 Nov).
 export interface RecordKept {
   hidden: string[]
   tabs: string[]
+  places?: Record<string, number> | undefined
 }
 
 const ORDER = 'list_order:'
@@ -116,7 +118,8 @@ export const keptRecords = (db: Db, user: string) => kept<RecordKept>(db, user, 
 // How this person keeps a record page for a table (or person, company); none, or nothing in it,
 // forgets it.
 export function setRecord(db: Db, user: string, scope: string, r: RecordKept | null): void {
-  keep(db, user, RECORD + scope, r && (r.hidden.length || r.tabs.length) ? r : null)
+  const any = r && (r.hidden.length || r.tabs.length || Object.keys(r.places ?? {}).length)
+  keep(db, user, RECORD + scope, any ? r : null)
 }
 
 // Every record page kept, its hidden properties and tabs each filtered: what goes leaves them.
@@ -128,7 +131,12 @@ function forgetInRecords(db: Db, off: (r: RecordKept) => RecordKept): void {
   )) {
     const was = JSON.parse(r.value) as RecordKept
     const now = off(was)
-    if (now.hidden.length !== was.hidden.length || now.tabs.length !== was.tabs.length)
+    const placed = (k: RecordKept) => Object.keys(k.places ?? {}).length
+    if (
+      now.hidden.length !== was.hidden.length ||
+      now.tabs.length !== was.tabs.length ||
+      placed(now) !== placed(was)
+    )
       setRecord(db, r.user_id, r.key.slice(RECORD.length), now)
   }
 }
@@ -146,10 +154,14 @@ export function forgetTable(db: Db, table: string): void {
   const fields = new Set(
     all<{ id: string }>(db, 'SELECT id FROM fields WHERE table_id = ?', table).map((f) => f.id),
   )
-  forgetInRecords(db, (r) => ({
-    hidden: r.hidden.filter((f) => !fields.has(f)),
-    tabs: r.tabs.filter((t) => t !== `part:${table}`),
-  }))
+  forgetInRecords(db, (r) => {
+    const { [`part:${table}`]: _gone, ...places } = r.places ?? {}
+    return {
+      hidden: r.hidden.filter((f) => !fields.has(f)),
+      tabs: r.tabs.filter((t) => t !== `part:${table}`),
+      ...(r.places ? { places } : {}),
+    }
+  })
   for (const r of all<{ user_id: string; key: string; value: string }>(
     db,
     'SELECT user_id, key, value FROM preferences WHERE key LIKE ?',
@@ -185,7 +197,7 @@ export function forgetList(db: Db, table: string, list: string): void {
 
 // A field gone: no one's view of its table lays rows on it any more, and no record page hides it.
 export function forgetField(db: Db, table: string, field: string): void {
-  forgetInRecords(db, (r) => ({ hidden: r.hidden.filter((f) => f !== field), tabs: r.tabs }))
+  forgetInRecords(db, (r) => ({ ...r, hidden: r.hidden.filter((f) => f !== field) }))
   for (const r of all<{ user_id: string; value: string }>(
     db,
     'SELECT user_id, value FROM preferences WHERE key = ?',
