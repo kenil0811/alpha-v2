@@ -6,7 +6,7 @@
 // renames it in place. Resting on a pill says what the list holds. A list Alpha keeps itself
 // (people, tasks) holds no saved lists, so it shows neither Save nor its menu, and Cancel alone.
 import type { FieldView, SavedView } from '@alpha/core/api'
-import { ArrowLeftToLine, CopyPlus, PencilLine, Trash2 } from 'lucide-react'
+import { ArrowLeftToLine, CopyPlus, PencilLine, Plus, Trash2 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
@@ -32,6 +32,7 @@ export function ViewTabs({
   onOrder,
   onRemove,
   links,
+  onNew,
 }: {
   picker: ReactNode // how the rows are drawn, an icon before the lists
   tools: ReactNode // search and filter, at the right before the table's actions
@@ -44,6 +45,7 @@ export function ViewTabs({
   problem: string | null
   onPick: (id: string | null) => void
   onSaveAs: (name: string) => void
+  onNew?: (() => void) | undefined // the + after the lists: a page that asks the agent for a new one
   onRename: (name: string) => void
   order: string[] // the person's order of the lists ('all' is All), kept by the core; first opens
   onOrder: (ids: string[]) => void
@@ -243,6 +245,17 @@ export function ViewTabs({
             ))
           : ordered.map((v) => pill(v))}
       </fieldset>
+      {keeps && !links && onNew && (
+        <button
+          type="button"
+          aria-label="New list"
+          data-tip="New list: say what it shows, and Alpha makes it"
+          onClick={onNew}
+          className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-hover hover:text-ink"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      )}
       {problem && <span className="min-w-0 truncate text-bad text-sm">{problem}</span>}
       <span className="ml-auto flex shrink-0 items-center gap-1">
         {tools}

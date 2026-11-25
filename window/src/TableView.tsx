@@ -13,7 +13,6 @@ import type {
   TableSummary,
   ViewConfig,
 } from '@alpha/core/api'
-import { Search } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
@@ -21,6 +20,7 @@ import { useFieldsAt } from './table/AddFieldForm.tsx'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
 import { TableName } from './table/context.ts'
+import { Dashboard, useDashboard } from './table/Dashboard.tsx'
 import { setRule } from './table/edits.ts'
 import { applyFilters, applySearch, columns, complete, differs, sortRows } from './table/engine.ts'
 import { FootBar, Pages } from './table/FootBar.tsx'
@@ -30,11 +30,12 @@ import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { MirrorGone, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
+import { NewList } from './table/NewList.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel, rowAddress } from './table/RowPanel.tsx'
 import { Showing } from './table/Showing.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips } from './table/Toolbar.tsx'
+import { AddFilter, Chips, SearchBox } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
 import { canType, rowCount, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -110,7 +111,6 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
-  const [searching, setSearching] = useState(false)
   const layout = layoutOf(config, setConfig) // frozen and wrapped columns, kept with the list
   // rows to a page, the person's choice, kept by Alpha per person
   const size = left.pageSize ?? PAGE
@@ -258,6 +258,9 @@ export function TableView({
         }
       : 'This table has no columns to fill in.'
   const first = data.fields[0]
+  const dash = useDashboard(data.id, !own) // the dashboard row over a module table's rows
+  const [newList, setNewList] = useState<string | true | null>(null) // the + page, then its task
+  useEffect(() => setNewList(null), [viewId]) // another list picked: its rows again
   const openedRow = opened ? data.rows.find((r) => r.id === opened) : undefined
   const pickedRow = picked ? data.rows.find((r) => r.id === picked.row) : undefined
   const pickedField = picked ? data.fields.find((f) => f.slug === picked.field) : undefined
@@ -277,45 +280,16 @@ export function TableView({
     <TableName.Provider value={{ name: data.name, id: own ? null : data.id }}>
       <ShapeFixed.Provider value={managedWhy(data.managed)}>
         <div className="flex h-full min-h-0">
-          <div className={`${FRAME} mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden`}>
+          <div
+            className={`${FRAME} relative mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden`}
+          >
             <ViewTabs
               picker={
                 <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setView} />
               }
               tools={
                 <>
-                  {searching || config.search ? (
-                    <label className="flex h-7.5 w-56 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-                      <Search className="size-3.25 shrink-0" />
-                      <input
-                        // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
-                        autoFocus={searching}
-                        value={config.search}
-                        onChange={(e) => setConfig({ ...config, search: e.target.value })}
-                        onBlur={() => setSearching(false)}
-                        onKeyDown={(e) => {
-                          if (e.key !== 'Escape') return
-                          e.preventDefault()
-                          setConfig({ ...config, search: '' })
-                          setSearching(false)
-                        }}
-                        placeholder={`Search ${data.name}`}
-                        aria-label={`Search ${data.name}`}
-                        data-tip="Escape clears it"
-                        className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-                      />
-                    </label>
-                  ) : (
-                    <button
-                      type="button"
-                      aria-label="Search"
-                      data-tip="Search"
-                      onClick={() => setSearching(true)}
-                      className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
-                    >
-                      <Search className="size-4" />
-                    </button>
-                  )}
+                  <SearchBox name={data.name} config={config} onConfig={setConfig} />
                   <AddFilter
                     fields={fields}
                     config={config}
@@ -337,6 +311,7 @@ export function TableView({
                     onConfig={setConfig}
                     readBy={data.readBy}
                     mirror={data.mirror}
+                    {...(own ? {} : { dashboard: dash })}
                     tab={
                       summary && (summary.place === 'part' || summary.place === 'setup')
                         ? summary.tab
@@ -374,6 +349,7 @@ export function TableView({
               current={viewId}
               dirty={dirty}
               problem={problem}
+              {...(own ? {} : { onNew: () => setNewList(true) })}
               onPick={pick}
               onSaveAs={saveAs}
               onRename={(name) =>
@@ -458,6 +434,24 @@ export function TableView({
                   <MirrorGone data={data} showingGone={showingGone} onGone={setShowingGone} />
                 )}
               </div>
+            )}
+            {newList && (
+              <NewList
+                table={{ id: data.id, name: data.name }}
+                task={newList === true ? null : newList}
+                onTask={setNewList}
+                onClose={() => setNewList(null)}
+              />
+            )}
+            {dash.shown && !loading && (
+              <Dashboard
+                rows={rows}
+                total={data.rows.length}
+                names={data.names}
+                {...{ fields, config }}
+                onConfig={setConfig}
+                onHide={dash.onToggle}
+              />
             )}
             {config.kind === 'board' && boardBy ? (
               <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />

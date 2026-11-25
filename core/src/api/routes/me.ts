@@ -51,6 +51,9 @@ export function registerMe(ctx: Ctx): void {
       viewOf: drawnTables(world.db, user.id) as Record<string, ViewOf>,
       tabs: keptTabs(world.db, user.id),
       records: keptRecords(world.db, user.id),
+      dashboardHidden: JSON.parse(
+        world.preference(user.id, 'dashboard_hidden') ?? '[]',
+      ) as string[],
       // a width that no longer reads is as good as none
       cardWidth: Object.fromEntries(
         Object.entries(cardWidths(world.db, user.id)).filter(([, w]) =>
@@ -116,6 +119,7 @@ export function registerMe(ctx: Ctx): void {
         folded: z.array(z.string()).optional(),
         hidden: z.array(z.string()).optional(),
         pinned: z.array(z.string()).optional(),
+        dashboardHidden: z.array(z.string().max(160)).max(500).optional(),
         panel: z.number().int().positive().nullable().optional(),
         railWidth: z.number().int().positive().nullable().optional(),
         assistant: z.enum(['open', 'folded']).optional(),
@@ -187,6 +191,12 @@ export function registerMe(ctx: Ctx): void {
         user.id,
         'rail_pinned_modules',
         given.pinned.length ? JSON.stringify(given.pinned) : null,
+      )
+    if (given.dashboardHidden !== undefined)
+      world.setPreference(
+        user.id,
+        'dashboard_hidden',
+        given.dashboardHidden.length ? JSON.stringify(given.dashboardHidden) : null,
       )
     for (const [table, ids] of Object.entries(given.listOrder ?? {}))
       setListOrder(world.db, user.id, table, ids)
