@@ -30,7 +30,9 @@ const PAGE: Record<Exclude<OpenedKind, 'rows' | 'day'>, string> = {
 }
 // a link to each kind's page, and the screen where that kind opens itself
 const LINK = /^#\/(tasks|run|people|row|schedule|rule|file)\/([\w-]+)$/
-const ROWS = /^#\/table\/([\w-]+)\?only=([\w,-]+)$/
+// a table, or some of its rows (?only=); a whole table opens beside from a link in a page's content
+// (Vikas, 25 Nov: every link within Alpha opens in the side panel), never from a tab or the rail
+const ROWS = /^#\/table\/([\w-]+)(?:\?only=([\w,-]+))?$/
 const KIND: Record<string, OpenedKind> = {
   tasks: 'task',
   run: 'run',
@@ -40,7 +42,12 @@ const KIND: Record<string, OpenedKind> = {
   rule: 'rule',
   file: 'file',
 }
-const OWN: Partial<Record<OpenedKind, RegExp>> = { task: /^#\/tasks\b/, person: /^#\/people\b/ }
+// the screens that open these themselves: Tasks its tasks, People's list its people; on a
+// person's own page a link to another person opens beside (Vikas, 25 Nov)
+const OWN: Partial<Record<OpenedKind, RegExp>> = {
+  task: /^#\/tasks\b/,
+  person: /^#\/people\/?(\?.*)?$/,
+}
 const ONE = /^(task|run|person|row|schedule|rule|file|rows|day)\/([\w,:-]+)$/
 
 // the day's own page is the Calendar, which the panel learns from the day itself
@@ -48,7 +55,7 @@ export const pageOf = (o: Opened) => {
   if (o.kind === 'day') return '#/'
   if (o.kind !== 'rows') return `${PAGE[o.kind]}${o.id}`
   const [table, rows] = o.id.split(':')
-  return `#/table/${table}?only=${rows}`
+  return rows ? `#/table/${table}?only=${rows}` : `#/table/${table}`
 }
 
 // The page's own address, and what is open beside it.
@@ -67,8 +74,11 @@ export const withBeside = (base: string, o: Opened | null): string =>
 // What a link opens beside the page it is on, if it opens beside at all.
 export function linkBeside(href: string, base: string): Opened | null {
   const rows = ROWS.exec(href)
-  if (rows?.[1] && rows[2])
-    return base === href ? null : { kind: 'rows', id: `${rows[1]}:${rows[2]}` }
+  if (rows?.[1]) {
+    // the table already open here is not opened again beside it
+    if (base === href || (!rows[2] && base.split('?')[0] === href)) return null
+    return { kind: 'rows', id: `${rows[1]}:${rows[2] ?? ''}` }
+  }
   const m = LINK.exec(href)
   if (!m?.[1] || !m[2]) return null
   const kind = KIND[m[1]] as OpenedKind
