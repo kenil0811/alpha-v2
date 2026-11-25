@@ -1,6 +1,5 @@
-// A record's page, the same for a row, a person and an organization: its head (its mark, a line
-// naming what it is, its title, a line under it, Ask about this), then a row of tabs under the
-// head, then Summary: the properties across the width and the blocks' starts.
+// A record's page, the same for a row, a person and an organization: its name in the bar, then the
+// row of tabs at the top (Ask about this at its right; Vikas, 25 Nov), then Summary: the properties across the width and the blocks' starts.
 // Every block has a place, kept per person for every record of its table (Vikas, 25 Nov): on
 // Summary, as a tab, both, or nowhere, chosen from its right-click (a tab's, or a block's heading)
 // with Move left and Move right; tabs, Summary among them, drag into an order, and the blocks on
@@ -65,19 +64,15 @@ export function moved(order: string[], key: string, next: string, left: boolean)
 export function RecordPage({
   scope,
   name,
-  mark,
   title,
-  under,
   head,
   properties,
   blocks,
 }: {
   scope: string // whose places it keeps: the row's table id, or person or company
   name: string // its name, for Ask about this
-  mark?: ReactNode
   title: ReactNode
-  under?: ReactNode
-  head?: ReactNode // what stays under the head on every tab (a refusal, This is you)
+  head?: ReactNode // what stays under the tabs on every tab (a refusal, This is you)
   properties: ReactNode
   blocks: Block[]
 }) {
@@ -136,14 +131,7 @@ export function RecordPage({
       {/* its name is the bar's title, where a double-click renames it; the bar's way back has the
           path under it */}
       <InBar>{title}</InBar>
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-8 pt-5 pb-12">
-        {(mark || under) && (
-          <div className="flex items-center gap-4">
-            {mark}
-            {under && <div className="min-w-0 flex-1 text-ink-2 text-md">{under}</div>}
-          </div>
-        )}
-        {head}
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-8 pt-1 pb-12">
         {/* the tabs, and Ask about this at the right of their line */}
         <div className="-mx-5 flex items-center gap-3 border-line border-b pr-5 [&>[role=tablist]]:flex-1 [&>[role=tablist]]:border-b-0">
           <Tabs
@@ -171,6 +159,7 @@ export function RecordPage({
             Ask about this
           </Button>
         </div>
+        {head}
         {open ? (
           <Section title={open.title} {...(open.about ? { about: open.about } : {})}>
             {open.full ?? open.short}

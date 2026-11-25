@@ -180,7 +180,6 @@ function PersonPage({
     )
   if (!p) return null
   const company = p.kind === 'company'
-  const now = p.companies.filter((c) => !c.ended)
   const contact = [
     channelWords(p.contact.channels, p.contact.days),
     p.contact.last ? `last on ${date(p.contact.last)}` : '',
@@ -384,7 +383,6 @@ function PersonPage({
     <RecordPage
       scope={p.kind}
       name={p.name}
-      mark={<Avatar name={p.name} organization={company} big />}
       title={
         naming ? (
           <form
@@ -427,14 +425,6 @@ function PersonPage({
             </button>
           </div>
         )
-      }
-      under={
-        company
-          ? [p.domains.join(', '), plural(p.people.length, 'person', 'people')]
-              .filter(Boolean)
-              .join(' · ')
-          : now.map((c) => (c.title ? `${c.title}, ${c.name}` : c.name)).join(' · ') ||
-            'No organization known'
       }
       head={
         <>
