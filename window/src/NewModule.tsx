@@ -12,6 +12,7 @@ import { api, Problem } from './api.ts'
 import { TaskWork } from './TaskThread.tsx'
 import { Button } from './ui/button.tsx'
 import { List, Row } from './ui/list.tsx'
+import { MicButton } from './ui/mic.tsx'
 import { Tabs } from './ui/tabs.tsx'
 
 const noName = () => undefined
@@ -143,6 +144,7 @@ export function NewModule({
           <div className="flex items-center justify-end gap-3">
             {said && <span className="text-ink-2 text-md">{said}</span>}
             {problem && <span className="text-bad text-md">{problem}</span>}
+            <MicButton words={words} onWords={setWords} />
             <Button disabled={busy} onClick={() => pick.current?.click()}>
               <Upload className="size-4" />
               {busy ? 'Adding…' : 'Import'}
