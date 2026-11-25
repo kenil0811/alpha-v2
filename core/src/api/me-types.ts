@@ -47,6 +47,7 @@ export interface Layout {
   viewOf: Record<string, ViewOf> // a table's view for this person: table id → how it is drawn; none opens on the first list's own layout
   tabs: Record<string, TabsKept> // a module's table tabs for this person: module id → their order, the hidden and the pinned
   records: Record<string, RecordKept> // a record page for this person: table id, or person or company → its hidden properties and tabs
+  dashboardHidden: string[] // the tables whose dashboard row this person hid (right-click, Hide)
   cardWidth: Record<string, CardWidth> // a Home card's width for this person: card key → its share of the row; none is the card's own
 }
 

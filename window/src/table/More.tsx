@@ -48,6 +48,7 @@ export function More({
   onTab,
   readBy = [],
   mirror = null,
+  dashboard,
 }: {
   tableId: string
   fields: FieldView[]
@@ -62,6 +63,7 @@ export function More({
   onTab?: (tab: boolean) => void
   readBy?: ReadByView[] // the connections that fill it
   mirror?: string | null // the system a table a connection fills mirrors: its rows come from there
+  dashboard?: { shown: boolean; onToggle: () => void } | undefined // the dashboard row over the rows
 }) {
   const fixed = useShapeFixed()
   const [open, setOpen] = useState(false)
@@ -226,6 +228,17 @@ export function More({
             <MenuLine />
             <ReadNowItems tableId={tableId} readBy={readBy} onDone={() => setOpen(false)} />
           </>
+        )}
+        {dashboard && (
+          <MenuItem
+            checked={dashboard.shown}
+            onClick={() => {
+              setOpen(false)
+              dashboard.onToggle()
+            }}
+          >
+            Dashboard row
+          </MenuItem>
         )}
         <MenuLine />
         <SubMenu

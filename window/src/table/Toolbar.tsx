@@ -2,7 +2,7 @@
 // Clear all when there are several, the sorts, the group; and Filter to add one, and Properties (in ⋮) to
 // show, hide and order them.
 import type { FieldView, FilterRule, RowView, ViewConfig } from '@alpha/core/api'
-import { ArrowDown, ArrowUp, ListFilter, RotateCcw, Rows3, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ListFilter, RotateCcw, Rows3, Search, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { cn } from '../ui/cn.ts'
 import { SEARCH_PAST, SearchLine } from '../ui/field.tsx'
@@ -330,5 +330,50 @@ export function PropertyList({
         </>
       )}
     </div>
+  )
+}
+
+// Search: a button until clicked, then a box; Escape clears it
+export function SearchBox({
+  name,
+  config,
+  onConfig,
+}: {
+  name: string
+  config: ViewConfig
+  onConfig: (c: ViewConfig) => void
+}) {
+  const [searching, setSearching] = useState(false)
+  return searching || config.search ? (
+    <label className="flex h-7.5 w-56 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+      <Search className="size-3.25 shrink-0" />
+      <input
+        // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
+        autoFocus={searching}
+        value={config.search}
+        onChange={(e) => onConfig({ ...config, search: e.target.value })}
+        onBlur={() => setSearching(false)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape') return
+          e.preventDefault()
+          onConfig({ ...config, search: '' })
+          setSearching(false)
+        }}
+        placeholder={`Search ${name}`}
+        aria-label={`Search ${name}`}
+        data-tip="Escape clears it"
+        className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+      />
+    </label>
+  ) : (
+    <button
+      type="button"
+      aria-label="Search"
+      data-tip="Search"
+      onClick={() => setSearching(true)}
+      className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
+    >
+      <Search className="size-4" />
+    </button>
   )
 }

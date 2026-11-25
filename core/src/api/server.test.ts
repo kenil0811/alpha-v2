@@ -433,6 +433,7 @@ describe('the api over a world', () => {
       viewOf: {},
       tabs: {},
       records: {},
+      dashboardHidden: [],
       cardWidth: {},
     })
     // all of how the person left the window is kept here, none of it in the browser
@@ -468,6 +469,7 @@ describe('the api over a world', () => {
       viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
       tabs: {},
       records: {},
+      dashboardHidden: [],
       cardWidth: { needs: '1/3', tasks: '1' },
     })
     expect(
