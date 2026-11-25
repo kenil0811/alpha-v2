@@ -123,10 +123,24 @@ it('keeps a record page’s hidden properties and tabs one table at a time, and 
   setRecord(world.db, ann, orders.id, { hidden: [day], tabs: [`part:${lines.id}`, 'files'] })
   setRecord(world.db, ann, lines.id, { hidden: [], tabs: ['tasks'] })
   setRecord(world.db, ann, 'person', { hidden: [], tabs: ['related'] })
+  // where each block shows (0 nowhere, 1 Summary, 2 a tab, 3 both) is kept with the order
+  setRecord(world.db, ann, 'company', { hidden: [], tabs: [], places: { knows: 3, events: 0 } })
+  expect(keptRecords(world.db, ann).company?.places).toEqual({ knows: 3, events: 0 })
+  setRecord(world.db, ann, 'company', { hidden: [], tabs: [], places: {} })
+  expect(keptRecords(world.db, ann).company).toBeUndefined()
+  setRecord(world.db, ann, orders.id, {
+    hidden: [day],
+    tabs: [`part:${lines.id}`, 'files'],
+    places: { [`part:${lines.id}`]: 2, files: 1 },
+  })
   // one table set leaves the others as they were
   setRecord(world.db, ann, lines.id, { hidden: [], tabs: ['tasks', 'files'] })
   expect(keptRecords(world.db, ann)).toEqual({
-    [orders.id]: { hidden: [day], tabs: [`part:${lines.id}`, 'files'] },
+    [orders.id]: {
+      hidden: [day],
+      tabs: [`part:${lines.id}`, 'files'],
+      places: { [`part:${lines.id}`]: 2, files: 1 },
+    },
     [lines.id]: { hidden: [], tabs: ['tasks', 'files'] },
     person: { hidden: [], tabs: ['related'] },
   })
@@ -136,7 +150,7 @@ it('keeps a record page’s hidden properties and tabs one table at a time, and 
   expect(keptRecords(world.db, ann)[orders.id]?.hidden).toEqual([])
   world.shape.removeTable(lines.id, ctx)
   expect(keptRecords(world.db, ann)).toEqual({
-    [orders.id]: { hidden: [], tabs: ['files'] },
+    [orders.id]: { hidden: [], tabs: ['files'], places: { files: 1 } },
     person: { hidden: [], tabs: ['related'] },
   })
 })

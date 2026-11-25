@@ -1,6 +1,6 @@
 // How the person left the window: kept by Alpha per person, read once at start and
 // changed through the core; every screen reads it here, never from the browser's storage.
-import type { Layout } from '@alpha/core/api'
+import type { Layout, RecordKept } from '@alpha/core/api'
 import { createContext, useContext } from 'react'
 
 export const NO_LAYOUT: Layout = {
@@ -27,5 +27,5 @@ export const LayoutContext = createContext<{
 
 export const useLayout = () => useContext(LayoutContext)
 
-// A record page kept as nothing yet: no property hidden, no block pinned as a tab.
-export const NO_RECORD = { hidden: [] as string[], tabs: [] as string[] }
+// A record page kept as nothing yet: no property hidden, no block moved, every block in its own place.
+export const NO_RECORD: RecordKept = { hidden: [], tabs: [], places: {} }
