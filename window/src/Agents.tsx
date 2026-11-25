@@ -505,6 +505,7 @@ function Instructions({
   const [draft, setDraft] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const { busy, problem, act } = useAct()
+  const { change } = useLayout()
   // a module's agent: its updates keep the firm's instructions
   const keeps = kit
     ? ` Once changed they are yours: ${kit}'s updates keep them, with its own new ones beside them for the Chief of staff to bring in when you ask.`
@@ -530,6 +531,22 @@ function Instructions({
           }
         />
       </h2>
+      {/* where the editor was, so it is in view: what happens now, and the way to watch it */}
+      {sent && draft === null && (
+        <p className="flex flex-wrap items-center gap-x-2 rounded-md bg-accent-soft px-3 py-2 text-ink text-md">
+          Sent to the Chief of staff, which changes them, or asks you where they conflict.
+          <button
+            type="button"
+            className="text-accent underline underline-offset-3"
+            onClick={() => {
+              change({ agent: CHIEF })
+              window.location.hash = '#/conversation'
+            }}
+          >
+            Open its chat
+          </button>
+        </p>
+      )}
       {draft === null ? (
         // biome-ignore lint/a11y/noStaticElementInteractions: a double-click edits, as a name's does
         <div
@@ -565,11 +582,6 @@ function Instructions({
           />
           <SaveCancel onSave={save} onCancel={() => setDraft(null)} />
         </div>
-      )}
-      {sent && (
-        <p className="text-ink-2 text-md">
-          Sent to the Chief of staff. It changes them, or asks you in its chat.
-        </p>
       )}
       <Refusal words={problem} />
     </section>
