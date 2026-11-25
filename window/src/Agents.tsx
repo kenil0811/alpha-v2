@@ -18,6 +18,7 @@ import { Field } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
+import { tipNow } from './ui/tooltip.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
 import { SaveCancel } from './ui/yes-no.tsx'
@@ -266,11 +267,7 @@ export function AgentPage({
         <Instructions
           id={a.id}
           text={a.instructions}
-          fixed={
-            a.from.kind === 'here'
-              ? null
-              : `They change with ${a.from.name}. Add to them through its memory or How to work.`
-          }
+          source={a.from.kind === 'here' ? null : a.from.name}
         />
       )}
       <Memories id={a.id} memories={a.memories} onChange={load} />
@@ -490,10 +487,18 @@ function Memories({
 // An agent's instructions: a double-click edits them in place, Escape or ✕ leaving them as they
 // were. ✓ never writes them as typed: it sends them to the Chief of staff, which fits them in, or
 // asks with a card where they conflict; the person's message is their own words. A shipped
-// agent's are greyed, and a double-click says why they change only with its source (rules G1).
-function Instructions({ id, text, fixed }: { id: string; text: string; fixed: string | null }) {
+// agent's are greyed, and a double-click says why, at the line clicked, as a table's fixed value
+// does (they change only with its source, rules G1).
+function Instructions({
+  id,
+  text,
+  source,
+}: {
+  id: string
+  text: string
+  source: string | null // the kit, or Alpha, a shipped agent's instructions change with
+}) {
   const [draft, setDraft] = useState<string | null>(null)
-  const [why, setWhy] = useState(false)
   const [sent, setSent] = useState(false)
   const { busy, problem, act } = useAct()
   const save = () => {
@@ -511,19 +516,23 @@ function Instructions({ id, text, fixed }: { id: string; text: string; fixed: st
         Instructions
         <Info
           help={
-            fixed ??
-            'Double-click to change them. ✓ sends your change to the Chief of staff, which fits it in, or asks you where it conflicts.'
+            source
+              ? `They change with ${source}. Add to them through its memory or How to work.`
+              : 'Double-click to change them. ✓ sends your change to the Chief of staff, which fits it in, or asks you where it conflicts.'
           }
         />
       </h2>
-      {/* asked on a shipped agent: why, above words that may run long */}
-      {why && fixed && <p className="text-ink-2 text-sm">{fixed}</p>}
       {draft === null ? (
         // biome-ignore lint/a11y/noStaticElementInteractions: a double-click edits, as a name's does
         <div
-          className={cn('text-md', fixed && 'text-ink-2')}
-          onDoubleClick={() => {
-            if (fixed) setWhy(true)
+          className={cn('text-md', source && 'text-ink-2')}
+          onDoubleClick={(e) => {
+            // why, beside the line clicked: the words may run longer than the screen
+            if (source)
+              tipNow(
+                (e.target as Element).closest('p, li, h1, h2, h3, h4, pre') ?? e.currentTarget,
+                `They change only with ${source}.`,
+              )
             else {
               setSent(false)
               setDraft(text)
