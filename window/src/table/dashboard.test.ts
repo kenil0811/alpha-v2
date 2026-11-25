@@ -1,6 +1,6 @@
 import type { FieldView, RowView, ViewConfig } from '@alpha/core/api'
 import { describe, expect, it } from 'vitest'
-import { tilesOf } from './Dashboard.tsx'
+import { relevant, tilesOf } from './Dashboard.tsx'
 
 const field = (id: string, kind: string, choices: string[] = []): FieldView => ({
   id,
@@ -24,29 +24,34 @@ describe('the dashboard row', () => {
     field('Fit', 'choice', ['Yes']),
     field('Stage', 'choice', ['Won', 'Lost']),
     field('Price', 'number'),
+    field('Seen', 'date'),
   ]
   const rows = [
-    row('a', { Stage: 'Won', Price: 10 }),
+    row('a', { Stage: 'Won', Price: 10, Seen: '2020-01-01' }),
     row('b', { Stage: 'Lost', Price: 30 }),
     row('c', { Stage: 'Won' }),
   ]
 
-  it('counts, skips a choice no row holds, and sums by the one that holds something', () => {
+  it('shows only what says something: no row count, no empty choice, no date all behind', () => {
     const tiles = tilesOf(rows, 3, fields, {}, config)
-    expect(tiles.map((t) => t.label)).toEqual(['Rows', 'Stage', 'Total price'])
-    expect(tiles[1]?.value).toBe('2 Won')
-    expect(tiles[2]?.parts?.map((p) => p.value)).toEqual([10, 30])
-    expect(tiles[2]?.buttons.map((b) => b.label)).toEqual(['Largest first', 'Empty 1'])
+    expect(tiles.map((t) => t.label)).toEqual(['Stage', 'Total price'])
+    expect(tiles[0]?.value).toBe('2')
+    expect(tiles[1]?.parts?.map((p) => p.value)).toEqual([10, 30])
+    expect(tiles[1]?.buttons.map((b) => b.label)).toEqual(['Largest first', 'Empty 1'])
   })
 
   it('a button shows those rows', () => {
-    const stage = tilesOf(rows, 3, fields, {}, config)[1]
+    const stage = tilesOf(rows, 3, fields, {}, config)[0]
     expect(stage?.buttons[0]?.pick().filters.rules).toEqual([
       { field: 'Stage', op: 'in', values: ['Won'] },
     ])
   })
 
-  it('draws nothing for an empty table', () => {
+  it('nothing relevant, no tiles', () => {
+    const flat = [row('a', { Stage: 'Won', Price: 5 }), row('b', { Stage: 'Won', Price: 5 })]
+    expect(tilesOf(flat, 2, fields, {}, config)).toEqual([])
     expect(tilesOf([], 0, fields, {}, config)).toEqual([])
+    expect(relevant.choice([1015, 2])).toBe(false)
+    expect(relevant.choice([572, 424, 17])).toBe(true)
   })
 })
