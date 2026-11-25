@@ -35,6 +35,10 @@ export function useOpenBeside(): void {
       const { base } = splitBeside(window.location.hash)
       const opened = linkBeside(href, base)
       if (!opened) return
+      // a whole table from a tab, the rail, a menu or a button's own link goes to its screen
+      const whole = opened.kind === 'rows' && opened.id.endsWith(':')
+      if (whole && (a.hasAttribute('hidden') || a.closest('nav,[role=tablist],[role=menu],header')))
+        return
       e.preventDefault()
       const inside = !!a.closest('[data-beside]')
       window.location.hash = withBeside(base, opened)
@@ -125,5 +129,7 @@ function RowsBeside({
     )
   }, [table, version, onName])
   if (!data) return null
-  return <TableView data={data} only={rows.split(',').filter(Boolean)} />
+  // a link to the whole table shows all of it; one to some rows only those
+  const only = rows.split(',').filter(Boolean)
+  return only.length ? <TableView data={data} only={only} /> : <TableView data={data} />
 }

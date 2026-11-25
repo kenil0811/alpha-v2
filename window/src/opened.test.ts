@@ -27,6 +27,8 @@ describe('what is open beside the page', () => {
     expect(linkBeside('#/row/r_1', '#/tasks/t_1')).toEqual({ kind: 'row', id: 'r_1' })
     expect(linkBeside('#/tasks/t_1', '#/tasks?list=open')).toBeNull() // Tasks opens its own
     expect(linkBeside('#/people/p_1', '#/people')).toBeNull()
+    // on a person's own page another person opens beside (Vikas, 25 Nov)
+    expect(linkBeside('#/people/co_1', '#/people/p_1')).toEqual({ kind: 'person', id: 'co_1' })
     expect(linkBeside('#/module/m_1', '#/')).toBeNull() // a screen is a place, not beside
   })
 
@@ -44,6 +46,10 @@ describe('what is open beside the page', () => {
     const at = withBeside('#/module/m_1', rows)
     expect(splitBeside(at).opened).toEqual(rows)
     expect(pageOf({ kind: 'rows', id: 't_9:r_1,r_2' })).toBe('#/table/t_9?only=r_1,r_2')
+    // a whole table opens beside too, except on its own screen
+    expect(linkBeside('#/table/t_9', '#/people/p_1')).toEqual({ kind: 'rows', id: 't_9:' })
+    expect(linkBeside('#/table/t_9', '#/table/t_9?view=v_1')).toBeNull()
+    expect(pageOf({ kind: 'rows', id: 't_9:' })).toBe('#/table/t_9')
   })
 
   it('opens a file beside the page, its page one click away', () => {
