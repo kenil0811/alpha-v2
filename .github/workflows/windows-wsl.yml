@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['windows-*']
-    paths: ['.github/workflows/windows-wsl.yml', '.github/wsl/**']
+    paths: ['.github/workflows/windows-wsl.yml', '.github/wsl/**', 'release/server/**']
 env:
   WSL_UTF8: '1'
 jobs:
