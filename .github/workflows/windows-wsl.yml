@@ -76,6 +76,8 @@ jobs:
           wsl -l -v
           $h = curl.exe -s -m 5 http://127.0.0.1:4700/api/health
           Write-Output "After 150 s with nothing open, 127.0.0.1:4700 answers: $(if ($h) { $h } else { 'nothing' })"
+          # a measure, not a check: curl's own failure when nothing answers is the expected result
+          exit 0
       - name: The engine starter's hidden link to Alpha's Linux, held open from here on
         shell: pwsh
         run: |
