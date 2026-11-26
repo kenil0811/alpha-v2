@@ -38,7 +38,7 @@ jobs:
       - name: The servers' setup and update inside it
         shell: pwsh
         run: |
-          wsl -d Alpha -u root -- sh ./.github/wsl/inside.sh "$env:GITHUB_WORKSPACE"
+          wsl -d Alpha -u root -- sh ./.github/wsl/inside.sh
           if ($LASTEXITCODE -ne 0) { throw 'the setup inside Linux failed' }
       - name: Windows reaches it, and on this PC only
         shell: pwsh

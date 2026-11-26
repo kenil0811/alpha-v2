@@ -5,7 +5,8 @@
 # Linux trusts; nothing of Kenil's key leaves his Mac. The local Alpha's alpha.yaml is the Mac's
 # shape: no sign-in (the window is on this PC alone) and a developer switch for the made-up kit.
 set -eu
-REPO=$(wslpath -u "$1")
+# wsl starts it in the checkout, as Linux sees that folder (/mnt/d/…)
+REPO=$(pwd)
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq git openssl >/dev/null
