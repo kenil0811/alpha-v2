@@ -1,44 +1,121 @@
-# Step 1 of the Windows installer (the design's "prove it first"): whether GitHub's Windows machine
-# runs WSL2 at all. It brings an Ubuntu image into WSL as version 2 and says what Windows answered;
-# if this machine cannot, the proof runs on Kenil's PC instead.
+# Step 1 of the Windows installer (the design's "prove it first"), on GitHub's Windows machine,
+# which runs WSL2: an Ubuntu brought in as Alpha's Linux, the servers' own setup and update inside
+# it, then what has to hold: Windows reaches it on this PC only; a schedule runs in the sandbox; an
+# agent's shell command runs walled; Alpha Bridge's code on Windows pairs with it and lends a
+# folder; and it stays up while nothing touches it, with a hidden link held open, as the engine
+# starter would. What needs a person (the administrator prompt, Claude's sign-in, no black window)
+# is run on Kenil's PC.
 name: WSL2 on Windows
 on:
   workflow_dispatch:
   push:
     branches: ['windows-*']
-    paths: ['.github/workflows/windows-wsl.yml']
+    paths: ['.github/workflows/windows-wsl.yml', '.github/wsl/**']
+env:
+  WSL_UTF8: '1'
 jobs:
-  probe:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2022, windows-2025]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+  proof:
+    runs-on: windows-2025
+    timeout-minutes: 75
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
-      - name: What WSL this machine has
+      - name: Files kept as they are (a shell script with Windows line ends does not run in Linux)
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - name: Alpha's Linux, an Ubuntu for Intel and AMD brought in as WSL version 2
         shell: pwsh
-        continue-on-error: true
         run: |
-          wsl --version
-          wsl --status
-          Get-ComputerInfo -Property HyperV* | Format-List
-          (Get-CimInstance Win32_Processor).VirtualizationFirmwareEnabled
-      - name: An Ubuntu image, brought in as WSL version 2
-        shell: pwsh
-        continue-on-error: true
-        run: |
+          wsl --update --web-download
           $url = 'https://cloud-images.ubuntu.com/wsl/releases/24.04/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
           Invoke-WebRequest $url -OutFile ubuntu.tar.gz
-          New-Item -ItemType Directory -Force C:\alpha-wsl | Out-Null
-          wsl --update --web-download
-          wsl --import AlphaProbe C:\alpha-wsl ubuntu.tar.gz --version 2
-          Write-Output "import exit: $LASTEXITCODE"
+          New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Alpha" | Out-Null
+          wsl --import Alpha "$env:LOCALAPPDATA\Alpha" ubuntu.tar.gz --version 2
+          if ($LASTEXITCODE -ne 0) { throw 'WSL2 did not take the image' }
+          wsl -d Alpha -u root -- sh -c "printf '[boot]\nsystemd=true\n' > /etc/wsl.conf"
+          wsl --terminate Alpha
           wsl -l -v
-      - name: Inside it
+      - name: The servers' setup and update inside it
         shell: pwsh
-        continue-on-error: true
         run: |
-          wsl -d AlphaProbe -- uname -a
-          wsl -d AlphaProbe -- cat /proc/version
-          wsl -d AlphaProbe -- bash -c 'cat /etc/os-release | head -3; nproc; free -m'
+          wsl -d Alpha -u root -- sh ./.github/wsl/inside.sh "$env:GITHUB_WORKSPACE"
+          if ($LASTEXITCODE -ne 0) { throw 'the setup inside Linux failed' }
+      - name: Windows reaches it, and on this PC only
+        shell: pwsh
+        run: |
+          $h = curl.exe -s http://127.0.0.1:4700/api/health
+          Write-Output "From Windows, 127.0.0.1:4700 answers: $h"
+          if (-not $h) { throw 'Windows does not reach Alpha on this PC' }
+          Get-NetTCPConnection -LocalPort 4700 -State Listen -ErrorAction SilentlyContinue |
+            Select-Object LocalAddress, LocalPort, OwningProcess | Format-Table | Out-String | Write-Output
+          $ip = (Get-NetIPAddress -AddressFamily IPv4 |
+            Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' -and $_.InterfaceAlias -notlike '*WSL*' } |
+            Select-Object -First 1).IPAddress
+          $outside = curl.exe -s -m 5 "http://${ip}:4700/api/health"
+          if ($outside) { throw "Alpha answers on $ip too, not only on this PC" }
+          Write-Output "From this machine's own network address ($ip): no answer, as it should be"
+          wsl -d Alpha -u root -- sh -c "ss -ltnp | grep 4700"
+      - name: A schedule runs in the sandbox (the servers' smoke test)
+        shell: pwsh
+        run: |
+          wsl -d Alpha -u root -- /opt/alpha/node/bin/node ./.github/wsl/smoke.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'the smoke test failed' }
+      - name: An agent's shell command runs walled
+        shell: pwsh
+        run: |
+          wsl -d Alpha -u root -- sh -c "cp .github/wsl/shell.mjs /tmp/shell.mjs && chmod 644 /tmp/shell.mjs"
+          wsl -d Alpha -u alpha -- /opt/alpha/node/bin/node /tmp/shell.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'the sandbox did not hold' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Alpha Bridge's code on Windows
+        run: pnpm install --frozen-lockfile --filter "@alpha/bridge..."
+      - name: The Bridge pairs with the local Alpha and lends a folder
+        shell: pwsh
+        run: |
+          $link = wsl -d Alpha -u root -- cat /tmp/pair-link
+          node bridge/src/main.ts pair "$link"
+          if ($LASTEXITCODE -ne 0) { throw 'the Bridge did not pair' }
+          New-Item -ItemType Directory -Force C:\lent | Out-Null
+          Set-Content C:\lent\note.txt 'A file on the PC, read by the local Alpha.'
+          node bridge/src/main.ts lend C:\lent
+          Start-Process -WindowStyle Hidden -FilePath node -ArgumentList 'bridge/src/main.ts','run' `
+            -RedirectStandardOutput bridge.log -RedirectStandardError bridge.err
+          Start-Sleep 45
+          Get-Content bridge.log -ErrorAction SilentlyContinue | Write-Output
+          wsl -d Alpha -u root -- sh -c "T=`$(cat /home/alpha/data/token); curl -s -H x-alpha-token:`$T http://127.0.0.1:4700/api/computers | head -c 1500; echo; curl -s -H x-alpha-token:`$T http://127.0.0.1:4700/api/files | head -c 800"
+      - name: Left alone with no link held open (Windows' own idle stop)
+        shell: pwsh
+        run: |
+          $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
+          Write-Output "Alpha's engine started: $before"
+          Start-Sleep 150
+          wsl -l -v
+          $h = curl.exe -s -m 5 http://127.0.0.1:4700/api/health
+          Write-Output "After 150 s with nothing open, 127.0.0.1:4700 answers: $(if ($h) { $h } else { 'nothing' })"
+      - name: Left alone with a hidden link held open, as the engine starter does
+        shell: pwsh
+        run: |
+          Start-Process -WindowStyle Hidden -FilePath wsl.exe -ArgumentList '-d','Alpha','-u','alpha','--','sleep','infinity'
+          Start-Sleep 5
+          $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
+          Write-Output "Alpha's engine started: $before"
+          $quiet = 0
+          for ($i = 1; $i -le 12; $i++) {
+            Start-Sleep 30
+            $h = curl.exe -s -m 5 http://127.0.0.1:4700/api/health
+            if (-not $h) { $quiet++ }
+            Write-Output "$($i * 30) s: $(if ($h) { 'answers' } else { 'NO ANSWER' })"
+          }
+          wsl -l -v
+          $after = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
+          Write-Output "Alpha's engine started: $after"
+          if ($quiet -gt 0 -or $before -ne $after) { throw 'Alpha did not stay up while left alone' }
+          Write-Output 'Six minutes left alone: Alpha answered every time and never restarted.'
+      - name: What the core said
+        if: always()
+        shell: pwsh
+        run: wsl -d Alpha -u root -- sh -c "journalctl -u alpha -n 80 --no-pager -o cat 2>/dev/null | grep -v 't=' || true"
