@@ -99,7 +99,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - name: Alpha Bridge's code on Windows
-        run: pnpm install --frozen-lockfile --filter "@alpha/bridge..."
+        # the whole workspace: the Bridge runs the core's own connector child (core/src/connectors/child.ts)
+        run: pnpm install --frozen-lockfile
       - name: The Bridge pairs with the local Alpha and lends a folder
         shell: pwsh
         run: |

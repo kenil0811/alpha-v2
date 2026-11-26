@@ -22,5 +22,10 @@ for (let i = 0; i < 36 && !got; i++) {
   }
   if (!got) await new Promise((r) => setTimeout(r, 5000))
 }
+if (!got) {
+  const pcs = await get('/api/computers')
+  for (const c of Array.isArray(pcs) ? pcs : (pcs.computers ?? []))
+    console.log(JSON.stringify(await get(`/api/computers/${c.id}`)).slice(0, 3000))
+}
 console.log(got ? 'the lent folder’s note.txt is in Alpha' : 'FAILED: note.txt did not reach Alpha')
 process.exit(got ? 0 : 1)
