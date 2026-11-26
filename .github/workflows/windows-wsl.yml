@@ -1,0 +1,44 @@
+# Step 1 of the Windows installer (the design's "prove it first"): whether GitHub's Windows machine
+# runs WSL2 at all. It brings an Ubuntu image into WSL as version 2 and says what Windows answered;
+# if this machine cannot, the proof runs on Kenil's PC instead.
+name: WSL2 on Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: ['windows-*']
+    paths: ['.github/workflows/windows-wsl.yml']
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: What WSL this machine has
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          wsl --version
+          wsl --status
+          Get-ComputerInfo -Property HyperV* | Format-List
+          (Get-CimInstance Win32_Processor).VirtualizationFirmwareEnabled
+      - name: An Ubuntu image, brought in as WSL version 2
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $url = 'https://cloud-images.ubuntu.com/wsl/releases/24.04/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
+          Invoke-WebRequest $url -OutFile ubuntu.tar.gz
+          New-Item -ItemType Directory -Force C:\alpha-wsl | Out-Null
+          wsl --update --web-download
+          wsl --import AlphaProbe C:\alpha-wsl ubuntu.tar.gz --version 2
+          Write-Output "import exit: $LASTEXITCODE"
+          wsl -l -v
+      - name: Inside it
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          wsl -d AlphaProbe -- uname -a
+          wsl -d AlphaProbe -- cat /proc/version
+          wsl -d AlphaProbe -- bash -c 'cat /etc/os-release | head -3; nproc; free -m'
