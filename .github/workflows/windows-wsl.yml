@@ -64,7 +64,8 @@ jobs:
         shell: pwsh
         run: |
           wsl -d Alpha -u root -- sh -c "cp .github/wsl/shell.mjs /tmp/shell.mjs && chmod 644 /tmp/shell.mjs"
-          wsl -d Alpha -u alpha -- /opt/alpha/node/bin/node /tmp/shell.mjs
+          # the alpha user has no login shell, as on the servers: run as it from root
+          wsl -d Alpha -u root -- runuser -u alpha -- env HOME=/home/alpha /opt/alpha/node/bin/node /tmp/shell.mjs
           if ($LASTEXITCODE -ne 0) { throw 'the sandbox did not hold' }
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -99,7 +100,7 @@ jobs:
       - name: Left alone with a hidden link held open, as the engine starter does
         shell: pwsh
         run: |
-          Start-Process -WindowStyle Hidden -FilePath wsl.exe -ArgumentList '-d','Alpha','-u','alpha','--','sleep','infinity'
+          Start-Process -WindowStyle Hidden -FilePath wsl.exe -ArgumentList '-d','Alpha','-u','root','--','sleep','infinity'
           Start-Sleep 5
           $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
           Write-Output "Alpha's engine started: $before"
