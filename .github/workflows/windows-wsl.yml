@@ -107,7 +107,8 @@ jobs:
             -RedirectStandardOutput bridge.log -RedirectStandardError bridge.err
           Start-Sleep 45
           Get-Content bridge.log -ErrorAction SilentlyContinue | Write-Output
-          wsl -d Alpha -u root -- sh -c "T=`$(cat /home/alpha/data/token); curl -s -H x-alpha-token:`$T http://127.0.0.1:4700/api/computers | head -c 1500; echo; curl -s -H x-alpha-token:`$T http://127.0.0.1:4700/api/files | head -c 800"
+          wsl -d Alpha -u root -- /opt/alpha/node/bin/node ./.github/wsl/lent.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'the lent folder did not reach Alpha' }
       - name: Left alone with a hidden link held open, as the engine starter does
         shell: pwsh
         run: |
