@@ -38,5 +38,6 @@ if (ran !== 'ok') fail(`the schedule did not run in the sandbox (${ran || 'no ru
 console.log('a schedule ran in the sandbox')
 const link = await call('/api/computers/link', {})
 if (!link.ok) fail('no pairing link')
-writeFileSync('/tmp/pair-link', link.data.link)
+// kept on Linux's disk: /tmp is emptied whenever Windows stops this Linux and it starts again
+writeFileSync('/root/pair-link', link.data.link)
 console.log(`a pairing link for this PC: ${String(link.data.link).replace(/pair=.*/, 'pair=…')}`)

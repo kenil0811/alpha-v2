@@ -77,7 +77,7 @@ jobs:
       - name: The Bridge pairs with the local Alpha and lends a folder
         shell: pwsh
         run: |
-          $link = wsl -d Alpha -u root -- cat /tmp/pair-link
+          $link = wsl -d Alpha -u root -- cat /root/pair-link
           node bridge/src/main.ts pair "$link"
           if ($LASTEXITCODE -ne 0) { throw 'the Bridge did not pair' }
           New-Item -ItemType Directory -Force C:\lent | Out-Null
@@ -116,6 +116,21 @@ jobs:
           Write-Output "Alpha's engine started: $after"
           if ($quiet -gt 0 -or $before -ne $after) { throw 'Alpha did not stay up while left alone' }
           Write-Output 'Six minutes left alone: Alpha answered every time and never restarted.'
+      - name: An image of Alpha's Linux for Kenil's PC, its data emptied (the image of step 2 is built properly)
+        shell: pwsh
+        run: |
+          wsl -d Alpha -u root -- sh -c "systemctl stop alpha && find /home/alpha/data -mindepth 1 -maxdepth 1 ! -name alpha.yaml -exec rm -rf {} + && printf 'owner: \"Kenil\"\n' > /home/alpha/data/alpha.yaml && chown alpha:alpha /home/alpha/data/alpha.yaml && rm -rf /root/src /root/proof-key.pem /root/pair-link && apt-get clean"
+          wsl --terminate Alpha
+          wsl --export Alpha alpha-wsl.tar.gz --format tar.gz
+          if ($LASTEXITCODE -ne 0) { wsl --export Alpha alpha-wsl.tar; tar -czf alpha-wsl.tar.gz alpha-wsl.tar }
+          Get-Item alpha-wsl.tar.gz | Select-Object Name, Length | Format-Table | Out-String | Write-Output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-wsl-proof
+          path: alpha-wsl.tar.gz
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
       - name: What the core said
         if: always()
         shell: pwsh
