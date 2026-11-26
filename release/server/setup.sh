@@ -16,7 +16,8 @@ case $(uname -m) in aarch64) ARCH=arm64 ;; x86_64) ARCH=x64 ;; *) echo "Not a ma
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq bubblewrap socat ripgrep curl xz-utils ca-certificates
+# libatomic1: Node needs it, and a minimal Ubuntu (WSL's) comes without it
+apt-get install -y -qq bubblewrap socat ripgrep curl xz-utils ca-certificates libatomic1
 # Tailscale is how people reach the machine; `pnpm server address` brings it up
 if ! command -v tailscale >/dev/null; then
   # os-release sets NAME and more: only its codename is read, in a subshell
