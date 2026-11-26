@@ -67,6 +67,24 @@ jobs:
           # the alpha user has no login shell, as on the servers: run as it from root
           wsl -d Alpha -u root -- runuser -u alpha -- env HOME=/home/alpha /opt/alpha/node/bin/node /tmp/shell.mjs
           if ($LASTEXITCODE -ne 0) { throw 'the sandbox did not hold' }
+      - name: Left alone with no link held open (Windows' own idle stop)
+        shell: pwsh
+        run: |
+          $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
+          Write-Output "Alpha's engine started: $before"
+          Start-Sleep 150
+          wsl -l -v
+          $h = curl.exe -s -m 5 http://127.0.0.1:4700/api/health
+          Write-Output "After 150 s with nothing open, 127.0.0.1:4700 answers: $(if ($h) { $h } else { 'nothing' })"
+      - name: The engine starter's hidden link to Alpha's Linux, held open from here on
+        shell: pwsh
+        run: |
+          Start-Process -WindowStyle Hidden -FilePath wsl.exe -ArgumentList '-d','Alpha','-u','root','--','sleep','infinity'
+          for ($i = 0; $i -lt 60; $i++) {
+            if (curl.exe -s -m 2 http://127.0.0.1:4700/api/health) { break }
+            Start-Sleep 2
+          }
+          Write-Output "Alpha answers again: $(curl.exe -s -m 2 http://127.0.0.1:4700/api/health)"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -88,20 +106,9 @@ jobs:
           Start-Sleep 45
           Get-Content bridge.log -ErrorAction SilentlyContinue | Write-Output
           wsl -d Alpha -u root -- sh -c "T=`$(cat /home/alpha/data/token); curl -s -H x-alpha-token:`$T http://127.0.0.1:4700/api/computers | head -c 1500; echo; curl -s -H x-alpha-token:`$T http://127.0.0.1:4700/api/files | head -c 800"
-      - name: Left alone with no link held open (Windows' own idle stop)
-        shell: pwsh
-        run: |
-          $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
-          Write-Output "Alpha's engine started: $before"
-          Start-Sleep 150
-          wsl -l -v
-          $h = curl.exe -s -m 5 http://127.0.0.1:4700/api/health
-          Write-Output "After 150 s with nothing open, 127.0.0.1:4700 answers: $(if ($h) { $h } else { 'nothing' })"
       - name: Left alone with a hidden link held open, as the engine starter does
         shell: pwsh
         run: |
-          Start-Process -WindowStyle Hidden -FilePath wsl.exe -ArgumentList '-d','Alpha','-u','root','--','sleep','infinity'
-          Start-Sleep 5
           $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
           Write-Output "Alpha's engine started: $before"
           $quiet = 0
