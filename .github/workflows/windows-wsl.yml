@@ -8,6 +8,11 @@
 name: WSL2 on Windows
 on:
   workflow_dispatch:
+    inputs:
+      bridge_only:
+        description: Stop after the Bridge (no idle runs, no image)
+        type: boolean
+        default: false
   push:
     branches: ['windows-*']
     paths: ['.github/workflows/windows-wsl.yml', '.github/wsl/**', 'release/server/**']
@@ -68,6 +73,7 @@ jobs:
           wsl -d Alpha -u root -- runuser -u alpha -- env HOME=/home/alpha /opt/alpha/node/bin/node /tmp/shell.mjs
           if ($LASTEXITCODE -ne 0) { throw 'the sandbox did not hold' }
       - name: Left alone with no link held open (Windows' own idle stop)
+        if: ${{ !inputs.bridge_only }}
         shell: pwsh
         run: |
           $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
@@ -107,9 +113,11 @@ jobs:
             -RedirectStandardOutput bridge.log -RedirectStandardError bridge.err
           Start-Sleep 45
           Get-Content bridge.log -ErrorAction SilentlyContinue | Write-Output
+          Get-Content bridge.err -ErrorAction SilentlyContinue | Write-Output
           wsl -d Alpha -u root -- /opt/alpha/node/bin/node ./.github/wsl/lent.mjs
           if ($LASTEXITCODE -ne 0) { throw 'the lent folder did not reach Alpha' }
       - name: Left alone with a hidden link held open, as the engine starter does
+        if: ${{ !inputs.bridge_only }}
         shell: pwsh
         run: |
           $before = wsl -d Alpha -u root -- systemctl show alpha -p ActiveEnterTimestamp --value
@@ -127,6 +135,7 @@ jobs:
           if ($quiet -gt 0 -or $before -ne $after) { throw 'Alpha did not stay up while left alone' }
           Write-Output 'Six minutes left alone: Alpha answered every time and never restarted.'
       - name: An image of Alpha's Linux for Kenil's PC, its data emptied (the image of step 2 is built properly)
+        if: ${{ !inputs.bridge_only }}
         shell: pwsh
         run: |
           wsl -d Alpha -u root -- sh -c "systemctl stop alpha && find /home/alpha/data -mindepth 1 -maxdepth 1 ! -name alpha.yaml -exec rm -rf {} + && echo owner: Kenil > /home/alpha/data/alpha.yaml && chown alpha:alpha /home/alpha/data/alpha.yaml && rm -rf /root/src /root/proof-key.pem /root/pair-link && apt-get clean"
@@ -135,6 +144,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { wsl --export Alpha alpha-wsl.tar; tar -czf alpha-wsl.tar.gz alpha-wsl.tar }
           Get-Item alpha-wsl.tar.gz | Select-Object Name, Length | Format-Table | Out-String | Write-Output
       - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.bridge_only }}
         with:
           name: alpha-wsl-proof
           path: alpha-wsl.tar.gz
