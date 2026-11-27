@@ -62,7 +62,10 @@ export function linkOf(link: string): { alpha: string; code: string } {
     throw new Error('That is not a pairing link. Copy it whole from Your computers in Alpha.')
   }
   const code = u.searchParams.get('pair')
-  if (!code || !/^https?:$/.test(u.protocol))
+  // an Alpha elsewhere is reached over https alone; plain http only for this computer's own (a PC
+  // whose Alpha runs inside it), where nothing crosses a network
+  const here = ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname)
+  if (!code || !(u.protocol === 'https:' || (u.protocol === 'http:' && here)))
     throw new Error('That is not a pairing link. Copy it whole from Your computers in Alpha.')
   return { alpha: u.origin, code }
 }

@@ -5,7 +5,7 @@
 import type { SecretStore } from '@alpha/connector-sdk'
 
 export interface Platform {
-  readonly name: 'mac' | 'plain' | 'linux'
+  readonly name: 'mac' | 'plain' | 'linux' | 'pc' // pc: a person's own PC, Linux inside Windows
   // what this computer can do; where it cannot, the plain words are said where a person looks
   readonly can: { notify: boolean; keepAwake: boolean; settings: boolean }
   // The secret store, and the helper app it runs through where there is one (the Mac's

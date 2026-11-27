@@ -164,11 +164,12 @@ const connectors = new ConnectorService(world, {
     (c) =>
       // one that comes with a plugin, only where that plugin is on (rules P1)
       (!c.manifest.plugin || install.plugins.includes(c.manifest.plugin)) &&
-      (platform.name !== 'linux' ||
+      // a PC's Linux reads the PC's own things through the Bridge, as a server does
+      (!['linux', 'pc'].includes(platform.name) ||
         (c.manifest.runs ?? 'server') !== 'server' ||
         !['system', 'path', 'browser'].includes(c.manifest.auth)),
   ),
-  server: platform.name === 'linux',
+  server: platform.name === 'linux' || platform.name === 'pc',
   // signing in as the person: the provider sends them back to this core
   signIn: new SignIn(world, {
     secrets,

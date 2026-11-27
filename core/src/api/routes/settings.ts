@@ -136,7 +136,11 @@ export function registerSettings(ctx: Ctx): void {
     '/api/setup',
     async (): Promise<SetupView | null> => (options.setup ? options.setup.view() : null),
   )
-  app.post('/api/setup/signin', async () => ({ started: options.setup?.signIn() ?? false }))
+  // started, and on a PC the sign-in page for the window to open in the person's browser
+  app.post(
+    '/api/setup/signin',
+    async () => (await options.setup?.signIn()) ?? { started: false, open: null },
+  )
   // System Settings opened at the pane where the person turns Alpha on (Contacts, Calendars: a
   // connector names its pane): the one switch macOS keeps outside Alpha after a no.
   app.post('/api/setup/settings', async (req) => {

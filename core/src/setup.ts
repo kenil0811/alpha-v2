@@ -29,12 +29,13 @@ export interface SetupView {
   install: { owner: string; port: number; home: string; reportTo: string | null }
 }
 
-// Claude Code as the Agent SDK carries it for this Mac.
+// Claude Code as the Agent SDK carries it for this computer: a Mac with an Apple chip, or the
+// Linux inside a PC (Intel or AMD, or Arm).
 export function claudeBinary(): string | null {
   try {
     const sdk = createRequire(import.meta.url).resolve('@anthropic-ai/claude-agent-sdk')
     const pkg = createRequire(sdk).resolve(
-      '@anthropic-ai/claude-agent-sdk-darwin-arm64/package.json',
+      `@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}/package.json`,
     )
     const bin = join(pkg, '..', 'claude')
     return existsSync(bin) ? bin : null
@@ -121,11 +122,16 @@ export class Setup {
   }
 
   // Claude's own sign-in, started from the window: it opens the person's browser and finishes
-  // there by itself; Alpha only watches the status change. Started once at a time.
+  // there by itself; Alpha only watches the status change. Started once at a time. On a PC, Claude
+  // runs inside Linux and cannot open the Windows browser: the page it would open is handed to the
+  // window, which opens it; Claude's page then comes back to this PC's own address by itself.
   private signingIn: ReturnType<typeof execFile> | null = null
-  signIn(): boolean {
+  private signInPage: string | null = null
+  async signIn(): Promise<{ started: boolean; open: string | null }> {
     const bin = claudeBinary()
-    if (!bin || this.signingIn) return false
+    if (!bin) return { started: false, open: null }
+    if (this.signingIn) return { started: true, open: this.signInPage }
+    this.signInPage = null
     const child = execFile(
       bin,
       ['auth', 'login'],
@@ -135,11 +141,22 @@ export class Setup {
       },
       () => {
         this.signingIn = null
+        this.signInPage = null
       },
     )
     child.stdin?.end()
     this.signingIn = child
-    return true
+    if (this.platform.name !== 'pc') return { started: true, open: null }
+    // the page's address, as Claude says it when no browser opens
+    const said = (b: Buffer | string) => {
+      const m = /https:\/\/\S+/.exec(String(b))
+      if (m && !this.signInPage) this.signInPage = m[0]
+    }
+    child.stdout?.on('data', said)
+    child.stderr?.on('data', said)
+    for (let i = 0; i < 50 && !this.signInPage && this.signingIn; i++)
+      await new Promise((r) => setTimeout(r, 100))
+    return { started: true, open: this.signInPage }
   }
 
   private claude(): Promise<SetupView['claude']> {

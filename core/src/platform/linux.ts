@@ -79,7 +79,7 @@ export class FileSecrets implements SecretStore {
 }
 
 export class LinuxPlatform implements Platform {
-  readonly name = 'linux' as const
+  readonly name: 'linux' | 'pc' = 'linux'
   readonly can = { notify: false, keepAwake: false, settings: false }
 
   secrets(_helper: string | null): { store: SecretStore; helper: string | null } {

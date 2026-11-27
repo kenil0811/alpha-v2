@@ -2,6 +2,7 @@
 // serves the window, takes a made-up kit and runs its schedule in the sandbox; and the pairing
 // link a Bridge on this PC would be given. Says each step; exits 1 on the first that fails.
 import { readFileSync, writeFileSync } from 'node:fs'
+
 const base = 'http://127.0.0.1:4700'
 const token = readFileSync('/home/alpha/data/token', 'utf8').trim()
 const call = async (path, body) => {
@@ -32,7 +33,9 @@ let ran = ''
 for (let i = 0; i < 60 && !ran; i++) {
   await new Promise((r) => setTimeout(r, 1000))
   const runs = (await call('/api/activity')).data
-  ran = (Array.isArray(runs) ? runs : []).find((r) => r.name === 'Counter' && r.state !== 'running')?.state ?? ''
+  ran =
+    (Array.isArray(runs) ? runs : []).find((r) => r.name === 'Counter' && r.state !== 'running')
+      ?.state ?? ''
 }
 if (ran !== 'ok') fail(`the schedule did not run in the sandbox (${ran || 'no run'})`)
 console.log('a schedule ran in the sandbox')

@@ -2,6 +2,7 @@
 // gives its agents' shells (the same runtime, Claude Code's own on Linux): it runs; it cannot read
 // the Alpha's data; it reaches no site. Exits 1 if any of that does not hold.
 import { spawnSync } from 'node:child_process'
+
 const { SandboxManager } = await import(
   '/opt/alpha/current/core/node_modules/@anthropic-ai/sandbox-runtime/dist/index.js'
 )

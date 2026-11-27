@@ -122,7 +122,13 @@ export function useSignIn(onChange: () => void): [boolean, () => void] {
   }, [waiting, onChange])
   const start = () => {
     setWaiting(true)
-    api.post('/api/setup/signin').catch(() => setWaiting(false))
+    // on a PC, the page Claude would open is opened here, in the person's own browser
+    api.post<{ started: boolean; open: string | null }>('/api/setup/signin').then(
+      (r) => {
+        if (r.open) window.open(r.open, '_blank', 'noreferrer')
+      },
+      () => setWaiting(false),
+    )
   }
   return [waiting, start]
 }
