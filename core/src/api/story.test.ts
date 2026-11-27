@@ -1,6 +1,7 @@
 // Set up Alpha (the 22 Nov onboarding redesign): each person's story drawn from who they are and
 // what this Alpha has, kept per person, Claude second and never skipped while no model is set, the
 // owner's chapters theirs alone, and a plugin's chapter where it says.
+import { generateKeyPairSync } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,6 +11,7 @@ import { ConnectorService } from '../connectors/service.ts'
 import { SignIn } from '../connectors/signin.ts'
 import { Engine } from '../engine/engine.ts'
 import { ModelRoute } from '../engine/route.ts'
+import { PcPlatform } from '../platform/pc.ts'
 import type { PluginChapter } from '../plugins/plugins.ts'
 import {
   nameOfDomain,
@@ -207,6 +209,37 @@ describe('Set up Alpha', () => {
     const hers = await screen(as(world.user(priya.id) as User))
     expect(hers.title).toBe('Your accounts')
     expect(hers.tiles.map((t) => t.key)).toEqual(['calendar'])
+  })
+
+  it('on a PC, the computer step is the PC itself, paired by Alpha’s own app: a folder is lent from it, nothing installed', async () => {
+    await route.setToken(TOKEN, owner.id)
+    const app = as(owner, { platform: new PcPlatform() })
+    const computer = (await app.inject({ url: '/api/story/computer', headers: AS })).json()
+    expect(computer.says).toMatch(/folders on this PC/)
+    expect(computer.tiles).toHaveLength(1)
+    expect(computer.tiles[0]).toMatchObject({
+      own: true,
+      title: 'This PC',
+      computer: null,
+      note: expect.stringMatching(/Alpha’s menu by the clock/),
+    })
+    expect(computer.tiles[0].note).not.toMatch(/Install/)
+    // paired by itself, it is done only once it lends something
+    const { code } = world.computers.link(owner.id)
+    const publicKey = generateKeyPairSync('ed25519').publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    })
+    const pc = world.computers.pair(code, {
+      publicKey: String(publicKey),
+      name: 'A PC',
+      platform: 'win32',
+    })
+    const again = (await app.inject({ url: '/api/story/computer', headers: AS })).json()
+    expect(again.tiles[0].computer).toBe(pc.id)
+    for (const c of ['welcome', 'workspace', 'computer']) await post(app, `/api/story/${c}`)
+    const state = (await story(app)).chapters.find((c) => c.key === 'computer')?.state
+    expect(state).toBe('skipped')
   })
 
   // a made-up mail connector of the name given, landing nothing

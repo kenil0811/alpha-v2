@@ -52,6 +52,7 @@ export function registerStory(ctx: Ctx): void {
   const room = (req: { protocol: string; headers: { host?: string | undefined } }) => ({
     modelSet,
     onServer,
+    onPc: options.platform?.name === 'pc',
     plugins: (options.chapters ?? []).some((c) => c.who === 'everyone' || user.role === 'owner'),
     linkFor: (link: string) =>
       `${options.publicAddress ?? `${req.protocol}://${req.headers.host}`}/?link=${encodeURIComponent(link)}`,

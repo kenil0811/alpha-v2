@@ -33,6 +33,9 @@ import type {
 export interface StoryRoom {
   modelSet: () => Promise<boolean>
   onServer: boolean // a server takes Claude as a token; a Mac signs in in the browser
+  // a PC: Claude signs in as on a Mac, and the PC itself is reached through the Bridge part of
+  // Alpha's own app, paired by itself
+  onPc?: boolean
   linkFor: (link: string) => string // a one-time link as the person will open it
   plugins: boolean // a plugin has steps in this person's story (the interview's Off your plate)
 }
@@ -106,8 +109,10 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
   // each turned on from here (rules B2), then what it found: an app Alpha can connect directly (its
   // connector, or its site) with Connect and Exclude, one Alpha Bridge itself reads with Turn on,
   // any other only listed. With no computer paired, or nothing found on it, those parts are not there.
+  // the person's computer is reached through Alpha Bridge: a server's person's, or a PC itself
+  const bridged = room.onServer || !!room.onPc
   const accounts = () => {
-    const tiles = connectTiles(ctx, room.onServer)
+    const tiles = connectTiles(ctx, bridged)
     const pc = world.computers.of(user.id)[0]
     const paired = !!pc
     const reads = tiles
@@ -118,7 +123,9 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
         kind: 'reads' as const,
         title: 'Your computer',
         reads: 'What Alpha Bridge reads there, once you turn it on',
-        note: 'Each is read only while your computer is on. Alpha Bridge says on your computer what you turned on here, and you can turn any off in its menu there.',
+        note: room.onPc
+          ? 'Each is read only while this PC is on. Turn any off here, or on this PC’s page under Connections.'
+          : 'Each is read only while your computer is on. Alpha Bridge says on your computer what you turned on here, and you can turn any off in its menu there.',
         computer: pc?.id ?? null,
       }))
     const found = tiles
@@ -201,20 +208,34 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     computer: async (): Promise<ConnectScreen> => ({
       key: 'computer',
       title: 'Your computer',
-      // on a server, the person's computer through Alpha Bridge; on Alpha's own Mac, its folders
-      says: room.onServer
-        ? 'Shall I connect to your computer too? Only Alpha Bridge, nothing else yet.'
-        : 'Shall I look at folders on this Mac too? Only the ones you add.',
+      // on a server, the person's computer through Alpha Bridge; on Alpha's own Mac, its folders;
+      // on a PC, its folders through the Bridge part of Alpha's own app, already paired
+      says: room.onPc
+        ? 'Shall I look at folders on this PC too? Only the ones you lend.'
+        : room.onServer
+          ? 'Shall I connect to your computer too? Only Alpha Bridge, nothing else yet.'
+          : 'Shall I look at folders on this Mac too? Only the ones you add.',
       // only what this step needs: installing and pairing Alpha Bridge (or lending a folder on
-      // Alpha's own Mac); what else it can read is offered later, one at a time, never here
-      tiles: connectTiles(ctx, room.onServer)
+      // Alpha's own Mac or PC); what else it can read is offered later, one at a time, never here
+      tiles: connectTiles(ctx, bridged)
         .filter((t) => t.kind === 'computer')
-        .map((t) => ({
-          ...t,
-          note: room.onServer
-            ? 'Install Alpha Bridge and pair it. Nothing else on your computer is read now.'
-            : t.note,
-        })),
+        .map((t) =>
+          room.onPc
+            ? {
+                ...t,
+                title: 'This PC',
+                reads: 'Folders you lend on this PC',
+                note: 'Lend one here, or from Alpha’s menu by the clock. Nothing else on this PC is read now.',
+                own: true,
+                computer: world.computers.of(user.id)[0]?.id ?? null,
+              }
+            : {
+                ...t,
+                note: room.onServer
+                  ? 'Install Alpha Bridge and pair it. Nothing else on your computer is read now.'
+                  : t.note,
+              },
+        ),
     }),
     connect: async (): Promise<ConnectScreen> => ({
       key: 'connect',
@@ -285,12 +306,14 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
   // What each act does with what the person gave; the story moves on after it.
   // nothing: nothing happened on the step, so it is marked skipped, never done
   const acts: Record<string, (body: unknown) => Promise<Record<string, unknown>>> = {
+    // a PC pairs itself, so its step is done once it lends something
     computer: async () => ({
-      nothing:
-        !world.computers.of(user.id).length &&
-        !world.connections
-          .list()
-          .some((k) => k.connector === 'folder' && k.madeBy === `person:${user.id}`),
+      nothing: room.onPc
+        ? !world.computers.of(user.id).some((c) => world.connections.on(c.id).length)
+        : !world.computers.of(user.id).length &&
+          !world.connections
+            .list()
+            .some((k) => k.connector === 'folder' && k.madeBy === `person:${user.id}`),
     }),
     connect: async () => ({
       nothing: !world.connections
@@ -368,6 +391,10 @@ export function storyScreens(ctx: Ctx, room: StoryRoom) {
     if (key === 'claude') return 'Connected'
     if (key === 'computer') {
       const paired = world.computers.of(user.id)
+      if (room.onPc) {
+        const lent = paired.flatMap((c) => world.connections.on(c.id))
+        return `${many(lent.filter((k) => k.connector === 'folder').length, 'folder', 'folders')} lent`
+      }
       return paired.length ? paired.map((c) => c.name).join(', ') : 'Folders lent'
     }
     if (key === 'connect')

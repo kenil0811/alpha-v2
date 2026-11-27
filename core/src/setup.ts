@@ -12,7 +12,7 @@ import { chromePath, ensureBrowser } from '@alpha/connector-sdk'
 import type { ConnectorService } from './connectors/service.ts'
 import type { ModelRoute } from './engine/route.ts'
 import { type Install, readInstall, writeInstall } from './install.ts'
-import { type Platform, platformHere } from './platform/index.ts'
+import { nodeComputer, type Platform, platformHere } from './platform/index.ts'
 import type { World } from './world/world.ts'
 
 export type Readiness = 'ready' | 'preparing' | 'not yet' | 'failed'
@@ -35,7 +35,7 @@ export function claudeBinary(): string | null {
   try {
     const sdk = createRequire(import.meta.url).resolve('@anthropic-ai/claude-agent-sdk')
     const pkg = createRequire(sdk).resolve(
-      `@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}/package.json`,
+      `@anthropic-ai/claude-agent-sdk-${nodeComputer()}/package.json`,
     )
     const bin = join(pkg, '..', 'claude')
     return existsSync(bin) ? bin : null

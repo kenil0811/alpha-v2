@@ -15,3 +15,7 @@ export function platformHere(): Platform {
   if (!process.env.CREDENTIALS_DIRECTORY) return new PlainPlatform()
   return process.env.ALPHA_ON_PC === '1' ? new PcPlatform() : new LinuxPlatform()
 }
+
+// The computer as Node names it (darwin-arm64, linux-x64, linux-arm64): what a package made for
+// each computer is named by, as Claude Code is in the Agent SDK.
+export const nodeComputer = (): string => `${process.platform}-${process.arch}`

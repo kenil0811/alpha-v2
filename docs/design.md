@@ -399,6 +399,19 @@ renewed, once the domain points at the machine's fixed IP (`pnpm server address 
 Alpha never holds the password, and Claude comes as a subscription token from `claude setup-token`.
 Before the first client: the firm's own API key, off-site backups and a heartbeat. The Mac's installer is a self-installing disk image and the `alpha` command.
 
+On a Windows PC (the Windows design, 26 Nov), Alpha is the servers' own Linux Alpha inside the Linux
+Windows runs for it (WSL2, a distribution called Alpha, from one image made and smoke-tested on
+GitHub's Windows machine), and the Windows Alpha app (`desktop/src/pc/`) is its window, its icon by
+the clock, its notifications and its engine's starter, which hands in the secrets' key Windows seals
+to the person and keeps the Linux running. One setup program for the person alone, unsigned while
+testing, installs it, turning WSL on once with Windows' own prompt and a restart; a newer setup
+carries the data over, and Kenil's small signed file (`pnpm server pc`, Update from a file… in the
+menu) updates it by the servers' own update. Claude signs in through the window, its code pasted
+back. The app carries Alpha Bridge's code too, paired with the PC's own Alpha by itself (plain http
+only for this PC's own address), so the PC's folders and Chrome are lent from the Windows side, from
+Set up Alpha, Your computers or the menu by the clock, with no second app. Uninstalling saves the
+data in Documents and takes the Linux and the pairing with it.
+
 ## Proving it
 
 - **`pnpm check`:** types, lint, tests, the time-zone tests, the walls and `pnpm rules`. Tests never

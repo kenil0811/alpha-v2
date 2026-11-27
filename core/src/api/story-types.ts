@@ -83,6 +83,9 @@ export interface ConnectTile {
   server: boolean // the computer tile: Alpha runs on a server, so a computer pairs through Alpha Bridge
   // Your computer and Found on your computer: the person's computer what they read is turned on on
   computer?: string | null
+  // the computer tile on a PC: the PC is Alpha's own, its Bridge part paired by itself, so a folder
+  // is lent from here (its own picker opens) and nothing is installed
+  own?: boolean
 }
 
 // An app the person uses: on their computer, as Alpha Bridge's Apps reader listed it (when it was
