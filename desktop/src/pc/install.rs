@@ -95,7 +95,7 @@ pub fn carrying_on() -> bool {
 pub fn window(app: &AppHandle) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("install.html".into()))
         .title("Alpha")
-        .inner_size(560.0, 440.0)
+        .inner_size(560.0, 520.0)
         .resizable(false)
         .center()
         .build()?;
@@ -126,6 +126,13 @@ fn say(app: &AppHandle, line: &str) {
         return log(line);
     }
     tell(app, format!("addLine({})", serde_json::json!(line)));
+}
+
+/// The step the Install window ticks to: check, wsl, save, linux, data, key, start.
+fn step(app: &AppHandle, key: &str) {
+    if !quietly() {
+        tell(app, format!("installStep({})", serde_json::json!(key)));
+    }
 }
 
 fn ended(app: &AppHandle, state: &str, words: &str) {
@@ -226,6 +233,7 @@ pub fn run(app: AppHandle, bring_back: bool) {
         let Ok(me) = std::env::current_exe() else { return };
         let me = me.display().to_string();
 
+        step(&app, "check");
         say(&app, "Checking this PC");
         if arm() {
             return ended(&app, "failed", "This PC has an Arm chip; Alpha runs on Intel and AMD PCs for now.");
@@ -239,6 +247,7 @@ pub fn run(app: AppHandle, bring_back: bool) {
         }
 
         if !wsl_ready() {
+            step(&app, "wsl");
             say(&app, "Turning on Windows Subsystem for Linux: Windows asks you once");
             if !turn_wsl_on() {
                 return ended(&app, "failed", "Windows did not turn it on. Press Install to ask again; Windows asks for an administrator's yes.");
@@ -256,6 +265,7 @@ pub fn run(app: AppHandle, bring_back: bool) {
         // readers' downloads (the reading browser, the document reader) come again by themselves.
         let mut carried: Option<Vec<u8>> = None;
         if distro_here() && installed().as_deref() != Some(version.as_str()) {
+            step(&app, "save");
             say(&app, "Saving your data before updating");
             stop_others();
             let out = linux("systemctl stop alpha; tar -czf - -C /home/alpha --exclude=data/browsers --exclude=data/envs data").output();
@@ -271,6 +281,7 @@ pub fn run(app: AppHandle, bring_back: bool) {
         }
 
         if !distro_here() {
+            step(&app, "linux");
             say(&app, "Bringing in Alpha's Linux: a few minutes");
             let to = data_dir().join("linux");
             let _ = std::fs::create_dir_all(&to);
@@ -306,6 +317,7 @@ pub fn run(app: AppHandle, bring_back: bool) {
         }
 
         if let Some(data) = carried {
+            step(&app, "data");
             say(&app, "Putting your data back");
             let back = linux_with(
                 "rm -rf /home/alpha/data && tar -xzf - -C /home/alpha && chown -R alpha:alpha /home/alpha/data",
@@ -324,6 +336,7 @@ pub fn run(app: AppHandle, bring_back: bool) {
             }
         }
 
+        step(&app, "key");
         say(&app, "Sealing the key to Alpha's secrets with Windows");
         if let Err(e) = engine::make_key() {
             return ended(&app, "failed", &e);
@@ -334,6 +347,7 @@ pub fn run(app: AppHandle, bring_back: bool) {
             yaml.as_bytes(),
         );
 
+        step(&app, "start");
         say(&app, "Starting with Windows: Alpha's engine, and Alpha by the clock");
         reg(&["add", RUN, "/v", "Alpha engine", "/t", "REG_SZ", "/d", &format!("\"{me}\" --engine"), "/f"]);
         reg(&["add", RUN, "/v", "Alpha", "/t", "REG_SZ", "/d", &format!("\"{me}\" --quietly"), "/f"]);

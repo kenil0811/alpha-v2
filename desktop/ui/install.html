@@ -3,97 +3,214 @@
   <head>
     <meta charset="utf-8" />
     <title>Alpha</title>
+    <!-- The Install window, in Alpha's own look: its mark, a serif title and one sentence, then (on
+    a PC) the steps ticking off with a thin bar, the installer's raw lines behind Show details.
+    On a Mac the lines show as they come, as before. -->
     <style>
-      :root { color-scheme: light dark; --canvas: #fbfbfb; --surface: #ffffff; --ink: #131313; --ink-2: #383838; --ink-3: #6f6f6f; --line: #dcdcdc; --accent: #2563eb; --bad: #ad3d36; }
-      @media (prefers-color-scheme: dark) { :root { --canvas: #191919; --surface: #202020; --ink: #ededed; --ink-2: #c2c2c2; --ink-3: #959595; --line: #333333; --accent: #6ea8fe; --bad: #e08a84; } }
+      :root { color-scheme: light dark; --canvas: #fbfbfb; --surface: #ffffff; --ink: #131313; --ink-2: #383838; --ink-3: #6f6f6f; --line: #dcdcdc; --hair: #e9e9e9; --accent: #2563eb; --accent-ink: #ffffff; --good: #3b7550; --bad: #ad3d36; }
+      @media (prefers-color-scheme: dark) { :root { --canvas: #191919; --surface: #202020; --ink: #ededed; --ink-2: #c2c2c2; --ink-3: #959595; --line: #333333; --hair: #2a2a2a; --accent: #6ea8fe; --accent-ink: #0b1220; --good: #8cc29c; --bad: #e78a83; } }
       html, body { height: 100%; margin: 0; }
       body { display: flex; flex-direction: column; background: var(--canvas); color: var(--ink);
-        font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; -webkit-user-select: none; }
-      header { height: 48px; flex: none; }
-      main { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 0 36px 28px; }
-      h1 { font: 500 24px/1.3 Georgia, serif; margin: 0; }
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+      header { height: 28px; flex: none; }
+      main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 4px 36px 0; }
+      .mark { width: 40px; height: 40px; border-radius: 10px; box-shadow: 0 0 0 1px var(--hair); }
+      h1 { font: 500 25px/1.25 "Source Serif 4", Georgia, "Times New Roman", serif; margin: 6px 0 0; letter-spacing: -0.01em; }
       p { margin: 0; color: var(--ink-2); max-width: 46em; }
-      .row { display: flex; gap: 10px; align-items: center; }
-      button { font: inherit; height: 32px; padding: 0 16px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
-      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-      button:disabled { opacity: 0.5; cursor: default; }
-      pre { flex: 1; min-height: 120px; margin: 0; padding: 12px 14px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-2); font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; -webkit-user-select: text; }
-      .problem { color: var(--bad); }
       label { display: flex; gap: 8px; align-items: center; color: var(--ink-2); }
-      .hidden { display: none; }
+      ol { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+      li { display: flex; align-items: center; gap: 10px; color: var(--ink-3); }
+      li.now { color: var(--ink); }
+      li.done { color: var(--ink-2); }
+      li.failed { color: var(--bad); }
+      .dot { width: 16px; height: 16px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; }
+      li.now .dot { border-color: var(--hair); border-top-color: var(--accent); animation: turn 0.9s linear infinite; }
+      li.done .dot { border: none; background: var(--good); }
+      li.failed .dot { border: none; background: var(--bad); }
+      .dot svg { width: 10px; height: 10px; display: none; }
+      li.done .dot .tick, li.failed .dot .cross { display: block; }
+      @keyframes turn { to { transform: rotate(360deg); } }
+      .bar { height: 3px; border-radius: 2px; background: var(--hair); overflow: hidden; margin-top: 4px; }
+      .bar div { height: 100%; width: 0; background: var(--accent); transition: width 0.4s ease; }
+      .said { min-height: 21px; color: var(--ink-2); }
+      .said.problem { color: var(--bad); }
+      pre { flex: 1; min-height: 0; margin: 0; padding: 10px 12px; overflow: auto; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface); color: var(--ink-2); font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; white-space: pre-wrap; -webkit-user-select: text; user-select: text; }
+      footer { flex: none; display: flex; gap: 8px; align-items: center; padding: 16px 36px 22px; }
+      .spacer { flex: 1; }
+      button { font: inherit; height: 32px; padding: 0 16px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+      button.link { border: none; background: none; padding: 0 2px; color: var(--ink-3); height: auto; }
+      button.link:hover { color: var(--ink); }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .hidden { display: none !important; }
     </style>
   </head>
   <body>
     <header data-tauri-drag-region></header>
     <main>
+      <img class="mark" src="mark.png" alt="" />
       <h1 id="title">Install Alpha</h1>
       <p id="words">Alpha will be put in Applications, keep its data in your Library, and start when you log in. Nothing leaves this Mac.</p>
       <label id="back" class="hidden"><input id="bring" type="checkbox" checked /> <span id="day"></span></label>
-      <div class="row">
-        <button id="go" class="primary" type="button">Install</button>
-        <button id="quit" type="button">Decline</button>
-        <button id="restart" class="primary hidden" type="button">Restart now</button>
-        <span id="state"></span>
-      </div>
+      <ol id="steps" class="hidden"></ol>
+      <div id="bar" class="bar hidden"><div></div></div>
+      <div id="state" class="said"></div>
       <pre id="log" class="hidden"></pre>
     </main>
+    <footer>
+      <button id="details" class="link hidden" type="button">Show details</button>
+      <button id="copy" class="link hidden" type="button">Copy details</button>
+      <span class="spacer"></span>
+      <button id="quit" type="button">Decline</button>
+      <button id="restart" class="primary hidden" type="button">Restart now</button>
+      <button id="go" class="primary" type="button">Install</button>
+    </footer>
     <script>
       const inv = (cmd, args) => window.__TAURI_INTERNALS__.invoke(cmd, args)
       const $ = (id) => document.getElementById(id)
+      const TICK = '<svg class="tick" viewBox="0 0 10 10"><path d="M2 5.2l2 2 4-4.4" fill="none" stroke="var(--canvas)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      const CROSS = '<svg class="cross" viewBox="0 0 10 10"><path d="M3 3l4 4M7 3l-4 4" fill="none" stroke="var(--canvas)" stroke-width="1.6" stroke-linecap="round"/></svg>'
+      // a PC's steps, in their order; each install shows the ones it takes, and the installer ticks
+      // to each as it starts it (installStep)
+      const ORDER = ['check', 'wsl', 'save', 'linux', 'data', 'key', 'start']
+      let names = {
+        check: 'Checking this PC',
+        wsl: 'Turning on Windows’ Linux',
+        save: 'Saving your data',
+        linux: 'Bringing in Alpha',
+        data: 'Bringing back your data',
+        key: 'Locking its key with Windows',
+        start: 'Starting Alpha',
+      }
+      let steps = []
+      let now = -1
+      let windows = false
+      let running = false
+      const draw = (failed) => {
+        $('steps').innerHTML = steps
+          .map((k, i) => {
+            const c = i < now ? 'done' : i === now ? (failed ? 'failed' : 'now') : ''
+            return `<li class="${c}"><span class="dot">${TICK}${CROSS}</span>${names[k]}</li>`
+          })
+          .join('')
+        const part = now < 0 ? 0 : (now + (failed ? 0 : 0.5)) / steps.length
+        $('bar').firstElementChild.style.width = `${Math.round(Math.min(1, part) * 100)}%`
+      }
+      window.installStep = (key) => {
+        if (!steps.includes(key)) steps = ORDER.filter((k) => k === key || steps.includes(k))
+        now = steps.indexOf(key)
+        draw(false)
+      }
       // what this install is: fresh, or an update from the version installed
       inv('install_plan').then((p) => {
-        if (p.windows)
-          $('words').textContent =
-            'Alpha will be put in your apps, keep its data on this PC, and start when you sign in. Windows may ask you once to turn on its Subsystem for Linux, and to restart. Nothing leaves this PC.'
+        windows = p.windows
+        if (p.windows) {
+          $('words').textContent = 'Alpha keeps its data on this PC and starts when you sign in. Windows may ask you once to turn on its Linux, then to restart. Nothing leaves this PC.'
+          steps = ['check', 'wsl', 'linux', 'key', 'start']
+        }
         if (p.from) {
           $('title').textContent = `Update Alpha ${p.from} to ${p.to}`
-          $('words').textContent = 'Your data and settings stay as they are; they are backed up first.'
+          $('words').textContent = 'Your data and settings stay as they are; they are saved first.'
           $('go').textContent = 'Update'
+          names = { ...names, linux: 'Bringing in the new Alpha', data: 'Putting your data back' }
+          steps = ['check', 'save', 'linux', 'data', 'start']
         } else {
           $('title').textContent = `Install Alpha ${p.to}`
         }
         // a PC where Alpha was uninstalled: its saved data, brought back unless unticked
         if (p.saved && !p.carry_on) {
-          $('day').textContent = `Bring back your data saved on ${p.saved}`
+          const day = new Date(`${p.saved}T12:00:00`)
+          const words = Number.isNaN(day.getTime()) ? p.saved : day.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+          $('day').textContent = `Bring back your data saved on ${words}`
           $('back').classList.remove('hidden')
         }
+        if (p.windows) {
+          $('steps').classList.remove('hidden')
+          draw(false)
+        }
+        if (p.carry_on) start(true)
       })
-      // the installer's lines, as it goes
+      // the installer's lines, as it goes: on a PC behind Show details, on a Mac in view
       window.addLine = (line) => {
         const log = $('log')
-        log.classList.remove('hidden')
         log.textContent += `${line}\n`
         log.scrollTop = log.scrollHeight
+        if (windows) $('details').classList.remove('hidden')
+        else log.classList.remove('hidden')
+      }
+      // the lines take the steps' place while they are open
+      $('details').onclick = () => {
+        const shut = $('log').classList.toggle('hidden')
+        $('steps').classList.toggle('hidden', !shut)
+        $('bar').classList.toggle('hidden', !shut || !$('bar').dataset.on)
+        $('details').textContent = shut ? 'Show details' : 'Hide details'
+      }
+      $('copy').onclick = () => {
+        navigator.clipboard?.writeText($('log').textContent).then(
+          () => { $('copy').textContent = 'Copied' },
+          () => { $('log').classList.remove('hidden') },
+        )
       }
       // how it ended: done (true, or 'done'), failed (false, or 'failed'), or, on Windows, a restart
       // to finish turning WSL on, after which this window comes back by itself
       window.installEnded = (state, words) => {
+        running = false
         const ok = state === true || state === 'done'
         const restart = state === 'restart'
+        if (ok) {
+          now = steps.length
+          $('title').textContent = 'Alpha is installed'
+        } else if (restart) {
+          $('title').textContent = 'Windows needs a restart'
+        } else {
+          $('title').textContent = 'Alpha did not install'
+          $('copy').classList.remove('hidden')
+        }
+        if (windows) draw(!ok && !restart)
         $('state').textContent = words
-        $('state').className = ok || restart ? '' : 'problem'
-        $('go').disabled = ok || restart
-        $('go').classList.toggle('hidden', restart)
+        $('state').classList.toggle('problem', !ok && !restart)
+        $('go').disabled = ok
+        $('go').textContent = ok ? 'Done' : 'Try again'
+        $('go').classList.toggle('hidden', restart || ok)
+        $('quit').classList.remove('hidden')
         $('restart').classList.toggle('hidden', !restart)
         $('quit').disabled = false
         $('quit').textContent = ok ? 'Close' : restart ? 'Later' : 'Decline'
       }
       // after the restart, what was chosen before it comes with the app's own start
       const start = (again) => {
+        if (running) return
+        running = true
         $('go').disabled = true
         $('quit').disabled = true
         $('bring').disabled = true
-        $('state').textContent = 'Installing…'
+        // while it runs, the steps say what is happening and nothing is pressed
+        if (windows) {
+          $('go').classList.add('hidden')
+          $('quit').classList.add('hidden')
+          $('back').classList.add('hidden')
+        }
+        $('copy').classList.add('hidden')
+        $('state').textContent = ''
+        $('state').classList.remove('problem')
+        $('title').textContent = windows ? 'Installing Alpha' : $('title').textContent
         const shown = !$('back').classList.contains('hidden')
-        inv('install', { bringBack: !again && shown && $('bring').checked })
+        const bring = !again && shown && $('bring').checked
+        if (windows) {
+          $('bar').classList.remove('hidden')
+          $('bar').dataset.on = '1'
+          if (bring && !steps.includes('data')) steps = ORDER.filter((k) => k === 'data' || steps.includes(k))
+          // after the restart, Windows' Linux is on: that step is done
+          now = again ? Math.max(0, steps.indexOf('linux')) : 0
+          draw(false)
+        } else {
+          $('state').textContent = 'Installing…'
+        }
+        inv('install', { bringBack: bring })
       }
       $('go').onclick = () => start(false)
       $('restart').onclick = () => inv('install_restart')
       $('quit').onclick = () => inv('install_quit')
-      // back after the restart: it carries on by itself
-      inv('install_plan').then((p) => {
-        if (p.carry_on) start(true)
-      })
     </script>
   </body>
 </html>
