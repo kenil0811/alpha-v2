@@ -1,0 +1,64 @@
+# Alpha for Windows, made on GitHub's Windows machine from a windows-* branch: Alpha's Linux (the
+# servers' setup and this checkout's release inside an Ubuntu that WSL2 runs, then made a PC's),
+# smoke-tested on the very start the Windows app makes (its secrets' key handed in, the service
+# started); then exported as one file for the setup program. `pnpm release windows` fetches them.
+name: Alpha for Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: ['windows-*']
+    paths: ['.github/workflows/windows.yml', 'release/windows/**', 'release/server/**', 'desktop/**', 'core/**', 'window/**', 'bridge/**']
+env:
+  WSL_UTF8: '1'
+jobs:
+  linux:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    steps:
+      - name: Files kept as they are (a shell script with Windows line ends does not run in Linux)
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - name: A fresh Ubuntu for Intel and AMD, in WSL2, with systemd
+        shell: pwsh
+        run: |
+          wsl --update --web-download
+          $url = 'https://cloud-images.ubuntu.com/wsl/releases/24.04/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
+          Invoke-WebRequest $url -OutFile ubuntu.tar.gz
+          New-Item -ItemType Directory -Force C:\alpha-build | Out-Null
+          wsl --import AlphaBuild C:\alpha-build ubuntu.tar.gz --version 2
+          if ($LASTEXITCODE -ne 0) { throw 'WSL2 did not take the image' }
+          wsl -d AlphaBuild -u root -- sh -c "printf '[boot]\nsystemd=true\n' > /etc/wsl.conf"
+          wsl --terminate AlphaBuild
+      - name: Alpha's Linux, made inside it
+        shell: pwsh
+        run: |
+          wsl -d AlphaBuild -u root -- sh ./release/windows/image.sh
+          if ($LASTEXITCODE -ne 0) { throw 'Alpha''s Linux was not made' }
+      - name: The smoke test, on the start the Windows app makes
+        shell: pwsh
+        run: |
+          wsl -d AlphaBuild -u root -- sh -c "umask 077; mkdir -p /run/alpha; head -c 32 /dev/urandom | base64 > /run/alpha/secrets; printf 'owner: Smoke\ndeveloper: true\n' > /home/alpha/data/alpha.yaml; chown alpha:alpha /home/alpha/data/alpha.yaml; systemctl start alpha; for i in `$(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:4700/api/health && break; sleep 1; done"
+          wsl -d AlphaBuild -u root -- /opt/alpha/node/bin/node ./release/windows/smoke.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'the smoke test failed' }
+          $h = curl.exe -s http://127.0.0.1:4700/api/health
+          if (-not $h) { throw 'Windows does not reach Alpha' }
+          Write-Output "From Windows: $h"
+      - name: Emptied again, and exported as one file
+        shell: pwsh
+        run: |
+          wsl -d AlphaBuild -u root -- sh -c "systemctl stop alpha; find /home/alpha/data -mindepth 1 -maxdepth 1 -exec rm -rf {} +; rm -rf /run/alpha /root/pair-link; cat /opt/alpha/pc-version"
+          wsl --terminate AlphaBuild
+          wsl --export AlphaBuild alpha-linux.tar.gz --format tar.gz
+          if ($LASTEXITCODE -ne 0) { throw 'the export failed' }
+          Get-Item alpha-linux.tar.gz | Select-Object Name, Length | Format-Table | Out-String | Write-Output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-linux
+          path: alpha-linux.tar.gz
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - name: What the core said
+        if: always()
+        shell: pwsh
+        run: wsl -d AlphaBuild -u root -- sh -c "journalctl -u alpha -n 60 --no-pager -o cat 2>/dev/null | grep -v 't=' || true"

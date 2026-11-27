@@ -1,6 +1,6 @@
-// Inside Alpha's Linux, as root: the servers' smoke test against the local Alpha. It answers,
-// serves the window, takes a made-up kit and runs its schedule in the sandbox; and the pairing
-// link a Bridge on this PC would be given. Says each step; exits 1 on the first that fails.
+// Inside Alpha's Linux, as root: the servers' smoke test against a PC's Alpha. It answers, runs
+// as a PC, serves the window, takes a made-up kit and runs its schedule in the sandbox; and the
+// pairing link a Bridge on this PC would be given. Says each step; exits 1 on the first that fails.
 import { readFileSync, writeFileSync } from 'node:fs'
 
 const base = 'http://127.0.0.1:4700'
@@ -20,6 +20,11 @@ const fail = (why) => {
 const health = await call('/api/health')
 if (!health.ok) fail('the core does not answer')
 console.log(`answers: ${JSON.stringify(health.data)}`)
+// a PC's: Claude's own sign-in from the window, not a server's pasted token
+const model = await call('/api/model')
+if (model.data.token !== null)
+  fail('it runs as a server, not as a PC (a token box, not Claude’s sign-in)')
+console.log('runs as a PC: Claude’s own sign-in, from the window')
 const page = await fetch(`${base}/?t=${token}`).then((r) => r.text())
 if (!page.includes('<div id="root">')) fail('the window is not served')
 console.log('serves the window')
