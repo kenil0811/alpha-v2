@@ -279,6 +279,43 @@ describe('the Bridge as the app runs it', { timeout: 30_000 }, () => {
     expect((await turn('apps')).json().problem).toMatch(/does not read that/)
   })
 
+  it('says when Chrome is not on the computer, so the Browser switch can say why it stays off', async () => {
+    const made = await app.inject({
+      method: 'POST',
+      url: '/api/computers/link',
+      headers: asWindow(),
+    })
+    const keys = inMemory()
+    const paired = await pair(made.json().link as string, keys, 'Test PC')
+    computers.push(paired.computer)
+    const config: Config = { ...paired, lends: [] }
+    bridge = new Bridge({
+      config: () => config,
+      keys,
+      start: async () => ({ command: process.execPath, args: [CHILD, FOLDER], shell: false }),
+      chrome: () => null,
+      lendBrowser: () => {
+        throw new Error('Google Chrome is not on this computer.')
+      },
+    })
+    bridge.run()
+    await until(() => bridges.online(paired.computer))
+    const page = async () =>
+      (await app.inject({ url: `/api/computers/${paired.computer}`, headers: asWindow() })).json()
+        .computer
+    expect((await page()).chrome).toBe(false)
+    const turned = await app.inject({
+      method: 'POST',
+      url: `/api/computers/${paired.computer}/reader`,
+      headers: asWindow(),
+      payload: { connector: 'browser', on: true },
+    })
+    expect(turned.statusCode).toBe(200)
+    // it stays off, and the computer's page still knows why
+    await new Promise((done) => setTimeout(done, 300))
+    expect(await page()).toMatchObject({ chrome: false, browser: false })
+  })
+
   it('pairs again: the old pairing goes, and what it lent follows the new one', async () => {
     const { dir, config } = await lendFolder()
     await until(() => world.connections.find('folder', dir)?.state === 'connected')

@@ -84,6 +84,7 @@ export interface ComputerView {
   version: string | null // the Bridge it runs, while it is connected
   here: boolean // the computer Alpha itself runs on: its folders are added by path, not lent
   browser: boolean // Alpha Bridge's Browser switch is on there (while it is connected)
+  chrome: boolean | null // Google Chrome is there, which the Browser switch needs (null: unknown)
   sites: { site: string; at: string }[] // the sites its person signed in to there for Alpha
   // what else Alpha Bridge reads there for this Alpha (a Mac's Calendar and Contacts, a plugin's
   // readers, its Browser), each turned on from Alpha by its person (rules B2); on: it is now

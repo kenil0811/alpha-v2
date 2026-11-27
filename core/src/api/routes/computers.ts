@@ -182,6 +182,7 @@ export function registerComputers(ctx: Ctx): void {
     version: null,
     here: true,
     browser: false,
+    chrome: null,
     sites: [],
     reads: [],
     turnsOn: false,
@@ -223,6 +224,7 @@ export function registerComputers(ctx: Ctx): void {
       version: bridges.versionOf(c.id),
       here: false,
       browser: bridges.browserOn(c.id),
+      chrome: bridges.chromeOf(c.id),
       sites: (engine.hands?.browser().as(user.id).sites() ?? [])
         .filter((s) => s.computer === c.id)
         .map((s) => ({ site: s.site, at: s.at })),

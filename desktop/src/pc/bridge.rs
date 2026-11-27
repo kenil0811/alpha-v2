@@ -3,7 +3,8 @@
 //! app's child and told what to do in lines. It pairs with this PC's own Alpha by itself, reads the
 //! PC's folders and works on its Chrome on the Windows side (Windows' files are slow to read from
 //! inside Linux), and its switches (a folder, the browser, pause) are in Alpha's menu by the clock,
-//! as they are on Alpha's own Your computers page. Its folder is AlphaData\bridge, never the
+//! as they are on Alpha's own Your computers page. The Browser needs Google Chrome: without it the
+//! menu says so, and offers Chrome's own download page. Its folder is AlphaData\bridge, never the
 //! separate app's, so the two can sit side by side; it ends with this app (a job Windows closes
 //! with it), so an update or an uninstall never finds its files in use.
 
@@ -19,7 +20,8 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tauri::menu::{CheckMenuItem, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Manager, Wry};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
+use tauri_plugin_opener::OpenerExt;
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
     SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
@@ -42,6 +44,7 @@ struct Seen {
     turned_away: bool,
     paused: Option<String>, // until when, in words
     browser: bool,
+    chrome: bool, // Google Chrome is on this PC, which the Browser switch needs
     folders: Vec<String>,
 }
 
@@ -189,6 +192,7 @@ fn heard(app: &AppHandle, m: Value) {
             seen.turned_away = m["turnedAway"].is_string();
             seen.paused = m["paused"]["words"].as_str().map(String::from);
             seen.browser = m["browser"].as_bool().unwrap_or(false);
+            seen.chrome = m["chrome"].as_bool().unwrap_or(true);
             seen.folders = m["lends"]
                 .as_array()
                 .map(|a| {
@@ -209,6 +213,9 @@ fn heard(app: &AppHandle, m: Value) {
         Some("problem") => {
             let words = m["words"].as_str().unwrap_or("Something went wrong.");
             log(words);
+            if words.starts_with("Google Chrome is not on this computer") {
+                return ask_for_chrome(app);
+            }
             // a pairing it asked for by itself tries again quietly; what the person did is answered
             let mut pairing = part.pairing.lock().unwrap();
             if *pairing {
@@ -256,6 +263,24 @@ fn pair(app: &AppHandle) {
     *part.pairing.lock().unwrap() = true;
     tell(app, json!({ "t": "pair", "link": link }));
 }
+
+/// The Browser switch needs Google Chrome: said plainly, with Chrome's own download page a press away.
+fn ask_for_chrome(app: &AppHandle) {
+    let app = app.clone();
+    thread::spawn(move || {
+        let yes = app
+            .dialog()
+            .message("Alpha works on sites in Google Chrome, which isn't on this PC yet. Get it, then turn Browser on again.")
+            .title("Google Chrome is needed")
+            .buttons(MessageDialogButtons::OkCancelCustom("Get Chrome".into(), "Not now".into()))
+            .blocking_show();
+        if yes {
+            let _ = app.opener().open_url(CHROME, None::<&str>);
+        }
+    });
+}
+
+const CHROME: &str = "https://www.google.com/chrome/";
 
 fn pick_folder(app: &AppHandle) {
     let app = app.clone();
@@ -310,6 +335,7 @@ fn redraw(app: &AppHandle) {
         }
         let _ = lines.folders.set_enabled(working);
         let _ = lines.browser.set_checked(seen.browser);
+        let _ = lines.browser.set_text(if seen.chrome || seen.browser { "Browser" } else { "Browser (needs Google Chrome)" });
         let _ = lines.browser.set_enabled(working);
         let _ = lines.pause.set_text(if seen.paused.is_some() { "Resume" } else { "Pause for an hour" });
         let _ = lines.pause.set_enabled(working);
@@ -321,6 +347,7 @@ pub fn on_menu(app: &AppHandle, id: &str) {
     let seen = app.state::<Part>().seen.lock().unwrap().clone();
     match id {
         "pc-add" => pick_folder(app),
+        "pc-browser" if !seen.chrome && !seen.browser => ask_for_chrome(app),
         "pc-browser" => tell(app, json!({ "t": "browser", "on": !seen.browser })),
         "pc-pause" if seen.paused.is_some() => tell(app, json!({ "t": "resume" })),
         "pc-pause" => tell(app, json!({ "t": "pause", "minutes": 60 })),

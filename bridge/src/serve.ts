@@ -153,6 +153,7 @@ export async function serve(
         : null,
       lends: c?.lends ?? [],
       browser: c?.browser === true,
+      chrome: !!chromeHere(),
       offers: bridge?.offers ?? [],
     })
   }

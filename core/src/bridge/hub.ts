@@ -10,7 +10,14 @@ import { awayWords, BridgedProcess, type Link, pausedWords } from './process.ts'
 
 // The words a computer and the core say to each other, one JSON object a message.
 export type FromComputer =
-  | { t: 'hello'; computer: string; signature: string; version: string; browser?: boolean }
+  | {
+      t: 'hello'
+      computer: string
+      signature: string
+      version: string
+      browser?: boolean
+      chrome?: boolean // Google Chrome is on it (Bridge 0.5.7 on)
+    }
   | { t: 'line'; connector: string; line: string }
   | { t: 'ended'; connector: string; why: string }
   | { t: 'lend'; connector: string; account: string }
@@ -18,7 +25,7 @@ export type FromComputer =
   | { t: 'paused'; until: string | null } // paused by its person, for an hour or until resumed
   | { t: 'resumed' }
   | { t: 'signout' } // its person signed out of it: removed, as from Your computers
-  | { t: 'browser'; on: boolean } // its Browser switch
+  | { t: 'browser'; on: boolean; chrome?: boolean } // its Browser switch, and Chrome there
   | { t: 'site'; id: string; done: boolean; why?: string } // a sign-in window there, closed
   | { t: 'cdp'; id: string; m: string } // a site's Chrome there, speaking
   | { t: 'cdp-closed'; id: string; why: string | null }
@@ -41,6 +48,7 @@ interface Connected {
   processes: Map<string, BridgedProcess>
   paused: { until: string | null } | null
   browser: boolean // its Browser switch is on
+  chrome: boolean | null // Google Chrome is on it, as its Bridge says (null: an older Bridge)
   pipes: Map<string, { heard(m: string): void; closed(why: string | null): void }>
   signIns: Map<string, { done(): void; failed(why: string): void }>
 }
@@ -142,6 +150,12 @@ export class Hub {
     )
   }
 
+  // Whether Google Chrome is on a computer, as its Bridge says while it is connected; null when it
+  // is away or its Bridge is older than saying so.
+  chromeOf(computer: string): boolean | null {
+    return this.connected.get(computer)?.chrome ?? null
+  }
+
   // The Bridge a computer runs, while it is connected.
   versionOf(computer: string): string | null {
     return this.connected.get(computer)?.version ?? null
@@ -224,6 +238,7 @@ export class Hub {
             processes: new Map(),
             paused: null,
             browser: m.browser === true,
+            chrome: typeof m.chrome === 'boolean' ? m.chrome : null,
             pipes: new Map(),
             signIns: new Map(),
           }
@@ -307,6 +322,7 @@ export class Hub {
     }
     if (m.t === 'browser') {
       me.browser = m.on
+      if (typeof m.chrome === 'boolean') me.chrome = m.chrome
       this.hands.notify()
       return
     }

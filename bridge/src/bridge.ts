@@ -21,7 +21,7 @@ import { type Config, type Lend, lends, lentNow } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.5.6'
+export const VERSION = '0.5.7'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =
@@ -199,8 +199,22 @@ export class Bridge {
   changed(): void {
     if (!this.options.config().browser) this.closePipes()
     if (!this.online) return
-    this.send({ t: 'browser', on: this.options.config().browser === true })
+    this.tellBrowser()
     this.reconcile()
+  }
+
+  // Whether Google Chrome is on this computer: the Browser switch needs it.
+  private chromeIsHere(): boolean {
+    return !!(this.options.chrome ?? chromeHere)()
+  }
+
+  // The Browser switch as it stands, and whether Chrome is here, so Alpha can say why it is off.
+  private tellBrowser(): void {
+    this.send({
+      t: 'browser',
+      on: this.options.config().browser === true,
+      chrome: this.chromeIsHere(),
+    })
   }
 
   private closePipes(): void {
@@ -375,6 +389,7 @@ export class Bridge {
       signature,
       version: VERSION,
       browser: c.browser === true,
+      chrome: this.chromeIsHere(),
     })
   }
 
@@ -417,6 +432,8 @@ export class Bridge {
       this.said(
         `Alpha asked to turn ${on ? 'on' : 'off'} ${named}: ${err instanceof Error ? err.message : String(err)}`,
       )
+      // the Browser switch stays off (no Chrome here): Alpha is told, and says so in its window
+      if (connector === 'browser' && this.online) this.tellBrowser()
       return
     }
     this.said(
