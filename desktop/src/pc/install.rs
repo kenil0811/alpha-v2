@@ -333,7 +333,8 @@ pub fn restart() {
 
 /// Uninstalling (the setup program's uninstaller runs `Alpha.exe --uninstall` first): the data
 /// saved as an archive in Documents, which a later install can bring back with the key Windows
-/// still keeps; then Alpha's Linux removed and the start-at-sign-in entries with it.
+/// still keeps; then Alpha's Linux removed, the start-at-sign-in entries and this PC's pairing
+/// with it.
 pub fn uninstall() {
     // the engine's starter and the app go first, so nothing starts Alpha's Linux again
     stop_others();
@@ -356,4 +357,5 @@ pub fn uninstall() {
     reg(&["delete", RUN, "/v", "Alpha engine", "/f"]);
     reg(&["delete", RUN, "/v", "Alpha", "/f"]);
     let _ = std::fs::remove_file(data_dir().join("version"));
+    super::bridge::forget();
 }

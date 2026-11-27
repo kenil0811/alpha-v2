@@ -32,9 +32,10 @@ jobs:
         working-directory: desktop
         shell: bash
         run: |
-          mkdir -p resources
+          mkdir -p resources/bridge
           printf 'stand-in\n' | gzip > resources/alpha-linux.tar.gz
           printf '0.0.0\n' > resources/VERSION
+          printf 'stand-in\n' > resources/bridge/stand-in
           npx --yes @tauri-apps/cli@2.11.5 build --bundles nsis --config '{"version":"0.0.1"}'
   linux:
     if: ${{ !inputs.compile_only && !inputs.linux_run }}
@@ -103,6 +104,17 @@ jobs:
           path: desktop/resources
           run-id: ${{ inputs.linux_run || github.run_id }}
           github-token: ${{ github.token }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Alpha Bridge's part, for the PC's own folders and browser (Node for Windows and the bundled Bridge)
+        shell: bash
+        run: |
+          pnpm bridge resources win-x64
+          cp -R bridge/app/resources/bridge desktop/resources/bridge
       - uses: dtolnay/rust-toolchain@stable
       - name: The setup program
         working-directory: desktop
@@ -160,6 +172,21 @@ jobs:
           Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run | Format-List | Out-String | Write-Output
           if (-not (Test-Path "$env:LOCALAPPDATA\AlphaData\secrets.key")) { throw 'no sealed key' }
           wsl -d Alpha -u root -- sh -c "test -s /run/alpha/secrets && echo the key is handed in, in memory alone; grep -c Smoke /home/alpha/data/alpha.yaml || true"
+      - name: The app by the clock pairs this PC with its Alpha by itself (Alpha Bridge's part)
+        shell: pwsh
+        run: |
+          Start-Process -FilePath "$env:LOCALAPPDATA\Alpha\Alpha.exe" -ArgumentList '--quietly'
+          $t = "$(wsl -d Alpha -u root -- cat /home/alpha/data/token)".Trim()
+          Write-Output "::add-mask::$t"
+          $online = @()
+          for ($i = 0; $i -lt 30 -and $online.Count -eq 0; $i++) {
+            Start-Sleep 10
+            $c = curl.exe -s -m 5 -H "x-alpha-token: $t" http://127.0.0.1:4700/api/computers | ConvertFrom-Json
+            $online = @($c.computers | Where-Object { $_.online })
+          }
+          Get-Content "$env:LOCALAPPDATA\AlphaData\bridge\bridge.log" -ErrorAction SilentlyContinue | Select-String -NotMatch 'pair=|t=' | Select-Object -Last 20 | Out-String | Write-Output
+          if ($online.Count -eq 0) { throw 'this PC did not pair with its Alpha' }
+          $online | Select-Object name, platform, online | Format-Table | Out-String | Write-Output
       - name: Uninstalled, with its data saved in Documents
         shell: pwsh
         run: |
@@ -169,3 +196,6 @@ jobs:
           wsl -l -q
           Get-ChildItem "$env:USERPROFILE\Documents\Alpha data *.tar.gz" | Select-Object Name, Length | Format-Table | Out-String | Write-Output
           if (wsl -l -q | Select-String -SimpleMatch 'Alpha') { throw 'Alpha''s Linux is still there' }
+          # Alpha Bridge's part ended with the app, so its files went too; its pairing went with it
+          if (Test-Path "$env:LOCALAPPDATA\Alpha\bridge\node\node.exe") { throw 'the Bridge''s part was left behind' }
+          if (Test-Path "$env:LOCALAPPDATA\AlphaData\bridge") { throw 'the Bridge''s pairing was left behind' }

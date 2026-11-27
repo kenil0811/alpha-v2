@@ -3,7 +3,7 @@
 //! one a developer runs on the same port. The shell never runs a core in its own process, so there
 //! is one Alpha. Closing the window leaves Alpha running; Quit closes the shell, and the core
 //! carries on with agents and reminders. The Mac's own parts are install.rs and notify.rs; the
-//! PC's are in pc/.
+//! PC's are in pc/, with Alpha Bridge's part for the PC's own folders and browser.
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 use std::path::PathBuf;
@@ -363,20 +363,28 @@ fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
     let needs = MenuItem::with_id(app, "needs", "Nothing needs you", false, None::<&str>)?;
     let logs = MenuItem::with_id(app, "logs", "Logs", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-    // on a PC, a report for Kenil with no terminal: the Mac's is the alpha command's
-    let report = MenuItem::with_id(app, "report", "Make a report", cfg!(windows), None::<&str>)?;
-    // on a PC, an update Kenil sends as a small file; the Mac's comes as a new app
-    let update = MenuItem::with_id(app, "update", "Update from a file…", cfg!(windows), None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Alpha", true, None::<&str>)?;
     let line = || PredefinedMenuItem::separator(app);
-    let menu = if cfg!(windows) {
-        Menu::with_items(
+    // on a PC: this PC's own folders, browser and pause (Alpha Bridge's part); an update Kenil
+    // sends as a small file, as the Mac's comes as a new app; and a report for Kenil with no
+    // terminal, as the Mac's is the alpha command's
+    #[cfg(windows)]
+    let menu = {
+        let part = pc::bridge::lines(app)?;
+        let update = MenuItem::with_id(app, "update", "Update from a file…", true, None::<&str>)?;
+        let report = MenuItem::with_id(app, "report", "Make a report", true, None::<&str>)?;
+        let menu = Menu::with_items(
             app,
-            &[&open, &needs, &line()?, &logs, &settings, &line()?, &update, &report, &line()?, &quit],
-        )?
-    } else {
-        Menu::with_items(app, &[&open, &needs, &line()?, &logs, &settings, &line()?, &quit])?
+            &[
+                &open, &needs, &line()?, &part.status, &part.folders, &part.browser, &part.pause,
+                &line()?, &logs, &settings, &line()?, &update, &report, &line()?, &quit,
+            ],
+        )?;
+        app.manage(part);
+        menu
     };
+    #[cfg(not(windows))]
+    let menu = Menu::with_items(app, &[&open, &needs, &line()?, &logs, &settings, &line()?, &quit])?;
     let core = core.clone();
     let builder = TrayIconBuilder::with_id("alpha")
         .icon(Image::from_bytes(tray_icon(false))?)
@@ -415,6 +423,8 @@ fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
                         });
                     });
             }
+            #[cfg(windows)]
+            other if other.starts_with("pc-") => pc::bridge::on_menu(app, other),
             "quit" => app.exit(0),
             _ => {}
         });
@@ -487,6 +497,8 @@ fn main() {
             notify::start(&handle);
             let mark = menu_bar_mark(&handle, &started)?;
             app.manage(mark);
+            #[cfg(windows)]
+            pc::bridge::start(&handle);
             watch(handle, started.clone());
             Ok(())
         })

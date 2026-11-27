@@ -1,8 +1,10 @@
 //! Alpha on a Windows PC: its engine is the servers' Linux Alpha, inside the Linux Windows runs
 //! for it (WSL2, a distribution called Alpha). This app is its window, its icon by the clock and
-//! its notifications; with `--engine` it is the engine's starter instead (engine.rs), with no
-//! window at all. Every Linux command is run with no console window.
+//! its notifications, and it carries Alpha Bridge's code for the PC's own folders and browser
+//! (bridge.rs); with `--engine` it is the engine's starter instead (engine.rs), with no window at
+//! all. Every Linux command is run with no console window.
 
+pub mod bridge;
 pub mod engine;
 pub mod install;
 pub mod notify;
