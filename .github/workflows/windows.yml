@@ -204,7 +204,7 @@ jobs:
           Write-Output "It said: $said"
           if ($said -notmatch 'not updated: .*not signed') { throw 'the file was not checked as an update inside Linux' }
           if (-not (curl.exe -s -m 5 http://127.0.0.1:4700/api/health)) { throw 'Alpha stopped answering' }
-      - name: Uninstalled, with its data saved in Documents
+      - name: Uninstalled, with its data saved on this PC
         shell: pwsh
         run: |
           $u = "$env:LOCALAPPDATA\Alpha\uninstall.exe"
