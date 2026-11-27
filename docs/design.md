@@ -409,7 +409,8 @@ carries the data over, and Kenil's small signed file (`pnpm server pc`, Update f
 menu) updates it by the servers' own update. Claude signs in through the window, its code pasted
 back. The app carries Alpha Bridge's code too, paired with the PC's own Alpha by itself (plain http
 only for this PC's own address), so the PC's folders and Chrome are lent from the Windows side, from
-Set up Alpha, Your computers or the menu by the clock, with no second app. Uninstalling saves the
+Set up Alpha, Your computers or the menu by the clock, with no second app. A new PC's Alpha starts
+with the Interviewer on (Kenil, 27 Nov), so Set up Alpha offers what the Bridge reads there. Uninstalling saves the
 data in Documents and takes the Linux and the pairing with it.
 
 ## Proving it

@@ -341,7 +341,9 @@ pub fn run(app: AppHandle, bring_back: bool) {
         if let Err(e) = engine::make_key() {
             return ended(&app, "failed", &e);
         }
-        let yaml = format!("owner: {}\nprepare_readers: true\n", serde_json::json!(person()));
+        // a new PC's Alpha starts with the Interviewer on (Kenil, 27 Nov): Set up Alpha then offers
+        // what Alpha Bridge reads on the PC (Browsing, Apps, AI work), each off until turned on
+        let yaml = format!("owner: {}\nprepare_readers: true\nplugins: [interviews]\n", serde_json::json!(person()));
         let _ = linux_with(
             "[ -f /home/alpha/data/alpha.yaml ] || { cat > /home/alpha/data/alpha.yaml; chown alpha:alpha /home/alpha/data/alpha.yaml; }",
             yaml.as_bytes(),
