@@ -136,9 +136,16 @@ jobs:
           $app = "$env:LOCALAPPDATA\Alpha\Alpha.exe"
           if (-not (Test-Path $app)) { throw "the app is not at $app" }
           wsl --update --web-download
-          $p = Start-Process -Wait -PassThru -FilePath $app -ArgumentList '--install-quietly'
-          Get-Content "$env:LOCALAPPDATA\AlphaData\install.log" | Write-Output
-          if ($p.ExitCode -ne 0) { throw 'Alpha did not install itself' }
+          # not -Wait: that waits for the engine's starter too, which runs on by design
+          Start-Process -FilePath $app -ArgumentList '--install-quietly'
+          $log = "$env:LOCALAPPDATA\AlphaData\install.log"
+          $end = ''
+          for ($i = 0; $i -lt 150 -and -not $end; $i++) {
+            Start-Sleep 10
+            if (Test-Path $log) { $end = Select-String -Path $log -Pattern '^(done|failed|restart): ' | Select-Object -Last 1 }
+          }
+          Get-Content $log -ErrorAction SilentlyContinue | Write-Output
+          if (-not $end -or "$end" -notmatch 'done: ') { throw 'Alpha did not install itself' }
       - name: Alpha answers on this PC, as the person's own, and keeps answering
         shell: pwsh
         run: |
