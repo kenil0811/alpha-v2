@@ -10,6 +10,10 @@ on:
         description: Only compile the Windows app, with a stand-in for Alpha's Linux (a quick check)
         type: boolean
         default: false
+      linux_run:
+        description: Take Alpha's Linux from this earlier run instead of making it again (its id)
+        type: string
+        default: ''
   push:
     branches: ['windows-*']
     paths: ['.github/workflows/windows.yml', 'release/windows/**', 'release/server/**', 'desktop/**', 'core/**', 'window/**', 'bridge/**']
@@ -33,7 +37,7 @@ jobs:
           printf '0.0.0\n' > resources/VERSION
           npx --yes @tauri-apps/cli@2.11.5 build --bundles nsis --config '{"version":"0.0.1"}'
   linux:
-    if: ${{ !inputs.compile_only }}
+    if: ${{ !inputs.compile_only && !inputs.linux_run }}
     runs-on: windows-2025
     timeout-minutes: 60
     steps:
@@ -88,6 +92,7 @@ jobs:
   app:
     # the Windows Alpha app around Alpha's Linux, as one setup program for the person alone
     needs: linux
+    if: ${{ always() && !inputs.compile_only && (needs.linux.result == 'success' || inputs.linux_run != '') }}
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -96,6 +101,8 @@ jobs:
         with:
           name: alpha-linux
           path: desktop/resources
+          run-id: ${{ inputs.linux_run || github.run_id }}
+          github-token: ${{ github.token }}
       - uses: dtolnay/rust-toolchain@stable
       - name: The setup program
         working-directory: desktop
