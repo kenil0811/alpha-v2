@@ -122,6 +122,7 @@ jobs:
     # the setup program on a Windows machine, as the person would run it, with no window: put in
     # place, Alpha installing itself, answering on this PC, then uninstalled with its data saved
     needs: app
+    if: ${{ always() && needs.app.result == 'success' }}
     runs-on: windows-2025
     timeout-minutes: 45
     steps:
