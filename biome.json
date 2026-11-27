@@ -9,8 +9,8 @@
       "!**/.tsbuild-scripts",
       "!.data",
       "!docs",
-      "!mac/target",
-      "!mac/gen",
+      "!desktop/target",
+      "!desktop/gen",
       "!bridge/app/target",
       "!bridge/app/gen",
       "!bridge/app/resources"

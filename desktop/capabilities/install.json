@@ -3,5 +3,11 @@
   "identifier": "install-window",
   "description": "The shell's own Install window: what this install is, run it, close, and on a PC the restart that finishes turning WSL on.",
   "windows": ["install"],
-  "permissions": ["core:default", "allow-install-plan", "allow-install", "allow-install-quit", "allow-install-restart"]
+  "permissions": [
+    "core:default",
+    "allow-install-plan",
+    "allow-install",
+    "allow-install-quit",
+    "allow-install-restart"
+  ]
 }
