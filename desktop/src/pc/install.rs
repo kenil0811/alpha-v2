@@ -220,12 +220,13 @@ pub fn run(app: AppHandle) {
         }
 
         // an update: Alpha's Linux made new from this setup's, the person's data carried over
-        // (saved first, beside the key, and put back after); the key Windows keeps stays
+        // (saved first, beside the key, and put back after); the key Windows keeps stays. The
+        // readers' downloads (the reading browser, the document reader) come again by themselves.
         let mut carried: Option<Vec<u8>> = None;
         if distro_here() && installed().as_deref() != Some(version.as_str()) {
             say(&app, "Saving your data before updating");
             stop_others();
-            let out = linux("systemctl stop alpha; tar -czf - -C /home/alpha data").output();
+            let out = linux("systemctl stop alpha; tar -czf - -C /home/alpha --exclude=data/browsers --exclude=data/envs data").output();
             match out {
                 Ok(o) if o.status.success() && !o.stdout.is_empty() => {
                     let _ = std::fs::write(data_dir().join("before-update.tar.gz"), &o.stdout);
@@ -345,7 +346,7 @@ pub fn uninstall() {
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
             .unwrap_or_default();
-        if let Ok(out) = linux("tar -czf - -C /home/alpha data").output() {
+        if let Ok(out) = linux("tar -czf - -C /home/alpha --exclude=data/browsers --exclude=data/envs data").output() {
             if out.status.success() && !out.stdout.is_empty() {
                 let _ = std::fs::write(docs.join(format!("Alpha data {stamp}.tar.gz")), &out.stdout);
             }
