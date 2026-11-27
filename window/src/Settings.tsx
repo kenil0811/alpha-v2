@@ -423,7 +423,7 @@ function ModelSection() {
                 }
               >
                 {on === p.route && <Refusal words={problem} />}
-                {subscription && <ClaudeCode on={signingIn} />}
+                {subscription && <ClaudeCode on={signingIn} onSent={loadSetup} />}
                 {subscription && model.token !== null && (
                   <TokenForm has={model.token} onSaved={setModel} />
                 )}

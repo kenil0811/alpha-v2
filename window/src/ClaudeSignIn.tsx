@@ -53,7 +53,7 @@ export function useSignIn(onChange: () => void): [boolean, () => void, SigningIn
 
 // On a PC, under Sign in: the page opened again if it did not show, and the code Claude's page
 // shows, pasted here for Claude.
-export function ClaudeCode({ on }: { on: SigningIn }) {
+export function ClaudeCode({ on, onSent }: { on: SigningIn; onSent?: () => void }) {
   const [code, setCode] = useState('')
   const [said, setSaid] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -66,6 +66,8 @@ export function ClaudeCode({ on }: { on: SigningIn }) {
       await api.post('/api/setup/signin/code', { code })
       setSaid('Sent to Claude. Alpha shows you signed in in a moment.')
       setCode('')
+      // Claude takes a moment to finish: looked at again soon, as well as every few seconds
+      for (const ms of [1500, 4000, 8000, 12000]) setTimeout(() => onSent?.(), ms)
     } catch (err) {
       setSaid(wordsOf(err))
     } finally {

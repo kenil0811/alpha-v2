@@ -6,7 +6,7 @@
 // (ui-rules U1 to U4).
 import type { ChapterScreen, StoryView } from '@alpha/core/api'
 import { Check, Minus } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
 import { Face } from '../Face.tsx'
 import { Refusal, useAct } from '../ui/act.tsx'
@@ -198,6 +198,14 @@ function StepPart({
     moved(out.story, !!out.on)
     if (!out.on) load()
   }
+  // Claude's sign-in finishing in the browser (or its code pasted back) while the step is shown:
+  // the story goes on by itself, as the person has nothing left to do here
+  const claudeSet = screen?.key === 'claude' ? screen.set : null
+  const wasSet = useRef(claudeSet)
+  useEffect(() => {
+    if (here && wasSet.current === false && claudeSet === true) go(false)
+    wasSet.current = claudeSet
+  }, [here, claudeSet])
   const doneSaying = useCallback(() => setSaid(true), [])
   // a step with nothing to show is passed by, never drawn empty
   const nothing = !!screen && 'nothing' in screen && screen.nothing === true

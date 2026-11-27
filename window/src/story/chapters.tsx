@@ -202,7 +202,7 @@ function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
               <KeyRound className="size-3.5" /> Sign in
             </Button>
           </div>
-          <ClaudeCode on={signingIn} />
+          <ClaudeCode on={signingIn} onSent={reload} />
         </div>
       )}
     </div>
