@@ -1,7 +1,10 @@
-//! Alpha on the Mac: Alpha's own window and a mark in the menu bar, over the core the login item
-//! runs, or the one a developer runs on the same port. The shell never starts a core of its own,
-//! so there is one Alpha. Closing the window leaves Alpha running; Quit closes the shell, and the
-//! core carries on with agents and reminders.
+//! Alpha on the Mac and on Windows: Alpha's own window and a mark in the menu bar (by the clock on
+//! Windows), over the core the login item runs on a Mac, or Alpha's Linux on a PC (pc/), or the
+//! one a developer runs on the same port. The shell never runs a core in its own process, so there
+//! is one Alpha. Closing the window leaves Alpha running; Quit closes the shell, and the core
+//! carries on with agents and reminders. The Mac's own parts are install.rs and notify.rs; the
+//! PC's are in pc/.
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -12,17 +15,23 @@ use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::webview::{DownloadEvent, NewWindowResponse};
-use tauri::{
-    AppHandle, Manager, RunEvent, TitleBarStyle, Url, WebviewUrl, WebviewWindow,
-    WebviewWindowBuilder, WindowEvent,
-};
+#[cfg(target_os = "macos")]
+use tauri::{RunEvent, TitleBarStyle};
+use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
 
+#[cfg(target_os = "macos")]
 mod install;
+#[cfg(target_os = "macos")]
 mod notify;
+#[cfg(windows)]
+mod pc;
+#[cfg(windows)]
+use pc::{install, notify};
 
 const TRAY: &[u8] = include_bytes!("../icons/tray.png");
 const TRAY_WAITING: &[u8] = include_bytes!("../icons/tray-waiting.png");
+const TRAY_PC: &[u8] = include_bytes!("../icons/32x32.png");
 
 /// Where the core is: its data folder (with the per-install token) and its port, as the login
 /// item and the alpha command set them.
@@ -46,6 +55,11 @@ impl Core {
     }
 
     fn token(&self) -> Option<String> {
+        // on a PC the core keeps it inside Alpha's Linux
+        #[cfg(windows)]
+        if std::env::var_os("ALPHA_HOME").is_none() {
+            return pc::token();
+        }
         std::fs::read_to_string(self.home.join("token"))
             .ok()
             .map(|t| t.trim().to_string())
@@ -74,7 +88,14 @@ impl Core {
             .is_ok()
     }
 
-    /// The core's login item started again (or for the first time), when this Mac has one.
+    /// The core's login item started again (or for the first time), when this Mac has one; on a
+    /// PC, the engine's starter.
+    #[cfg(windows)]
+    fn start(&self) -> bool {
+        pc::start_engine()
+    }
+
+    #[cfg(not(windows))]
     fn start(&self) -> bool {
         let home = std::env::var("HOME").unwrap_or_default();
         let plist = format!("{home}/Library/LaunchAgents/io.github.kenil0811.alpha.core.plist");
@@ -141,7 +162,8 @@ struct Mark {
     shown: Mutex<Option<usize>>,
 }
 
-/// The Install window's commands: what this install is, run it, and Not now.
+/// The Install window's commands: what this install is, run it, Decline, and on a PC the restart
+/// that finishes turning WSL on.
 #[tauri::command]
 fn install_plan(app: AppHandle) -> install::Plan {
     install::plan(&app)
@@ -155,6 +177,12 @@ fn install(app: AppHandle) {
 #[tauri::command]
 fn install_quit(app: AppHandle) {
     app.exit(0);
+}
+
+#[tauri::command]
+fn install_restart() {
+    #[cfg(windows)]
+    install::restart();
 }
 
 /// The starting page's Start Alpha: the core's login item, started again.
@@ -215,16 +243,19 @@ fn build_window(app: &AppHandle, core: &Core) -> tauri::Result<WebviewWindow> {
     let links = core.clone();
     let opener = app.clone();
     let windows = app.clone();
-    WebviewWindowBuilder::new(app, "main", start)
+    let builder = WebviewWindowBuilder::new(app, "main", start)
         .title("Alpha")
         .visible(!quietly())
-        // the first click on the window does what it says, instead of only bringing it forward
-        .accept_first_mouse(true)
         .inner_size(1280.0, 840.0)
-        .min_inner_size(960.0, 600.0)
-        // the window's own bars hold the traffic lights: the rail leaves them room
+        .min_inner_size(960.0, 600.0);
+    // the Mac's: the first click does what it says, and the window's own bars hold the traffic
+    // lights, the rail leaving them room; Windows keeps its own title bar and buttons
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .accept_first_mouse(true)
         .title_bar_style(TitleBarStyle::Overlay)
-        .hidden_title(true)
+        .hidden_title(true);
+    builder
         .disable_drag_drop_handler()
         // a web page outside Alpha (a site, a document's source) opens in its own app; everything
         // else stays: the core's pages, the shell's own, and the frames a module's page is drawn in
@@ -297,8 +328,9 @@ fn watch(app: AppHandle, core: Core) {
             let mut shown = mark.shown.lock().unwrap();
             if *shown != needs || shown.is_none() {
                 let waiting = needs.unwrap_or(0) > 0;
-                let icon = Image::from_bytes(if waiting { TRAY_WAITING } else { TRAY }).ok();
+                let icon = Image::from_bytes(tray_icon(waiting)).ok();
                 let _ = mark.tray.set_icon(icon);
+                #[cfg(target_os = "macos")]
                 let _ = mark.tray.set_icon_as_template(true);
                 let _ = mark.needs.set_text(match needs {
                     None => "Alpha is not answering".to_string(),
@@ -314,41 +346,92 @@ fn watch(app: AppHandle, core: Core) {
     });
 }
 
+/// The mark's picture: the Mac's drawn as a template it colours itself; Windows' in Alpha's own
+/// colours, as its taskbar may be light or dark.
+fn tray_icon(waiting: bool) -> &'static [u8] {
+    if cfg!(windows) {
+        TRAY_PC
+    } else if waiting {
+        TRAY_WAITING
+    } else {
+        TRAY
+    }
+}
+
 fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
     let open = MenuItem::with_id(app, "open", "Open Alpha", true, None::<&str>)?;
     let needs = MenuItem::with_id(app, "needs", "Nothing needs you", false, None::<&str>)?;
-    let activity = MenuItem::with_id(app, "activity", "Activity", true, None::<&str>)?;
+    let logs = MenuItem::with_id(app, "logs", "Logs", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+    // on a PC, a report for Kenil with no terminal: the Mac's is the alpha command's
+    let report = MenuItem::with_id(app, "report", "Make a report", cfg!(windows), None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Alpha", true, None::<&str>)?;
     let line = || PredefinedMenuItem::separator(app);
-    let menu = Menu::with_items(
-        app,
-        &[&open, &needs, &line()?, &activity, &settings, &line()?, &quit],
-    )?;
+    let menu = if cfg!(windows) {
+        Menu::with_items(
+            app,
+            &[&open, &needs, &line()?, &logs, &settings, &report, &line()?, &quit],
+        )?
+    } else {
+        Menu::with_items(app, &[&open, &needs, &line()?, &logs, &settings, &line()?, &quit])?
+    };
     let core = core.clone();
-    let tray = TrayIconBuilder::with_id("alpha")
-        .icon(Image::from_bytes(TRAY)?)
-        .icon_as_template(true)
+    let builder = TrayIconBuilder::with_id("alpha")
+        .icon(Image::from_bytes(tray_icon(false))?)
         .tooltip("Alpha")
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "open" => show(app, &core, None),
             "needs" => show(app, &core, Some("#/")),
-            "activity" => show(app, &core, Some("#/settings/activity")),
+            "logs" => show(app, &core, Some("#/settings/logs")),
             "settings" => show(app, &core, Some("#/settings")),
+            #[cfg(windows)]
+            "report" => {
+                thread::spawn(|| {
+                    if let Some(file) = pc::report() {
+                        notify::show("report", "Alpha", None, &format!("The report is on your Desktop: {}", file.display()), "");
+                    }
+                });
+            }
             "quit" => app.exit(0),
             _ => {}
-        })
-        .build(app)?;
+        });
+    #[cfg(target_os = "macos")]
+    let builder = builder.icon_as_template(true);
+    let tray = builder.build(app)?;
     Ok(Mark { tray, needs, shown: Mutex::new(None) })
 }
 
 fn main() {
+    // on a PC the same app is also the engine's starter, and what the uninstaller asks first
+    #[cfg(windows)]
+    {
+        if std::env::args().any(|a| a == "--engine") {
+            pc::engine::run();
+            return;
+        }
+        if std::env::args().any(|a| a == "--uninstall") {
+            pc::install::uninstall();
+            return;
+        }
+    }
     let core = Core::here();
     let started = core.clone();
+    #[cfg(target_os = "macos")]
     let reopen = core.clone();
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Windows: one Alpha app at a time; opening it again brings the window forward
+    #[cfg(windows)]
+    let builder = {
+        let again = core.clone();
+        builder
+            .plugin(tauri_plugin_single_instance::init(move |app, _args, _cwd| {
+                show(app, &again, None);
+            }))
+            .plugin(tauri_plugin_notification::init())
+    };
+    let app = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(core.clone())
@@ -356,26 +439,37 @@ fn main() {
             install_plan,
             install,
             install_quit,
+            install_restart,
             start_core
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-            // a released Alpha not installed on this Mac yet, or newer than the one that is:
-            // the Install window, and nothing else until it is done
+            // a released Alpha not installed here yet, or another than the one that is: the
+            // Install window, and nothing else until it is done
+            #[cfg(windows)]
+            if install::quietly() {
+                install::run(handle);
+                return Ok(());
+            }
             if install::wanted(&handle) {
                 install::window(&handle)?;
                 return Ok(());
             }
             build_window(&handle, &started)?;
-            let (clicked, at) = (handle.clone(), started.clone());
-            notify::start(move |place| show(&clicked, &at, Some(&place)));
+            #[cfg(target_os = "macos")]
+            {
+                let (clicked, at) = (handle.clone(), started.clone());
+                notify::start(move |place| show(&clicked, &at, Some(&place)));
+            }
+            #[cfg(windows)]
+            notify::start(&handle);
             let mark = menu_bar_mark(&handle, &started)?;
             app.manage(mark);
             watch(handle, started.clone());
             Ok(())
         })
         .on_window_event(|window, event| {
-            // closing the window hides it: Alpha keeps running in the menu bar
+            // closing the window hides it: Alpha keeps running in the menu bar, or by the clock
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     api.prevent_close();
@@ -384,10 +478,13 @@ fn main() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("Alpha's window could not be made")
-        .run(move |app, event| {
-            if let RunEvent::Reopen { .. } = event {
-                show(app, &reopen, None);
-            }
-        });
+        .expect("Alpha's window could not be made");
+    #[cfg(target_os = "macos")]
+    app.run(move |app, event| {
+        if let RunEvent::Reopen { .. } = event {
+            show(app, &reopen, None);
+        }
+    });
+    #[cfg(not(target_os = "macos"))]
+    app.run(|_, _| {});
 }

@@ -29,7 +29,8 @@
       <p id="words">Alpha will be put in Applications, keep its data in your Library, and start when you log in. Nothing leaves this Mac.</p>
       <div class="row">
         <button id="go" class="primary" type="button">Install</button>
-        <button id="quit" type="button">Not now</button>
+        <button id="quit" type="button">Decline</button>
+        <button id="restart" class="primary hidden" type="button">Restart now</button>
         <span id="state"></span>
       </div>
       <pre id="log" class="hidden"></pre>
@@ -39,6 +40,9 @@
       const $ = (id) => document.getElementById(id)
       // what this install is: fresh, or an update from the version installed
       inv('install_plan').then((p) => {
+        if (p.windows)
+          $('words').textContent =
+            'Alpha will be put in your apps, keep its data on this PC, and start when you sign in. Windows may ask you once to turn on its Subsystem for Linux, and to restart. Nothing leaves this PC.'
         if (p.from) {
           $('title').textContent = `Update Alpha ${p.from} to ${p.to}`
           $('words').textContent = 'Your data and settings stay as they are; they are backed up first.'
@@ -54,20 +58,32 @@
         log.textContent += `${line}\n`
         log.scrollTop = log.scrollHeight
       }
-      window.installEnded = (ok, words) => {
+      // how it ended: done (true, or 'done'), failed (false, or 'failed'), or, on Windows, a restart
+      // to finish turning WSL on, after which this window comes back by itself
+      window.installEnded = (state, words) => {
+        const ok = state === true || state === 'done'
+        const restart = state === 'restart'
         $('state').textContent = words
-        $('state').className = ok ? '' : 'problem'
-        $('go').disabled = ok
+        $('state').className = ok || restart ? '' : 'problem'
+        $('go').disabled = ok || restart
+        $('go').classList.toggle('hidden', restart)
+        $('restart').classList.toggle('hidden', !restart)
         $('quit').disabled = false
-        $('quit').textContent = ok ? 'Close' : 'Not now'
+        $('quit').textContent = ok ? 'Close' : restart ? 'Later' : 'Decline'
       }
-      $('go').onclick = () => {
+      const start = () => {
         $('go').disabled = true
         $('quit').disabled = true
         $('state').textContent = 'Installing…'
         inv('install')
       }
+      $('go').onclick = start
+      $('restart').onclick = () => inv('install_restart')
       $('quit').onclick = () => inv('install_quit')
+      // back after the restart: it carries on by itself
+      inv('install_plan').then((p) => {
+        if (p.carry_on) start()
+      })
     </script>
   </body>
 </html>

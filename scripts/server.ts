@@ -34,7 +34,7 @@ const OUT = join(ROOT, '.data', 'release')
 const KEY = join(homedir(), '.ssh', 'alpha-server')
 const SSH = ['-i', KEY, '-o', 'StrictHostKeyChecking=accept-new']
 const SERVER_FILES = join(ROOT, 'release', 'server')
-const LEFT_OUT = /^(docs\/|mac\/|\.data\/|\.github\/)/
+const LEFT_OUT = /^(docs\/|mac\/|desktop\/|\.data\/|\.github\/)/
 
 // a Mac's tar would otherwise add a ._ file beside every file with extended attributes
 process.env.COPYFILE_DISABLE = '1'

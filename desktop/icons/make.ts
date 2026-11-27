@@ -2,7 +2,7 @@
 // the app's icon (source.png, which `cargo tauri icon` turns into the bundle's sizes) and the menu
 // bar's mark, plain and with a dot when something waits on the person (black on clear: macOS draws
 // it as a template, in the menu bar's own colour).
-//   node mac/icons/make.ts
+//   node desktop/icons/make.ts (then `cargo tauri icon icons/source.png` for the sizes, icon.ico among them)
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 

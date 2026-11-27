@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-install-restart"
+description = "Enables the install_restart command without any pre-configured scope."
+commands.allow = ["install_restart"]
+
+[[permission]]
+identifier = "deny-install-restart"
+description = "Denies the install_restart command without any pre-configured scope."
+commands.deny = ["install_restart"]

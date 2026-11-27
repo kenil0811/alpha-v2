@@ -37,7 +37,8 @@ jobs:
       - name: The smoke test, on the start the Windows app makes
         shell: pwsh
         run: |
-          wsl -d AlphaBuild -u root -- sh -c "umask 077; mkdir -p /run/alpha; head -c 32 /dev/urandom | base64 > /run/alpha/secrets; printf 'owner: Smoke\ndeveloper: true\n' > /home/alpha/data/alpha.yaml; chown alpha:alpha /home/alpha/data/alpha.yaml; systemctl start alpha; for i in `$(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:4700/api/health && break; sleep 1; done"
+          wsl -d AlphaBuild -u root -- sh ./release/windows/smoke-start.sh
+          if ($LASTEXITCODE -ne 0) { throw 'Alpha did not start as the Windows app starts it' }
           wsl -d AlphaBuild -u root -- /opt/alpha/node/bin/node ./release/windows/smoke.mjs
           if ($LASTEXITCODE -ne 0) { throw 'the smoke test failed' }
           $h = curl.exe -s http://127.0.0.1:4700/api/health
@@ -61,4 +62,73 @@ jobs:
       - name: What the core said
         if: always()
         shell: pwsh
-        run: wsl -d AlphaBuild -u root -- sh -c "journalctl -u alpha -n 60 --no-pager -o cat 2>/dev/null | grep -v 't=' || true"
+        run: wsl -d AlphaBuild -u root -- sh -c "journalctl -u alpha -n 60 --no-pager -o cat 2>/dev/null | grep -Ev 't=|link=' || true"
+  app:
+    # the Windows Alpha app around Alpha's Linux, as one setup program for the person alone
+    needs: linux
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: alpha-linux
+          path: desktop/resources
+      - uses: dtolnay/rust-toolchain@stable
+      - name: The setup program
+        working-directory: desktop
+        shell: bash
+        run: |
+          version="0.1.${{ github.run_number }}"
+          printf '%s\n' "$version" > resources/VERSION
+          npx --yes @tauri-apps/cli@2.11.5 build --bundles nsis --config "{\"version\":\"$version\"}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-setup
+          path: desktop/target/release/bundle/nsis/*-setup.exe
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+  install:
+    # the setup program on a Windows machine, as the person would run it, with no window: put in
+    # place, Alpha installing itself, answering on this PC, then uninstalled with its data saved
+    needs: app
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: alpha-setup
+      - name: The setup program, then Alpha installing itself
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem *-setup.exe | Select-Object -First 1
+          Start-Process -Wait -FilePath $setup.FullName -ArgumentList '/S'
+          $app = "$env:LOCALAPPDATA\Alpha\Alpha.exe"
+          if (-not (Test-Path $app)) { throw "the app is not at $app" }
+          wsl --update --web-download
+          $p = Start-Process -Wait -PassThru -FilePath $app -ArgumentList '--install-quietly'
+          Get-Content "$env:LOCALAPPDATA\AlphaData\install.log" | Write-Output
+          if ($p.ExitCode -ne 0) { throw 'Alpha did not install itself' }
+      - name: Alpha answers on this PC, as the person's own, and keeps answering
+        shell: pwsh
+        run: |
+          for ($i = 1; $i -le 6; $i++) {
+            $h = curl.exe -s -m 5 http://127.0.0.1:4700/api/health
+            if (-not $h) { throw "Alpha stopped answering after $($i * 30 - 30) s" }
+            Start-Sleep 30
+          }
+          Write-Output "Answers: $h"
+          wsl -l -v
+          Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run | Format-List | Out-String | Write-Output
+          if (-not (Test-Path "$env:LOCALAPPDATA\AlphaData\secrets.key")) { throw 'no sealed key' }
+          wsl -d Alpha -u root -- sh -c "test -s /run/alpha/secrets && echo the key is handed in, in memory alone; grep -c Smoke /home/alpha/data/alpha.yaml || true"
+      - name: Uninstalled, with its data saved in Documents
+        shell: pwsh
+        run: |
+          $u = "$env:LOCALAPPDATA\Alpha\uninstall.exe"
+          Start-Process -Wait -FilePath $u -ArgumentList '/S'
+          Start-Sleep 10
+          wsl -l -q
+          Get-ChildItem "$env:USERPROFILE\Documents\Alpha data *.tar.gz" | Select-Object Name, Length | Format-Table | Out-String | Write-Output
+          if (wsl -l -q | Select-String -SimpleMatch 'Alpha') { throw 'Alpha''s Linux is still there' }

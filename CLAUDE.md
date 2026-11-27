@@ -17,7 +17,8 @@ below on proposing changes to Kenil and on the log.
 - `kit-sdk/`: the kit contract; `docs/kit-api.md` is generated from it (`pnpm kit-api`), never
   edited by hand
 - `connector-sdk/`, `connectors/<name>/` and `connectors-extra/`: the connectors
-- `mac/`: the Tauri Mac shell; `release/` and `scripts/`: the installer, the release and the walls
+- `desktop/`: the Tauri app for the Mac and Windows (each one's parts in their own files);
+  `release/` and `scripts/`: the installers, the releases and the walls
 - `journeys/`: journeys as YAML; their reports go in `docs/journeys/`
 
 Imports go one way. Internal packages are not built: Node runs their TypeScript

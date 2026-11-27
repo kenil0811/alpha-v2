@@ -52,7 +52,7 @@ interface in `core/src/platform/`, and `pnpm check` refuses a Mac call anywhere 
 | `connector-sdk/`, `connectors/`, `connectors-extra/` | What connectors are built on, the set that ships, and those added by hand |
 | `bridge/` | The Bridge, run on a person's own computer to lend Alpha what they turn on there |
 | `plugin-sdk/`, `plugins/` | The seam for first-party plugins, each on only where an Alpha's `alpha.yaml` names it: `interviews` today |
-| `mac/`, `release/`, `scripts/` | The Mac app, the installer and `alpha` command, the release and the walls |
+| `desktop/`, `release/`, `scripts/` | The desktop app (the Mac's and Windows'), the installers and `alpha` command, the releases and the walls |
 | `journeys/` | Journeys as YAML, their reports in `docs/journeys/` |
 
 Imports go one way: `core/src/world/` knows nothing of the engine, the engine nothing of the api.

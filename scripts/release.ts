@@ -110,7 +110,7 @@ for (const f of files.filter(Boolean)) {
 if (!workingTree) run('sh', ['-c', `git archive HEAD | tar -x -C "${build}"`], ROOT)
 
 // 2. The window, built with the development packages in the build copy; then the Mac app around
-// it (mac/: its window, the menu bar mark and notifications), which the payload
+// it (desktop/: its window, the menu bar mark and notifications), which the payload
 // goes inside. macOS's own xattr first: another on the PATH breaks the bundler.
 say('Building the window')
 run('pnpm', ['install', '--frozen-lockfile', '--prefer-offline'], build)
@@ -120,7 +120,7 @@ const appVersion = version.replace(/-.*$/, '')
 run(
   'cargo',
   ['tauri', 'build', '--config', JSON.stringify({ version: appVersion })],
-  join(build, 'mac'),
+  join(build, 'desktop'),
   {
     ...process.env,
     PATH: `/usr/bin:${process.env.PATH ?? ''}`,

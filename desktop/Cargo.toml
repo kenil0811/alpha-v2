@@ -1,0 +1,32 @@
+[package]
+name = "alpha-desktop"
+version = "0.1.0"
+description = "Alpha on the Mac and on Windows: its own window and a mark in the menu bar or by the clock, over the core that runs beside it."
+edition = "2021"
+rust-version = "1.98"
+
+[build-dependencies]
+tauri-build = { version = "=2.6.3", features = [] }
+
+[dependencies]
+tauri = { version = "=2.11.6", features = ["tray-icon", "image-png"] }
+serde_json = "1"
+tauri-plugin-window-state = "2"
+tauri-plugin-opener = "2"
+ureq = "2"
+serde = { version = "1", features = ["derive"] }
+
+# the Mac's own: macOS's notification centre
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSError", "NSObject"] }
+objc2-user-notifications = { version = "0.3", features = ["UNUserNotificationCenter", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationResponse", "UNNotificationSound", "UNNotificationTrigger", "block2"] }
+
+# Windows' own: its notifications, one Alpha app open at a time, the key Windows keeps for this
+# person (DPAPI), the PC kept awake while plugged in, and the start-at-sign-in entries
+[target.'cfg(windows)'.dependencies]
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+base64 = "0.22"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Power", "Win32_System_Threading", "Win32_System_Registry", "Win32_Storage_FileSystem", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_SystemInformation"] }
