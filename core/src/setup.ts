@@ -124,19 +124,23 @@ export class Setup {
   // Claude's own sign-in, started from the window: it opens the person's browser and finishes
   // there by itself; Alpha only watches the status change. Started once at a time. On a PC, Claude
   // runs inside Linux and cannot open the Windows browser: the page it would open is handed to the
-  // window, which opens it; Claude's page then comes back to this PC's own address by itself.
+  // window, which opens it there, and the code Claude's page then shows is pasted back in the
+  // window and handed to Claude (signInCode). What Claude said goes back when no page came.
   private signingIn: ReturnType<typeof execFile> | null = null
   private signInPage: string | null = null
-  async signIn(): Promise<{ started: boolean; open: string | null }> {
+  private signInSaid = ''
+  async signIn(): Promise<{ started: boolean; open: string | null; said: string | null }> {
     const bin = claudeBinary()
-    if (!bin) return { started: false, open: null }
-    if (this.signingIn) return { started: true, open: this.signInPage }
+    if (!bin)
+      return { started: false, open: null, said: 'Claude Code is not in this copy of Alpha.' }
+    if (this.signingIn) return { started: true, open: this.signInPage, said: null }
     this.signInPage = null
+    this.signInSaid = ''
     const child = execFile(
       bin,
       ['auth', 'login'],
       {
-        timeout: 5 * 60_000,
+        timeout: 10 * 60_000,
         env: { ...process.env, ...(this.route?.env() ?? {}) },
       },
       () => {
@@ -144,19 +148,34 @@ export class Setup {
         this.signInPage = null
       },
     )
-    child.stdin?.end()
     this.signingIn = child
-    if (this.platform.name !== 'pc') return { started: true, open: null }
-    // the page's address, as Claude says it when no browser opens
-    const said = (b: Buffer | string) => {
-      const m = /https:\/\/\S+/.exec(String(b))
+    if (this.platform.name !== 'pc') {
+      child.stdin?.end()
+      return { started: true, open: null, said: null }
+    }
+    // the page's address, as Claude says it when no browser opens; its input stays open for the code
+    const heard = (b: Buffer | string) => {
+      this.signInSaid = `${this.signInSaid}${String(b)}`.slice(-2000)
+      const m = /https:\/\/\S+/.exec(this.signInSaid)
       if (m && !this.signInPage) this.signInPage = m[0]
     }
-    child.stdout?.on('data', said)
-    child.stderr?.on('data', said)
-    for (let i = 0; i < 50 && !this.signInPage && this.signingIn; i++)
+    child.stdout?.on('data', heard)
+    child.stderr?.on('data', heard)
+    for (let i = 0; i < 100 && !this.signInPage && this.signingIn; i++)
       await new Promise((r) => setTimeout(r, 100))
-    return { started: true, open: this.signInPage }
+    return {
+      started: !!this.signingIn,
+      open: this.signInPage,
+      said: this.signInPage ? null : this.signInSaid.trim().slice(-600) || null,
+    }
+  }
+
+  // The code Claude's sign-in page showed, pasted in the window, handed to Claude (on a PC).
+  signInCode(code: string): boolean {
+    const stdin = this.signingIn?.stdin
+    if (!stdin || stdin.destroyed) return false
+    stdin.write(`${code.trim()}\n`)
+    return true
   }
 
   private claude(): Promise<SetupView['claude']> {

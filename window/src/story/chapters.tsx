@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
+import { ClaudeCode, useSignIn } from '../ClaudeSignIn.tsx'
 import { underWay } from '../NewModule.tsx'
 import { SCREENS } from '../plugin/screens.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
@@ -158,7 +159,8 @@ function Steps({ steps, code }: { steps: string[]; code?: string | null }) {
 
 function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
   const [token, setToken] = useState('')
-  const signIn = useAct()
+  // Claude's own sign-in; on a PC, its page opened from here and its code pasted back here
+  const [waiting, signIn, signingIn] = useSignIn(reload)
   // on a Mac, watch for Claude's own sign-in finishing in the browser
   useEffect(() => {
     if (screen.how !== 'signin' || screen.set) return
@@ -194,14 +196,13 @@ function Claude({ screen, reload, next }: Props & { screen: ClaudeScreen }) {
           onChange={(e) => setToken(pastedKey(e.target.value))}
         />
       ) : (
-        <div className="flex items-center gap-3">
-          <Button
-            disabled={signIn.busy}
-            onClick={() => void signIn.act(() => api.post('/api/setup/signin'))}
-          >
-            <KeyRound className="size-3.5" /> Sign in
-          </Button>
-          <Refusal words={signIn.problem} />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Button disabled={waiting && !signingIn.page && !signingIn.problem} onClick={signIn}>
+              <KeyRound className="size-3.5" /> Sign in
+            </Button>
+          </div>
+          <ClaudeCode on={signingIn} />
         </div>
       )}
     </div>

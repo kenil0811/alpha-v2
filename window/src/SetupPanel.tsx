@@ -106,29 +106,3 @@ export function ThisComputer() {
     </>
   )
 }
-
-// Claude's own sign-in, started from here: the browser opens, and the line turns green once the
-// person has signed in there (asked again every few seconds for a while). Settings › Models uses it.
-export function useSignIn(onChange: () => void): [boolean, () => void] {
-  const [waiting, setWaiting] = useState(false)
-  useEffect(() => {
-    if (!waiting) return
-    let n = 0
-    const t = setInterval(() => {
-      onChange()
-      if (++n > 60) setWaiting(false)
-    }, 3000)
-    return () => clearInterval(t)
-  }, [waiting, onChange])
-  const start = () => {
-    setWaiting(true)
-    // on a PC, the page Claude would open is opened here, in the person's own browser
-    api.post<{ started: boolean; open: string | null }>('/api/setup/signin').then(
-      (r) => {
-        if (r.open) window.open(r.open, '_blank', 'noreferrer')
-      },
-      () => setWaiting(false),
-    )
-  }
-  return [waiting, start]
-}

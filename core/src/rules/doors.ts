@@ -278,6 +278,7 @@ export const DOORS: Door[] = [
       'POST /api/workspace',
       'POST /api/story/:chapter',
       'POST /api/setup/signin',
+      'POST /api/setup/signin/code',
       'POST /api/setup/settings',
       'POST /api/setup/prepare',
       'POST /api/setup/awake',

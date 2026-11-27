@@ -219,6 +219,24 @@ pub fn run(app: AppHandle) {
             }
         }
 
+        // an update: Alpha's Linux made new from this setup's, the person's data carried over
+        // (saved first, beside the key, and put back after); the key Windows keeps stays
+        let mut carried: Option<Vec<u8>> = None;
+        if distro_here() && installed().as_deref() != Some(version.as_str()) {
+            say(&app, "Saving your data before updating");
+            stop_others();
+            let out = linux("systemctl stop alpha; tar -czf - -C /home/alpha data").output();
+            match out {
+                Ok(o) if o.status.success() && !o.stdout.is_empty() => {
+                    let _ = std::fs::write(data_dir().join("before-update.tar.gz"), &o.stdout);
+                    carried = Some(o.stdout);
+                }
+                _ => return ended(&app, "failed", "Your data could not be saved before updating, so nothing was changed."),
+            }
+            say(&app, "Taking out the old Alpha's Linux");
+            let _ = wsl().args(["--unregister", DISTRO]).status();
+        }
+
         if !distro_here() {
             say(&app, "Bringing in Alpha's Linux: a few minutes");
             let to = data_dir().join("linux");
@@ -240,6 +258,17 @@ pub fn run(app: AppHandle) {
                 }
                 say(&app, said.trim());
                 return ended(&app, "failed", "Alpha's Linux did not come in. The lines above say why; send them to Kenil.");
+            }
+        }
+
+        if let Some(data) = carried {
+            say(&app, "Putting your data back");
+            let back = linux_with(
+                "rm -rf /home/alpha/data && tar -xzf - -C /home/alpha && chown -R alpha:alpha /home/alpha/data",
+                &data,
+            );
+            if !back.map(|o| o.status.success()).unwrap_or(false) {
+                return ended(&app, "failed", "Your data did not go back in. It is kept in AlphaData as before-update.tar.gz; send this to Kenil.");
             }
         }
 
@@ -287,6 +316,15 @@ pub fn run(app: AppHandle) {
     });
 }
 
+/// Alpha's other processes (the engine's starter, the app by the clock), stopped so nothing starts
+/// Alpha's Linux again while it is taken out.
+fn stop_others() {
+    let _ = Command::new("taskkill.exe")
+        .args(["/F", "/IM", "Alpha.exe", "/FI", &format!("PID ne {}", std::process::id())])
+        .creation_flags(NO_WINDOW)
+        .status();
+}
+
 /// The restart Windows needs after turning WSL on, from the window's own button.
 pub fn restart() {
     let _ = Command::new("shutdown.exe").args(["/r", "/t", "5"]).creation_flags(NO_WINDOW).spawn();
@@ -297,10 +335,7 @@ pub fn restart() {
 /// still keeps; then Alpha's Linux removed and the start-at-sign-in entries with it.
 pub fn uninstall() {
     // the engine's starter and the app go first, so nothing starts Alpha's Linux again
-    let _ = Command::new("taskkill.exe")
-        .args(["/F", "/IM", "Alpha.exe", "/FI", &format!("PID ne {}", std::process::id())])
-        .creation_flags(NO_WINDOW)
-        .status();
+    stop_others();
     let docs = PathBuf::from(std::env::var("USERPROFILE").unwrap_or_default()).join("Documents");
     if distro_here() {
         let _ = linux("systemctl stop alpha").status();

@@ -6,6 +6,7 @@ import { Fragment, type ReactNode, useCallback, useEffect, useState } from 'reac
 import { AccountsSection } from './Accounts.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
+import { ClaudeCode, useSignIn } from './ClaudeSignIn.tsx'
 import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
@@ -15,7 +16,7 @@ import { modelHelp } from './model-help.ts'
 import { ReadReport } from './ReadReport.tsx'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
-import { useSetup, useSignIn } from './SetupPanel.tsx'
+import { useSetup } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { SetUpPart } from './story/StoryCard.tsx'
 import { TokenForm } from './TokenForm.tsx'
@@ -368,7 +369,7 @@ function DataSection() {
 function ModelSection() {
   const [model, setModel] = useState<ModelView | null>(null)
   const [setup, loadSetup] = useSetup()
-  const [waiting, signIn] = useSignIn(loadSetup)
+  const [waiting, signIn, signingIn] = useSignIn(loadSetup)
   const { busy, on, problem, act } = useAct()
   useEffect(() => {
     api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
@@ -422,6 +423,7 @@ function ModelSection() {
                 }
               >
                 {on === p.route && <Refusal words={problem} />}
+                {subscription && <ClaudeCode on={signingIn} />}
                 {subscription && model.token !== null && (
                   <TokenForm has={model.token} onSaved={setModel} />
                 )}
