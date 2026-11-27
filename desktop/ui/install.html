@@ -19,6 +19,7 @@
       button:disabled { opacity: 0.5; cursor: default; }
       pre { flex: 1; min-height: 120px; margin: 0; padding: 12px 14px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-2); font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; -webkit-user-select: text; }
       .problem { color: var(--bad); }
+      label { display: flex; gap: 8px; align-items: center; color: var(--ink-2); }
       .hidden { display: none; }
     </style>
   </head>
@@ -27,6 +28,7 @@
     <main>
       <h1 id="title">Install Alpha</h1>
       <p id="words">Alpha will be put in Applications, keep its data in your Library, and start when you log in. Nothing leaves this Mac.</p>
+      <label id="back" class="hidden"><input id="bring" type="checkbox" checked /> <span id="day"></span></label>
       <div class="row">
         <button id="go" class="primary" type="button">Install</button>
         <button id="quit" type="button">Decline</button>
@@ -50,6 +52,11 @@
         } else {
           $('title').textContent = `Install Alpha ${p.to}`
         }
+        // a PC where Alpha was uninstalled: its saved data, brought back unless unticked
+        if (p.saved && !p.carry_on) {
+          $('day').textContent = `Bring back your data saved on ${p.saved}`
+          $('back').classList.remove('hidden')
+        }
       })
       // the installer's lines, as it goes
       window.addLine = (line) => {
@@ -71,18 +78,21 @@
         $('quit').disabled = false
         $('quit').textContent = ok ? 'Close' : restart ? 'Later' : 'Decline'
       }
-      const start = () => {
+      // after the restart, what was chosen before it comes with the app's own start
+      const start = (again) => {
         $('go').disabled = true
         $('quit').disabled = true
+        $('bring').disabled = true
         $('state').textContent = 'Installing…'
-        inv('install')
+        const shown = !$('back').classList.contains('hidden')
+        inv('install', { bringBack: !again && shown && $('bring').checked })
       }
-      $('go').onclick = start
+      $('go').onclick = () => start(false)
       $('restart').onclick = () => inv('install_restart')
       $('quit').onclick = () => inv('install_quit')
       // back after the restart: it carries on by itself
       inv('install_plan').then((p) => {
-        if (p.carry_on) start()
+        if (p.carry_on) start(true)
       })
     </script>
   </body>

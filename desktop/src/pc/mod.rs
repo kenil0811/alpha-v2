@@ -27,10 +27,11 @@ pub fn wsl() -> Command {
     c
 }
 
-/// A shell command as root inside Alpha's Linux.
+/// A shell command as root inside Alpha's Linux. `--exec` hands `sh` the script as it is: through
+/// `--`, Linux's own shell reads the line first and fills in every `$` before `sh` sees it.
 pub fn linux(script: &str) -> Command {
     let mut c = wsl();
-    c.args(["-d", DISTRO, "-u", "root", "--", "sh", "-c", script]);
+    c.args(["-d", DISTRO, "-u", "root", "--exec", "sh", "-c", script]);
     c
 }
 

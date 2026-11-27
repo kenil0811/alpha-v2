@@ -1,3 +1,5 @@
+// `pnpm release windows` is the Windows setup program GitHub's Windows machine made instead
+// (scripts/release-windows.ts); everything below is the Mac's.
 // The release: Alpha as one self-contained app, staged from a clean copy of
 // the repository, carrying its own Node and uv (each checked against its published SHA-256), its
 // production packages (Claude Code comes inside the Agent SDK's package), the built window and
@@ -29,6 +31,11 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { pack } from '../core/src/modules/packs.ts'
+
+if (process.argv[2] === 'windows') {
+  await import('./release-windows.ts')
+  process.exit(0)
+}
 
 // Every pack the release carries is signed with Kenil's key from this Mac's Keychain: a Mac
 // without it cannot make a release.

@@ -45,11 +45,40 @@ pub struct Plan {
     pub to: String,
     pub windows: bool,
     pub carry_on: bool, // after the restart: the window goes on by itself
+    pub saved: Option<String>, // a fresh install: the day the newest saved data is from
 }
 
 pub fn plan(app: &AppHandle) -> Plan {
     let to = bundled(app).map(|(_, v)| v).unwrap_or_default();
-    Plan { from: installed(), to, windows: true, carry_on: carrying_on() }
+    let from = installed();
+    let saved = if from.is_none() { newest_saved().map(|(_, day)| day) } else { None };
+    Plan { from, to, windows: true, carry_on: carrying_on(), saved }
+}
+
+/// Where an uninstall keeps the person's data: on this PC, beside the key that opens its secrets,
+/// never in a folder a cloud may copy (Documents often is).
+fn saved_dir() -> PathBuf {
+    data_dir().join("saved")
+}
+
+/// The newest data an uninstall saved, and its day (`Alpha data 2026-11-27.tar.gz`).
+fn newest_saved() -> Option<(PathBuf, String)> {
+    let mut found: Vec<(PathBuf, String)> = std::fs::read_dir(saved_dir())
+        .ok()?
+        .filter_map(|e| e.ok())
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            let day = name.strip_prefix("Alpha data ")?.strip_suffix(".tar.gz")?.to_string();
+            Some((e.path(), day))
+        })
+        .collect();
+    found.sort_by(|a, b| a.1.cmp(&b.1));
+    found.pop()
+}
+
+/// After the restart that turned WSL on, the install remembers whether to bring the data back.
+fn bringing_back() -> bool {
+    std::env::args().any(|a| a == "--bring-back")
 }
 
 /// Whether this open should install: the setup program's copy, and no install yet, or another.
@@ -189,7 +218,9 @@ fn answering() -> bool {
         .is_ok()
 }
 
-pub fn run(app: AppHandle) {
+/// The install: `bring_back` puts the newest saved data in, on a fresh install.
+pub fn run(app: AppHandle, bring_back: bool) {
+    let bring_back = bring_back || bringing_back();
     thread::spawn(move || {
         let Some((image, version)) = bundled(&app) else { return };
         let Ok(me) = std::env::current_exe() else { return };
@@ -213,7 +244,8 @@ pub fn run(app: AppHandle) {
                 return ended(&app, "failed", "Windows did not turn it on. Press Install to ask again; Windows asks for an administrator's yes.");
             }
             // after the restart, this window opens by itself and carries on
-            reg(&["add", RUN_ONCE, "/v", "AlphaInstall", "/t", "REG_SZ", "/d", &format!("\"{me}\" --continue-install"), "/f"]);
+            let again = if bring_back { " --bring-back" } else { "" };
+            reg(&["add", RUN_ONCE, "/v", "AlphaInstall", "/t", "REG_SZ", "/d", &format!("\"{me}\" --continue-install{again}"), "/f"]);
             if !wsl_ready() {
                 return ended(&app, "restart", "Windows needs a restart to finish. Alpha carries on by itself when you sign in again.");
             }
@@ -262,6 +294,17 @@ pub fn run(app: AppHandle) {
             }
         }
 
+        // a fresh install: the data an uninstall saved, put in as an update's is
+        let saved = if carried.is_none() && bring_back { newest_saved() } else { None };
+        let from_saved = saved.is_some();
+        if let Some((file, day)) = saved {
+            say(&app, &format!("Bringing back your data saved on {day}"));
+            match std::fs::read(&file) {
+                Ok(data) => carried = Some(data),
+                Err(_) => return ended(&app, "failed", "Your saved data could not be read, so nothing was brought back. Open Alpha again to try once more."),
+            }
+        }
+
         if let Some(data) = carried {
             say(&app, "Putting your data back");
             let back = linux_with(
@@ -269,7 +312,15 @@ pub fn run(app: AppHandle) {
                 &data,
             );
             if !back.map(|o| o.status.success()).unwrap_or(false) {
-                return ended(&app, "failed", "Your data did not go back in. It is kept in AlphaData as before-update.tar.gz; send this to Kenil.");
+                let kept = if from_saved { "in AlphaData\\saved" } else { "in AlphaData as before-update.tar.gz" };
+                return ended(&app, "failed", &format!("Your data did not go back in. It is kept {kept}; send this to Kenil."));
+            }
+            // saved data whose secrets the key here cannot open (another PC's, or the key gone):
+            // the rest comes back, and the accounts are signed in to again
+            let has_secrets = linux("test -f /home/alpha/data/secrets.enc").status().map(|s| s.success()).unwrap_or(false);
+            if from_saved && has_secrets && !engine::opens_secrets() {
+                let _ = linux("rm -f /home/alpha/data/secrets.enc").status();
+                say(&app, "Your accounts' sign-ins could not come back with it: sign in to them again under Connections.");
             }
         }
 
@@ -332,14 +383,26 @@ pub fn restart() {
 }
 
 /// Uninstalling (the setup program's uninstaller runs `Alpha.exe --uninstall` first): the data
-/// saved as an archive in Documents, which a later install can bring back with the key Windows
-/// still keeps; then Alpha's Linux removed, the start-at-sign-in entries and this PC's pairing
-/// with it.
-pub fn uninstall() {
+/// saved as an archive on this PC (AlphaData\saved), which a later install offers to bring back
+/// with the key Windows still keeps; then Alpha's Linux removed, the start-at-sign-in entries and
+/// this PC's pairing with it. With `delete` (the uninstaller's Delete the application data,
+/// ticked), nothing is saved and everything Alpha kept on this PC goes, the key with it.
+pub fn uninstall(delete: bool) {
     // the engine's starter and the app go first, so nothing starts Alpha's Linux again
     stop_others();
-    let docs = PathBuf::from(std::env::var("USERPROFILE").unwrap_or_default()).join("Documents");
+    if delete {
+        if distro_here() {
+            let _ = wsl().args(["--unregister", DISTRO]).status();
+        }
+        reg(&["delete", RUN, "/v", "Alpha engine", "/f"]);
+        reg(&["delete", RUN, "/v", "Alpha", "/f"]);
+        super::bridge::forget();
+        let _ = std::fs::remove_dir_all(data_dir());
+        return;
+    }
+    let docs = saved_dir();
     if distro_here() {
+        let _ = std::fs::create_dir_all(&docs);
         let _ = linux("systemctl stop alpha").status();
         let stamp = Command::new("powershell.exe")
             .args(["-NoProfile", "-Command", "Get-Date -Format yyyy-MM-dd"])

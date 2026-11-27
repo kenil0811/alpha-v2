@@ -71,6 +71,16 @@ pub fn unseal(data: &[u8]) -> Option<Vec<u8>> {
     }
 }
 
+/// Whether the key Windows keeps here opens the secrets in Alpha's data, as data brought back
+/// from a saved archive needs: with no key kept, or another PC's data, they cannot be read.
+pub fn opens_secrets() -> bool {
+    let Ok(sealed) = std::fs::read(data_dir().join(KEY)) else { return false };
+    let Some(key) = unseal(&sealed) else { return false };
+    linux_with(OPENS, &key).map(|o| o.status.success()).unwrap_or(false)
+}
+
+const OPENS: &str = "cd /home/alpha/data && /opt/alpha/node/bin/node -e \"const f=require('fs'),c=require('crypto');const k=Buffer.from(f.readFileSync(0,'utf8').trim(),'base64');const s=JSON.parse(f.readFileSync('secrets.enc','utf8'));const d=c.createDecipheriv('aes-256-gcm',k,Buffer.from(s.iv,'base64'));d.setAuthTag(Buffer.from(s.tag,'base64'));d.update(Buffer.from(s.data,'base64'));d.final()\"";
+
 /// The key to Alpha's secrets, made once at install: 32 random bytes from Linux, as the servers
 /// make theirs, kept on this PC only sealed by Windows.
 pub fn make_key() -> Result<(), String> {

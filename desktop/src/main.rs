@@ -169,9 +169,16 @@ fn install_plan(app: AppHandle) -> install::Plan {
     install::plan(&app)
 }
 
+/// On a PC's fresh install, `bring_back` puts the data an uninstall saved back in.
 #[tauri::command]
-fn install(app: AppHandle) {
-    install::run(app);
+fn install(app: AppHandle, bring_back: Option<bool>) {
+    #[cfg(windows)]
+    install::run(app, bring_back.unwrap_or(false));
+    #[cfg(not(windows))]
+    {
+        let _ = bring_back;
+        install::run(app);
+    }
 }
 
 #[tauri::command]
@@ -443,7 +450,17 @@ fn main() {
             return;
         }
         if std::env::args().any(|a| a == "--uninstall") {
-            pc::install::uninstall();
+            pc::install::uninstall(std::env::args().any(|a| a == "--delete-data"));
+            return;
+        }
+        // an update file taken with no window (GitHub's machine tries one): what it said, in a log
+        let args: Vec<String> = std::env::args().collect();
+        if let Some(file) = args.iter().position(|a| a == "--update-from").and_then(|i| args.get(i + 1)) {
+            let said = match pc::update_from(std::path::Path::new(file)) {
+                Ok(s) => format!("updated: {s}"),
+                Err(s) => format!("not updated: {s}"),
+            };
+            let _ = std::fs::write(pc::data_dir().join("update.log"), said);
             return;
         }
     }
@@ -480,7 +497,7 @@ fn main() {
             // Install window, and nothing else until it is done
             #[cfg(windows)]
             if install::quietly() {
-                install::run(handle);
+                install::run(handle, false);
                 return Ok(());
             }
             if install::wanted(&handle) {

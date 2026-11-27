@@ -189,6 +189,21 @@ jobs:
           Get-Content "$env:LOCALAPPDATA\AlphaData\bridge\bridge.log" -ErrorAction SilentlyContinue | Select-String -NotMatch 'pair=|t=' | Select-Object -Last 20 | Out-String | Write-Output
           if ($online.Count -eq 0) { throw 'this PC did not pair with its Alpha' }
           $online | Select-Object name, platform, online | Format-Table | Out-String | Write-Output
+          # the token's hash alone, to know this Alpha's data again after it is brought back
+          $sum = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($t)))
+          "TOKEN_SUM=$sum" >> $env:GITHUB_ENV
+      - name: Update from a file reads the file inside Alpha's Linux, and refuses one Kenil did not sign
+        shell: pwsh
+        run: |
+          $d = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\upd"
+          Set-Content "$d\alpha-server-0.0.0-test.tar.gz" 'not a release'
+          Set-Content "$d\alpha-server-0.0.0-test.tar.gz.sig" 'not a signature'
+          tar -cf "$env:RUNNER_TEMP\alpha-update-test.tar" -C $d alpha-server-0.0.0-test.tar.gz alpha-server-0.0.0-test.tar.gz.sig
+          Start-Process -Wait -FilePath "$env:LOCALAPPDATA\Alpha\Alpha.exe" -ArgumentList '--update-from', "$env:RUNNER_TEMP\alpha-update-test.tar"
+          $said = Get-Content "$env:LOCALAPPDATA\AlphaData\update.log" -Raw
+          Write-Output "It said: $said"
+          if ($said -notmatch 'not updated: .*not signed') { throw 'the file was not checked as an update inside Linux' }
+          if (-not (curl.exe -s -m 5 http://127.0.0.1:4700/api/health)) { throw 'Alpha stopped answering' }
       - name: Uninstalled, with its data saved in Documents
         shell: pwsh
         run: |
@@ -196,8 +211,40 @@ jobs:
           Start-Process -Wait -FilePath $u -ArgumentList '/S'
           Start-Sleep 10
           wsl -l -q
-          Get-ChildItem "$env:USERPROFILE\Documents\Alpha data *.tar.gz" | Select-Object Name, Length | Format-Table | Out-String | Write-Output
+          $saved = Get-ChildItem "$env:LOCALAPPDATA\AlphaData\saved\Alpha data *.tar.gz"
+          $saved | Select-Object Name, Length | Format-Table | Out-String | Write-Output
+          if (-not $saved) { throw 'the data was not saved' }
           if (wsl -l -q | Select-String -SimpleMatch 'Alpha') { throw 'Alpha''s Linux is still there' }
           # Alpha Bridge's part ended with the app, so its files went too; its pairing went with it
           if (Test-Path "$env:LOCALAPPDATA\Alpha\bridge\node\node.exe") { throw 'the Bridge''s part was left behind' }
           if (Test-Path "$env:LOCALAPPDATA\AlphaData\bridge") { throw 'the Bridge''s pairing was left behind' }
+      - name: Installed again, the saved data brought back
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem *-setup.exe | Select-Object -First 1
+          Start-Process -Wait -FilePath $setup.FullName -ArgumentList '/S'
+          $log = "$env:LOCALAPPDATA\AlphaData\install.log"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Start-Process -FilePath "$env:LOCALAPPDATA\Alpha\Alpha.exe" -ArgumentList '--install-quietly', '--bring-back'
+          $end = ''
+          for ($i = 0; $i -lt 90 -and -not $end; $i++) {
+            Start-Sleep 10
+            if (Test-Path $log) { $end = Select-String -Path $log -Pattern '^(done|failed|restart): ' | Select-Object -Last 1 }
+          }
+          Get-Content $log -ErrorAction SilentlyContinue | Write-Output
+          if (-not $end -or "$end" -notmatch 'done: ') { throw 'Alpha did not install itself again' }
+          $t = "$(wsl -d Alpha -u root -- cat /home/alpha/data/token)".Trim()
+          Write-Output "::add-mask::$t"
+          $sum = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($t)))
+          if ($sum -ne $env:TOKEN_SUM) { throw 'the saved data did not come back' }
+          Write-Output 'The same Alpha came back, with its data.'
+      - name: Uninstalled with its data deleted, nothing of Alpha left on this PC
+        shell: pwsh
+        run: |
+          Start-Process -Wait -FilePath "$env:LOCALAPPDATA\Alpha\Alpha.exe" -ArgumentList '--uninstall', '--delete-data'
+          Start-Process -Wait -FilePath "$env:LOCALAPPDATA\Alpha\uninstall.exe" -ArgumentList '/S'
+          Start-Sleep 10
+          if (wsl -l -q | Select-String -SimpleMatch 'Alpha') { throw 'Alpha''s Linux is still there' }
+          if (Test-Path "$env:LOCALAPPDATA\AlphaData\saved") { throw 'the data was kept' }
+          if (Test-Path "$env:LOCALAPPDATA\AlphaData\secrets.key") { throw 'the key was kept' }
+          Write-Output 'Nothing of Alpha is left on this PC.'
