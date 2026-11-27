@@ -111,10 +111,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Alpha Bridge's part, for the PC's own folders and browser (Node for Windows and the bundled Bridge)
-        shell: bash
+        # Windows' own tar, which reads Node's zip (Git's in bash takes D: for a host)
+        shell: pwsh
         run: |
           pnpm bridge resources win-x64
-          cp -R bridge/app/resources/bridge desktop/resources/bridge
+          if ($LASTEXITCODE -ne 0) { throw 'the Bridge was not made' }
+          Copy-Item -Recurse bridge/app/resources/bridge desktop/resources/bridge
       - uses: dtolnay/rust-toolchain@stable
       - name: The setup program
         working-directory: desktop
