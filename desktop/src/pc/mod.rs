@@ -94,6 +94,26 @@ pub fn start_engine() -> bool {
         .is_ok()
 }
 
+/// An update from a file Kenil made (`pnpm server pc`): the servers' own signed release, taken by
+/// the servers' own update inside Alpha's Linux, which checks his signature, backs up first, and
+/// goes back by itself if the new one does not start. What it said, in a few words.
+pub fn update_from(file: &std::path::Path) -> Result<String, String> {
+    let bytes = std::fs::read(file).map_err(|e| format!("The file could not be read: {e}"))?;
+    let out = linux_with(
+        "rm -rf /tmp/alpha-update && mkdir -p /tmp/alpha-update && tar -xf - -C /tmp/alpha-update && f=$(ls /tmp/alpha-update/alpha-server-*.tar.gz | head -1) && [ -f \"$f.sig\" ] && alpha update \"$f\" \"$f.sig\" 2>&1; s=$?; rm -rf /tmp/alpha-update; exit $s",
+        &bytes,
+    )
+    .map_err(|e| format!("Alpha's Linux did not answer: {e}"))?;
+    let said = String::from_utf8_lossy(&out.stdout).trim().lines().last().unwrap_or_default().to_string();
+    if out.status.success() {
+        Ok(said)
+    } else if said.is_empty() {
+        Err("That is not an Alpha update file.".into())
+    } else {
+        Err(said)
+    }
+}
+
 /// A report for Kenil on the Desktop: versions, health and shapes, never rows (the alpha
 /// command's own report, made inside Linux).
 pub fn report() -> Option<PathBuf> {

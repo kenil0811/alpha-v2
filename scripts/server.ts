@@ -2,6 +2,8 @@
 //   setup <address> <owner's name> [public address]    make a Linux machine into an Alpha server
 //   package                                            a signed release of what is here now
 //   update <address>                                   send that release; the server takes it now
+//   pc                                                 a release made now, as one small file a PC's
+//                                                      Alpha takes from Update from a file… (its menu)
 //   link <address>                                     open the owner's one-time link in the browser
 //   address <address> [public]                         bring up Tailscale: an https address on the owner's own
 //                                                      devices only, or with public, open to the internet (Funnel)
@@ -162,7 +164,14 @@ const portOf = (host: string) =>
     : '4700'
 
 if (what === 'package') packageIt()
-else if (what === 'setup' && host && rest[0]) {
+else if (what === 'pc') {
+  // the same signed release a server takes, with its signature, in one file for a PC's Alpha
+  packageIt()
+  const name = latest()
+  const file = join(OUT, `alpha-update-${name.replace(/^alpha-server-/, '')}.tar`)
+  run('tar', ['-cf', file, '-C', OUT, `${name}.tar.gz`, `${name}.tar.gz.sig`])
+  console.log(`The update for a PC's Alpha: ${file}`)
+} else if (what === 'setup' && host && rest[0]) {
   const dir = mkdtempSync(join(tmpdir(), 'alpha-setup-'))
   for (const f of ['setup.sh', 'alpha', 'alpha.service', 'verify.mjs'])
     copyFileSync(join(SERVER_FILES, f), join(dir, f))

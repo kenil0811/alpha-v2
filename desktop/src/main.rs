@@ -365,12 +365,14 @@ fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     // on a PC, a report for Kenil with no terminal: the Mac's is the alpha command's
     let report = MenuItem::with_id(app, "report", "Make a report", cfg!(windows), None::<&str>)?;
+    // on a PC, an update Kenil sends as a small file; the Mac's comes as a new app
+    let update = MenuItem::with_id(app, "update", "Update from a file…", cfg!(windows), None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Alpha", true, None::<&str>)?;
     let line = || PredefinedMenuItem::separator(app);
     let menu = if cfg!(windows) {
         Menu::with_items(
             app,
-            &[&open, &needs, &line()?, &logs, &settings, &report, &line()?, &quit],
+            &[&open, &needs, &line()?, &logs, &settings, &line()?, &update, &report, &line()?, &quit],
         )?
     } else {
         Menu::with_items(app, &[&open, &needs, &line()?, &logs, &settings, &line()?, &quit])?
@@ -393,6 +395,25 @@ fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
                         notify::show("report", "Alpha", None, &format!("The report is on your Desktop: {}", file.display()), "");
                     }
                 });
+            }
+            #[cfg(windows)]
+            "update" => {
+                use tauri_plugin_dialog::DialogExt;
+                app.dialog()
+                    .file()
+                    .set_title("An Alpha update file")
+                    .add_filter("Alpha update", &["tar"])
+                    .pick_file(|picked| {
+                        let Some(path) = picked.and_then(|p| p.into_path().ok()) else { return };
+                        notify::show("update", "Alpha", None, "Updating Alpha. It answers again in a minute or two.", "");
+                        thread::spawn(move || {
+                            let words = match pc::update_from(&path) {
+                                Ok(said) => format!("Updated. {said}"),
+                                Err(why) => format!("Alpha was not updated. {why}"),
+                            };
+                            notify::show("update", "Alpha", None, &words, "");
+                        });
+                    });
             }
             "quit" => app.exit(0),
             _ => {}
@@ -430,6 +451,7 @@ fn main() {
                 show(app, &again, None);
             }))
             .plugin(tauri_plugin_notification::init())
+            .plugin(tauri_plugin_dialog::init())
     };
     let app = builder
         .plugin(tauri_plugin_opener::init())
