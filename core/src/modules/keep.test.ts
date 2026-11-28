@@ -23,13 +23,23 @@ afterEach(() => {
 })
 
 const SCHEDULE =
-  '---\nname: Reader\ntrigger: { every: day, at: "06:30" }\nruns: { script: skills/read/run.js }\n---\nReads the list each morning.\n'
+  '---\nname: Reader\ntrigger: { every: day, at: "06:30" }\nruns: { script: scripts/read/run.js }\n---\nReads the list each morning.\n'
 
 describe('keep', () => {
+  it('keeps code under scripts/ only: a skill is a how-to, and a schedule runs a script', async () => {
+    const m = world.shape.makeModule('Listings', ctx)
+    await expect(
+      keep(world, m, 'skills/read/run.js', 'export default async () => ({})\n', ctx),
+    ).rejects.toThrow(/A skill is a how-to, never code: keep skills\/read\/run.js under scripts\//)
+    await expect(
+      keep(world, m, 'schedules/reader.md', SCHEDULE.replace('scripts/read', 'skills/read'), ctx),
+    ).rejects.toThrow(/Reader runs skills\/read\/run.js; a module's code is kept under scripts\//)
+  })
+
   it('keeps a reader and its schedule as commits, and the schedule is on', async () => {
     const m = world.shape.makeModule('Listings', ctx)
     await expect(keep(world, m, 'schedules/reader.md', SCHEDULE, ctx)).rejects.toThrow(
-      /skills\/read\/run.js, which is not kept yet/,
+      /scripts\/read\/run.js, which is not kept yet/,
     )
     await keep(
       world,
@@ -41,7 +51,7 @@ describe('keep', () => {
     await keep(
       world,
       m,
-      'skills/read/run.js',
+      'scripts/read/run.js',
       'export default async () => ({ words: "ok" })\n',
       ctx,
     )
@@ -50,10 +60,10 @@ describe('keep', () => {
     expect(schedules(world, m.id).map((a) => [a.name, a.state])).toEqual([['Reader', 'on']])
     expect((await history(m.dir)).map((c) => c.message)).toEqual([
       'Kept schedules/reader.md',
-      'Kept skills/read/run.js',
+      'Kept scripts/read/run.js',
       'Kept skills/read/SKILL.md',
     ])
-    expect(readFileSync(join(m.dir, 'skills/read/run.js'), 'utf8')).toContain('words')
+    expect(readFileSync(join(m.dir, 'scripts/read/run.js'), 'utf8')).toContain('words')
     expect(await keep(world, m, 'schedules/reader.md', undefined, ctx)).toBe(
       'schedules/reader.md in Listings was already kept as it is.',
     )

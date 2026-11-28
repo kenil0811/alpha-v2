@@ -118,7 +118,7 @@ describe('the file walls', () => {
     const d = (tool: string, file_path: string) =>
       fileWall(tool, { file_path }, '/home/desk', '/home/modules', ['/granted']).allow
     expect(d('Write', '/home/desk/notes.md')).toBe(true)
-    expect(d('Edit', '/home/modules/rentals/skills/reader/run.js')).toBe(true)
+    expect(d('Edit', '/home/modules/rentals/scripts/reader/run.js')).toBe(true)
     expect(d('Write', '/home/modules/rentals/module.yaml')).toBe(false)
     expect(d('Edit', '/home/modules/rentals/module.yaml')).toBe(false)
     expect(d('Write', '/granted/anything.txt')).toBe(false)

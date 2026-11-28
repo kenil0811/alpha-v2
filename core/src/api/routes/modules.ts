@@ -1,10 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
+import { skillsOf } from '../../engine/context.ts'
 import { installedKits, unseenChanges } from '../../modules/kits/index.ts'
 import { deleteModule } from '../../modules/remove.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
-import { agentName, shownSchedules, whenWords } from '../../modules/schedules.ts'
+import { agentName, schedules, shownSchedules, whenWords } from '../../modules/schedules.ts'
+import { scriptsOf } from '../../modules/scripts.ts'
 import { pageAnswer, pageDocument, pageRecord, pagesFor, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
@@ -131,6 +133,8 @@ export function registerModules(ctx: Ctx): void {
       })),
       sites: moduleNetwork(m).length,
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
+      scripts: scriptsOf(m.dir, schedules(world, m.id)),
+      skills: skillsOf(m.dir),
       businessCase: businessCase(m),
       parent: m.parent,
       pages: pagesFor(world, m),

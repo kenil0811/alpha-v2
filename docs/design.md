@@ -317,7 +317,10 @@ the person's account instead: Outlook with two more read permissions, Google wit
 ## Modules and kits
 
 A module is a folder kept as a git repository: `module.yaml` with its business case, tables, views
-and sites, then `NOTES.md`, `pages/`, `skills/`, `schedules/` and `files/`. A module may sit inside
+and sites, then `NOTES.md`, `pages/`, `scripts/`, `skills/`, `schedules/` and `files/`. A script is
+its code (`scripts/<name>/`, with what it reads beside it), which a schedule or the run tool runs; a
+skill is only ever a how-to the model follows (`skills/<name>/SKILL.md`), for a module or an agent
+(the definitions, 27 Nov), and `pnpm kit check` and the keep tool refuse code in one. A module may sit inside
 another. A kit is a module with no person's rows, and the kit API is version 3, which adds the
 agents a kit carries; version 2 kits still install (`docs/kit-api.md`).
 Scripts are plain JavaScript in the sandbox, importing nothing of Alpha's and handed one `alpha`

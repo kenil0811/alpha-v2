@@ -27,7 +27,7 @@ import { pack } from './packs.ts'
 import { parseSchedule } from './schedules.ts'
 
 // What of a module's folder goes with the kit: never its git history or a tool's own folder.
-const TAKEN = ['NOTES.md', 'schedules', 'skills', 'pages']
+const TAKEN = ['NOTES.md', 'schedules', 'scripts', 'skills', 'pages']
 const FIRST_VERSION = '0.1.0'
 
 export interface MadeKit {
@@ -154,6 +154,10 @@ export function makeKit(world: World, moduleId: string, outDir: string, ctx: Wri
     const schedules = existsSync(join(dir, 'schedules'))
       ? readdirSync(join(dir, 'schedules')).filter((f) => f.endsWith('.md')).length
       : 0
+    const scripts = existsSync(join(dir, 'scripts'))
+      ? readdirSync(join(dir, 'scripts'), { withFileTypes: true }).filter((e) => e.isDirectory())
+          .length
+      : 0
     const skills = existsSync(join(dir, 'skills'))
       ? readdirSync(join(dir, 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory())
           .length
@@ -162,6 +166,7 @@ export function makeKit(world: World, moduleId: string, outDir: string, ctx: Wri
     const parts = [
       count(manifest.tables?.length ?? 0, 'table'),
       schedules ? count(schedules, 'schedule') : '',
+      scripts ? count(scripts, 'script') : '',
       skills ? count(skills, 'skill') : '',
       pages ? count(pages, 'page') : '',
     ].filter(Boolean)

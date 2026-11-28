@@ -514,6 +514,8 @@ export interface ModuleView {
   schedules: ScheduleView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written
+  scripts: { name: string; runBy: string[] }[] // its code, each with the schedules that run it
+  skills: { name: string; description: string }[] // how its work is done, which Alpha follows
   // what it is for, and whose words: the kit's, Alpha's (assumed) or the person's
   businessCase: {
     for: string

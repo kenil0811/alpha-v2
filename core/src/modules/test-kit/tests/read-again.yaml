@@ -1,5 +1,5 @@
 # The reader's second read, in the same world: the site shows one supplier more by then.
-script: skills/read/run.js
+script: scripts/read/run.js
 pages:
   https://supplies.example/list:
     url: https://supplies.example/list

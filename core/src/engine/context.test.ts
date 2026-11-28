@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { syncSchedules } from '../modules/schedules.ts'
 import { World } from '../world/world.ts'
 import { firstTouch, sitesLayer, startLayer } from './context.ts'
 import type { ToolEntry } from './registry.ts'
@@ -82,10 +83,20 @@ describe('a module’s skills', () => {
       mkdirSync(join(m.dir, 'skills', dir), { recursive: true })
       writeFileSync(join(m.dir, 'skills', dir, 'SKILL.md'), `---\n${front}\n---\nMore words.\n`)
     }
+    // its code apart, each script with the schedule that runs it
+    mkdirSync(join(m.dir, 'scripts', 'count'), { recursive: true })
+    writeFileSync(join(m.dir, 'scripts', 'count', 'run.js'), 'export default async () => ({})\n')
+    mkdirSync(join(m.dir, 'schedules'), { recursive: true })
+    writeFileSync(
+      join(m.dir, 'schedules', 'count.md'),
+      '---\nname: Count the meals\ntrigger: { every: day, at: "20:00" }\nruns: { script: scripts/count/run.js }\n---\nCounts.\n',
+    )
+    syncSchedules(world, m, 'paused')
     const layer = startLayer(world, 'u_1', home, null)
     expect(layer).toContain(
-      'Skills (skills/<name>/SKILL.md says more):\n- tally: Adds up the day’s meals by kind.',
+      'Skills, how its work is done (skills/<name>/SKILL.md says more):\n- tally: Adds up the day’s meals by kind.',
     )
+    expect(layer).toContain('Scripts, its code (scripts/<name>/):\n- count, run by Count the meals')
     expect(layer).not.toContain('not closed')
   })
 })

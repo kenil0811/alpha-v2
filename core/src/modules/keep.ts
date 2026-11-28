@@ -1,4 +1,4 @@
-// Keeping a file in a module (`keep`): a skill, a schedule, a page or the module's notes.
+// Keeping a file in a module (`keep`): a script, a skill, a schedule, a page or the module's notes.
 // Each keep is a commit in the module's folder, so its versions can be read back; a schedule kept
 // from the desk starts on, since the person asked for it.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -12,8 +12,9 @@ import type { World } from '../world/world.ts'
 import { commitAll } from './git.ts'
 import { installedKits, recordChange } from './kits/index.ts'
 import { parseSchedule, syncSchedules, whenWords } from './schedules.ts'
+import { inScripts, isCode } from './scripts.ts'
 
-const PLACES = ['skills/', 'schedules/', 'pages/', 'files/']
+const PLACES = ['scripts/', 'skills/', 'schedules/', 'pages/', 'files/']
 
 // A path inside the module, in one of its places; module.yaml and setup rows change by other ways.
 export function placeOf(path: string): string {
@@ -28,8 +29,13 @@ export function placeOf(path: string): string {
 }
 
 function check(module: Module, rel: string, text: string): string | null {
+  // a skill is a how-to the model follows; what runs is a script (the definitions, 27 Nov)
+  if (rel.startsWith('skills/') && isCode(rel))
+    throw new Refused(`A skill is a how-to, never code: keep ${rel} under scripts/ instead.`)
   if (/^schedules\/[^/]+\.md$/.test(rel)) {
     const a = parseSchedule(text, rel)
+    if (a.runs && !inScripts(a.runs.script))
+      throw new Refused(`${a.name} runs ${a.runs.script}; a module's code is kept under scripts/.`)
     if (a.runs && !existsSync(join(module.dir, a.runs.script)))
       throw new Refused(`${a.name} runs ${a.runs.script}, which is not kept yet: keep it first.`)
     return `${a.name} is on, ${whenWords(a.trigger)}`
@@ -44,9 +50,9 @@ function check(module: Module, rel: string, text: string): string | null {
 }
 
 // A file a script reads, not one that runs or that Alpha is told: a source's reader, a list, a
-// mapping. Kept under skills/ or files/.
+// mapping. Kept beside its script under scripts/, or under files/.
 const isData = (rel: string) =>
-  /^(skills|files)\//.test(rel) && /\.(json|ya?ml|csv|tsv|txt)$/i.test(rel)
+  /^(scripts|files)\//.test(rel) && /\.(json|ya?ml|csv|tsv|txt)$/i.test(rel)
 
 // Whether the module's kit shipped this file; when its folder is not on this Mac, taken as shipped.
 function shipped(world: World, module: Module, rel: string): boolean {

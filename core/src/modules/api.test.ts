@@ -57,11 +57,11 @@ describe('the kit API', () => {
   it('refuses a call whose input is not as the schema says, in plain words', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
-      join(m.dir, 'skills', 'wrong.js'),
+      join(m.dir, 'scripts', 'wrong.js'),
       'export default async (alpha) => { try { await alpha.rows.list() } catch (e) { return { words: e.message } } }',
     )
     const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1' })
-    const run = await runner.runScript(m, 'skills/wrong.js', {}, 'Wrong', null)
+    const run = await runner.runScript(m, 'scripts/wrong.js', {}, 'Wrong', null)
     expect(run.state).toBe('ok')
     expect((run.result as { words: string }).words).toMatch(/alpha\.rows\.list was given table:/)
   }, 60_000)

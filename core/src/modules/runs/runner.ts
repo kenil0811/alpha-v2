@@ -16,6 +16,7 @@ import type { World } from '../../world/world.ts'
 import type { Drafts } from '../drafts.ts'
 import { Reviews } from '../reviews.ts'
 import { type Runs, type Schedule, type ScheduleFile, schedules } from '../schedules.ts'
+import { inScripts } from '../scripts.ts'
 import * as apiOf from './api.ts'
 import * as dueOf from './due.ts'
 import * as reachOf from './reach.ts'
@@ -194,6 +195,11 @@ export class ScheduleRunner {
     const path = resolve(module.dir, script)
     if (!path.startsWith(`${module.dir}/`) || !existsSync(path))
       throw new Refused(`${module.name} has no script ${script}.`)
+    // a module's code is its scripts; an agent's own check runs from its folder
+    if (module.id && !inScripts(script))
+      throw new Refused(
+        `${script} is not one of ${module.name}'s scripts, which are kept under scripts/.`,
+      )
     const runId = newId('n')
     // a schedule's run keeps to its file: what it touches, reads and may do, within its budget; a
     // try from the chat keeps to its module

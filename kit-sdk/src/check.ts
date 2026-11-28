@@ -198,6 +198,13 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
         )
     }
   const gated = new Set(CALLS.filter((c) => c.effect).map((c) => c.name))
+  // a skill is a how-to the model follows, never code: that is a script (the definitions, 27 Nov)
+  for (const f of codeIn(join(dir, 'skills'), 'skills'))
+    problems.push(`${f} is code in a skill: a module's code is kept under scripts/<name>/.`)
+  if (existsSync(join(dir, 'agents')))
+    for (const a of readdirSync(join(dir, 'agents')))
+      for (const f of codeIn(join(dir, 'agents', a, 'skills'), `agents/${a}/skills`))
+        problems.push(`${f} is code in a skill: an agent's skills are how-tos only.`)
   const schedulesDir = join(dir, 'schedules')
   const scheduleFiles = existsSync(schedulesDir)
     ? readdirSync(schedulesDir).filter((f) => f.endsWith('.md'))
@@ -216,7 +223,9 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
     }
     const a = front.data
     const name = a.name ?? f.replace(/\.md$/, '')
-    if (a.runs && !existsSync(join(dir, a.runs.script)))
+    if (a.runs && !/^(\.\/)?scripts\/./.test(a.runs.script))
+      problems.push(`${name} runs ${a.runs.script}; a module's code is kept under scripts/<name>/.`)
+    else if (a.runs && !existsSync(join(dir, a.runs.script)))
       problems.push(`${name} runs ${a.runs.script}, which is not in the kit.`)
     if (typeof a.wakes === 'string' && !agentKeys.has(a.wakes))
       problems.push(
@@ -247,4 +256,12 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
     if (!(fm[2] as string).trim()) problems.push(`${name} has no brief under its front matter.`)
   }
   return problems
+}
+
+// The code files under a folder, by their path from the kit.
+function codeIn(root: string, at: string): string[] {
+  if (!existsSync(root)) return []
+  return readdirSync(root, { recursive: true, encoding: 'utf8' })
+    .filter((f) => /\.(m?js|cjs|ts)$/i.test(f))
+    .map((f) => `${at}/${f}`)
 }

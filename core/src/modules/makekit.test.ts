@@ -74,12 +74,12 @@ function rentals(): string {
     join(m.dir, 'NOTES.md'),
     '# Rentals\n\nHomes and apartments for rent, gathered from listings pages.\n\n- **Rental sources:** the pages.\n',
   )
-  mkdirSync(join(m.dir, 'skills', 'reader'), { recursive: true })
-  writeFileSync(join(m.dir, 'skills', 'reader', 'run.js'), 'export default async () => ({})\n')
+  mkdirSync(join(m.dir, 'scripts', 'reader'), { recursive: true })
+  writeFileSync(join(m.dir, 'scripts', 'reader', 'run.js'), 'export default async () => ({})\n')
   mkdirSync(join(m.dir, 'schedules'), { recursive: true })
   writeFileSync(
     join(m.dir, 'schedules', 'avenue.md'),
-    '---\nname: Avenue\ndescription: Reads the Avenue page.\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/reader/run.js }\ntouches: [Rental listings, Rental sources]\n---\nReads it.\n',
+    '---\nname: Avenue\ndescription: Reads the Avenue page.\ntrigger: { every: day, at: "07:00" }\nruns: { script: scripts/reader/run.js }\ntouches: [Rental listings, Rental sources]\n---\nReads it.\n',
   )
   mkdirSync(join(m.dir, '.claude'))
   writeFileSync(join(m.dir, '.claude', 'settings.json'), '{}')
@@ -92,7 +92,7 @@ describe('Make this a kit', () => {
     const made = makeKit(world, id, join(home, 'Desktop'), ctx)
     expect(made).toMatchObject({ name: 'Rentals', version: '0.1.0' })
     expect(made.file.endsWith('rentals-0.1.0.alphakit')).toBe(true)
-    expect(made.words).toMatch(/^Made Rentals 0\.1\.0: 2 tables, 1 schedule, 1 skill, no rows\./)
+    expect(made.words).toMatch(/^Made Rentals 0\.1\.0: 2 tables, 1 schedule, 1 script, no rows\./)
     const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     const manifest = parse(readFileSync(join(dir, 'module.yaml'), 'utf8'))
     expect(manifest).toMatchObject({
@@ -123,7 +123,7 @@ describe('Make this a kit', () => {
     ])
     expect(existsSync(join(dir, 'NOTES.md'))).toBe(true)
     expect(existsSync(join(dir, 'schedules', 'avenue.md'))).toBe(true)
-    expect(existsSync(join(dir, 'skills', 'reader', 'run.js'))).toBe(true)
+    expect(existsSync(join(dir, 'scripts', 'reader', 'run.js'))).toBe(true)
     expect(existsSync(join(dir, '.claude'))).toBe(false)
     expect(existsSync(join(dir, 'setup.yaml'))).toBe(false)
     expect(checkKit(dir)).toEqual([])
@@ -203,7 +203,9 @@ describe('Make this a kit', () => {
     writeFileSync(join(m.dir, 'NOTES.md'), '# Bakery\n\nChanged by the person.\n')
     const made = makeKit(world, m.id, join(home, 'Desktop'), ctx)
     expect(made.file.endsWith('bakery-0.1.0.alphakit')).toBe(true)
-    expect(made.words).toMatch(/^Packed Bakery 0\.1\.0: 2 tables, 1 schedule, 2 skills, no rows\./)
+    expect(made.words).toMatch(
+      /^Packed Bakery 0\.1\.0: 2 tables, 1 schedule, 2 scripts, 1 skill, no rows\./,
+    )
     const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     expect(readFileSync(join(dir, 'NOTES.md'), 'utf8')).toContain('Changed by the person')
     expect(existsSync(join(dir, 'setup.yaml'))).toBe(false)

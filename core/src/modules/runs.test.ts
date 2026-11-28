@@ -112,7 +112,7 @@ describe('a run', () => {
   it('runs a schedule once at a time: a second run while one is going is turned away', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
-      join(m.dir, 'skills', 'count', 'run.js'),
+      join(m.dir, 'scripts', 'count', 'run.js'),
       'export default async () => { await new Promise((r) => setTimeout(r, 1500)); return { slow: true } }',
     )
     const runner = new ScheduleRunner(world, () => engine)
@@ -134,7 +134,7 @@ describe('a run', () => {
     setAskBeforeSites(world, true, { actor: { kind: 'person', id: 'u_1' } })
     const first = await runner.runScript(
       m,
-      'skills/read/run.js',
+      'scripts/read/run.js',
       { url: 'https://supplies.example/list' },
       'Reader',
       null,
@@ -147,7 +147,7 @@ describe('a run', () => {
     world.cards.answer(card?.id as string, 'Yes', { kind: 'person', id: 'u_1' })
     const second = await runner.runScript(
       m,
-      'skills/read/run.js',
+      'scripts/read/run.js',
       { url: 'https://supplies.example/list' },
       'Reader',
       null,
@@ -163,7 +163,7 @@ describe('a run', () => {
     })
     const third = await runner.runScript(
       m,
-      'skills/read/run.js',
+      'scripts/read/run.js',
       { url: 'https://supplies.example/list' },
       'Reader',
       null,
@@ -199,7 +199,7 @@ describe('a site that wants a sign-in', () => {
     for (let i = 0; i < 2; i++) {
       const out = await runner.runScript(
         m,
-        'skills/read/run.js',
+        'scripts/read/run.js',
         { url: 'https://example.com/members' },
         'Reader',
         schedule,
@@ -236,7 +236,7 @@ describe('a run waiting on the person’s card', () => {
     } as unknown as BrowserEngine
     writeFileSync(
       join(m.dir, 'schedules/reader.md'),
-      '---\nname: Reader\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/read/run.js }\ntouches: [Suppliers]\n---\nReads.\n',
+      '---\nname: Reader\ntrigger: { every: day, at: "07:00" }\nruns: { script: scripts/read/run.js }\ntouches: [Suppliers]\n---\nReads.\n',
     )
     syncSchedules(world, m, 'on')
     const a = schedules(world, m.id).find((x) => x.name === 'Reader') as Schedule
@@ -260,19 +260,19 @@ describe('a script’s rows', () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new ScheduleRunner(world, () => engine)
     writeFileSync(
-      join(m.dir, 'skills/names.js'),
+      join(m.dir, 'scripts/names.js'),
       "export default async (alpha) => (await alpha.rows.list('Suppliers')).map((r) => [r.key, r.values.Name])",
     )
-    const names = await runner.runScript(m, 'skills/names.js', {}, 'Names', null)
+    const names = await runner.runScript(m, 'scripts/names.js', {}, 'Names', null)
     expect(names.result).toEqual([
       ['setup:mill', 'Mill & Co'],
       ['setup:dairy', 'Dairy Farm'],
     ])
     writeFileSync(
-      join(m.dir, 'skills/fake.js'),
+      join(m.dir, 'scripts/fake.js'),
       "export default async (alpha) => alpha.rows.land('Suppliers', [{ key: 'x', values: { Name: 'X' }, url: 'alpha://Suppliers/x' }])",
     )
-    const fake = await runner.runScript(m, 'skills/fake.js', {}, 'Fake', null)
+    const fake = await runner.runScript(m, 'scripts/fake.js', {}, 'Fake', null)
     expect(fake.words).toMatch(/alpha:\/\/Suppliers\/x is not one/)
   }, 60_000)
 })
@@ -295,10 +295,10 @@ describe('a script’s figures', () => {
       ctx,
     )
     writeFileSync(
-      join(m.dir, 'skills/figure.js'),
+      join(m.dir, 'scripts/figure.js'),
       `export default async (alpha) => { const [r] = await alpha.rows.list('Suppliers'); await alpha.rows.compute('Suppliers', r.id, { Email: 'computed@mill.example', Name: 'Mill (computed)' }, { Email: 'x', Name: 'y' }) }`,
     )
-    await runner.runScript(m, 'skills/figure.js', {}, 'Figure', null)
+    await runner.runScript(m, 'scripts/figure.js', {}, 'Figure', null)
     const after = world.records.list(suppliers)[0]
     expect([after?.values.name, after?.values.email]).toEqual([
       'Mill (computed)',
@@ -326,7 +326,7 @@ describe('a script’s figures', () => {
       ctx,
     )
     writeFileSync(
-      join(m.dir, 'skills/prices.js'),
+      join(m.dir, 'scripts/prices.js'),
       `export default async (alpha) => {
         const [doc] = await alpha.documents.list()
         const cells = await alpha.documents.read(doc.file)
@@ -335,7 +335,7 @@ describe('a script’s figures', () => {
         return cells.map((c) => c.cell + '=' + c.words)
       }`,
     )
-    const out = await runner.runScript(m, 'skills/prices.js', {}, 'Prices', null)
+    const out = await runner.runScript(m, 'scripts/prices.js', {}, 'Prices', null)
     expect(out.result).toEqual(['A2=Rye Mill', 'B2=1,250.50'])
     const rye = world.records
       .list(world.shape.table('Suppliers')?.id as string)
@@ -352,10 +352,10 @@ describe('a run on a yes', () => {
   it('runs a schedule again once the person said yes on a card its run opened, and only then', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1' })
-    writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async (alpha) => alpha.input')
+    writeFileSync(join(m.dir, 'scripts/echo.js'), 'export default async (alpha) => alpha.input')
     writeFileSync(
       join(m.dir, 'schedules/asker.md'),
-      '---\nname: Asker\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/echo.js }\n---\nAsks.\n',
+      '---\nname: Asker\ntrigger: { every: day, at: "07:00" }\nruns: { script: scripts/echo.js }\n---\nAsks.\n',
     )
     syncSchedules(world, m, 'on')
     const a = schedules(world, m.id).find((x) => x.name === 'Asker') as Schedule
@@ -406,10 +406,10 @@ describe('triggers', () => {
   it('run a schedule on a change in any of its tables, handing its script its input', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new ScheduleRunner(world, () => engine)
-    writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async (alpha) => alpha.input')
+    writeFileSync(join(m.dir, 'scripts/echo.js'), 'export default async (alpha) => alpha.input')
     writeFileSync(
       join(m.dir, 'schedules/watcher.md'),
-      '---\nname: Watcher\ntrigger: { changes: [Orders, Suppliers] }\nruns: { script: skills/echo.js, input: { say: hi } }\n---\nWatches.\n',
+      '---\nname: Watcher\ntrigger: { changes: [Orders, Suppliers] }\nruns: { script: scripts/echo.js, input: { say: hi } }\n---\nWatches.\n',
     )
     syncSchedules(world, m, 'on')
     await runner.runDue() // the kit's own rows count as a change, once
@@ -434,10 +434,10 @@ describe('triggers', () => {
   it('run a schedule on a change past a module deletion’s line that counted its tables', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new ScheduleRunner(world, () => engine)
-    writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async () => null')
+    writeFileSync(join(m.dir, 'scripts/echo.js'), 'export default async () => null')
     writeFileSync(
       join(m.dir, 'schedules/watcher.md'),
-      '---\nname: Watcher\ntrigger: { changes: [Orders, Suppliers] }\nruns: { script: skills/echo.js }\n---\nWatches.\n',
+      '---\nname: Watcher\ntrigger: { changes: [Orders, Suppliers] }\nruns: { script: scripts/echo.js }\n---\nWatches.\n',
     )
     syncSchedules(world, m, 'on')
     // a deletion's line as it was written before its counts had names of their own
@@ -456,17 +456,17 @@ describe('triggers', () => {
     // a second kit that follows the first one's Orders into a table of its own
     const dir = join(home, 'cafe')
     mkdirSync(join(dir, 'schedules'), { recursive: true })
-    mkdirSync(join(dir, 'skills', 'follow'), { recursive: true })
+    mkdirSync(join(dir, 'scripts', 'follow'), { recursive: true })
     writeFileSync(
       join(dir, 'module.yaml'),
       'name: Cafe\nversion: 0.1.0\napi: 3\nuses:\n  - { kit: Bakery, tables: [Orders] }\ntables:\n  - name: Counts\n    fields:\n      - { name: Name, kind: text }\n      - { name: Orders seen, kind: number }\n',
     )
     writeFileSync(
       join(dir, 'schedules', 'follow.md'),
-      '---\nname: Follow\ntrigger: { changes: Orders }\nruns: { script: skills/follow/run.js }\ntouches: [Counts]\nneeds: { tables: [Orders] }\n---\nFollows the bakery’s orders.\n',
+      '---\nname: Follow\ntrigger: { changes: Orders }\nruns: { script: scripts/follow/run.js }\ntouches: [Counts]\nneeds: { tables: [Orders] }\n---\nFollows the bakery’s orders.\n',
     )
     writeFileSync(
-      join(dir, 'skills', 'follow', 'run.js'),
+      join(dir, 'scripts', 'follow', 'run.js'),
       "export default async (alpha) => {\n  const orders = await alpha.rows.list('Orders')\n  await alpha.rows.land('Counts', [{ key: 'orders', values: { Name: 'Orders', 'Orders seen': orders.length } }])\n  return { words: orders.length + ' seen' }\n}\n",
     )
     const cafe = await install(world, dir, ctx)
@@ -495,10 +495,10 @@ describe('triggers', () => {
   it('run a schedule when a document is filed', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new ScheduleRunner(world, () => engine)
-    writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async () => null')
+    writeFileSync(join(m.dir, 'scripts/echo.js'), 'export default async () => null')
     writeFileSync(
       join(m.dir, 'schedules/filer.md'),
-      '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: skills/echo.js }\n---\nReads what is filed.\n',
+      '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: scripts/echo.js }\n---\nReads what is filed.\n',
     )
     syncSchedules(world, m, 'on')
     await runner.runDue()
@@ -535,7 +535,7 @@ describe('what a script may not touch', () => {
   it('cannot write its module’s module.yaml: the sites and the shape are the core’s to write', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
-      join(m.dir, 'skills', 'count', 'run.js'),
+      join(m.dir, 'scripts', 'count', 'run.js'),
       'import { writeFileSync, readFileSync } from "node:fs"; export default async () => { const f = process.cwd() + "/module.yaml"; writeFileSync(f, readFileSync(f, "utf8") + "  - evil.example\\n"); return { wrote: true } }',
     )
     const runner = new ScheduleRunner(world, () => engine)
@@ -565,7 +565,7 @@ describe('a run that did not finish', () => {
   it('is tried again on the next ticks, then waits on a card: Try again runs once more, Leave it moves on', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
-      join(m.dir, 'skills', 'count', 'run.js'),
+      join(m.dir, 'scripts', 'count', 'run.js'),
       'export default async () => { throw new Error("boom") }',
     )
     const runner = new ScheduleRunner(world, () => engine)
@@ -596,7 +596,7 @@ describe('a run that did not finish', () => {
   it('runs the due schedules in a lane of their own: the tick is back at once', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
-      join(m.dir, 'skills', 'count', 'run.js'),
+      join(m.dir, 'scripts', 'count', 'run.js'),
       'export default async () => { await new Promise((r) => setTimeout(r, 1200)); return { slow: true } }',
     )
     const runner = new ScheduleRunner(world, () => engine)
@@ -619,17 +619,17 @@ describe('a schedule woken by a filing', () => {
   it('is handed the documents filed or put on a row, with their rows, and can place one', async () => {
     const kit = join(home, 'filing-kit')
     mkdirSync(join(kit, 'schedules'), { recursive: true })
-    mkdirSync(join(kit, 'skills', 'file'), { recursive: true })
+    mkdirSync(join(kit, 'scripts', 'file'), { recursive: true })
     writeFileSync(
       join(kit, 'module.yaml'),
       'name: Desk\nversion: 0.1.0\napi: 2\ntables:\n  - name: Jobs\n    documents: [Brief, Invoice]\n    fields:\n      - { name: Name, kind: text }\n',
     )
     writeFileSync(
       join(kit, 'schedules', 'filer.md'),
-      '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: skills/file/run.js }\ntouches: [Jobs]\n---\nFiles briefs.\n',
+      '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: scripts/file/run.js }\ntouches: [Jobs]\n---\nFiles briefs.\n',
     )
     writeFileSync(
-      join(kit, 'skills', 'file', 'run.js'),
+      join(kit, 'scripts', 'file', 'run.js'),
       `export default async function (alpha) {
   const filed = alpha.input.filed ?? []
   const [job] = await alpha.rows.list('Jobs')

@@ -39,11 +39,11 @@ async function failing(w: RuleWorld, times: number): Promise<number> {
 function twoHourly(w: RuleWorld): ScheduleRunner {
   const m = w.world.shape.module('Bakery')
   if (!m) throw new Error('The rule world has no Bakery.')
-  writeFileSync(join(m.dir, 'skills', 'well.js'), "export default async () => ({ words: 'done' })")
+  writeFileSync(join(m.dir, 'scripts', 'well.js'), "export default async () => ({ words: 'done' })")
   for (const name of ['First', 'Second'])
     writeFileSync(
       join(m.dir, 'schedules', `${name.toLowerCase()}.md`),
-      `---\nname: ${name}\ntrigger: { every: hour }\nruns: { script: skills/well.js }\n---\n${name}.\n`,
+      `---\nname: ${name}\ntrigger: { every: hour }\nruns: { script: scripts/well.js }\n---\n${name}.\n`,
     )
   syncSchedules(w.world, m, 'on')
   const runner = new ScheduleRunner(w.world, () => ({}) as unknown as BrowserEngine, {

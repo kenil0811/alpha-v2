@@ -5,6 +5,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { config } from '../config.ts'
+import { schedules } from '../modules/schedules.ts'
+import { scriptsOf } from '../modules/scripts.ts'
 import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Table } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
@@ -18,8 +20,8 @@ function readWhole(file: string): string {
   return existsSync(file) ? readFileSync(file, 'utf8').trim() : ''
 }
 
-// A module's skills, each by its SKILL.md's name and description: what its scripts do, known from
-// the start without reading the folder.
+// A module's or an agent's skills, each by its SKILL.md's name and description: how a kind of job
+// is done, known from the start without reading the folder. A skill is a how-to, never code.
 export function skillsOf(dir: string): { name: string; description: string }[] {
   const root = join(dir, 'skills')
   if (!existsSync(root)) return []
@@ -86,7 +88,12 @@ export function startLayer(
     const skills = skillsOf(m.dir)
     if (skills.length)
       parts.push(
-        `Skills (skills/<name>/SKILL.md says more):\n${skills.map((s) => `- ${s.name}${s.description ? `: ${s.description}` : ''}`).join('\n')}`,
+        `Skills, how its work is done (skills/<name>/SKILL.md says more):\n${skills.map((s) => `- ${s.name}${s.description ? `: ${s.description}` : ''}`).join('\n')}`,
+      )
+    const scripts = mod ? scriptsOf(m.dir, schedules(world, mod.id)) : []
+    if (scripts.length)
+      parts.push(
+        `Scripts, its code (scripts/<name>/):\n${scripts.map((s) => `- ${s.name}${s.runBy.length ? `, run by ${s.runBy.join(', ')}` : ''}`).join('\n')}`,
       )
   }
   parts.push(

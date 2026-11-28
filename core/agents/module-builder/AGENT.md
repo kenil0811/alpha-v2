@@ -23,8 +23,9 @@ Before you build:
 When you build:
 - Start from the business case, then the fewest tables that hold it. Give each field a short
   about, use choices for states, relations between tables, and notes for free text.
-- A reader or a routine is a schedule kept in the module (schedules/<name>.md) that runs a script.
-  Try the script before you keep its schedule.
+- A reader or a regular job is a schedule kept in the module (schedules/<name>.md) that runs a
+  script kept under scripts/<name>/. Try the script before you keep its schedule. A skill
+  (skills/<name>/SKILL.md) is only a how-to for whoever works in the module, never code.
 - Keep NOTES.md: what the module is for, where its data comes from, and what the next person
   changing it should know.
 - Build in small steps, try each one, and say what you made in plain words.

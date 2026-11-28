@@ -194,7 +194,7 @@ rule(
       // a fix the person asked for needs no second yes, while it is a file a script reads
       'a data file the kit shipped, changed in the turn the person asked in, is kept with no card and counted for the maintainer':
         async (w) => {
-          const reader = 'skills/parts/suppliers.json'
+          const reader = 'scripts/parts/suppliers.json'
           const fixed = '{ "list": "table.prices tbody tr" }'
           // nobody asked: it waits on the card
           const unasked = await refusal(() => drive(w, 'alpha: keep').keep('Supply', reader, fixed))
@@ -254,7 +254,7 @@ rule(
         const refused = await refusal(() =>
           drive(w, 'alpha: keep').keep(
             'Supply',
-            'skills/parts/run.js',
+            'scripts/parts/run.js',
             'export default async () => ({ words: "Changed." })',
           ),
         )

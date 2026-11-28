@@ -33,11 +33,11 @@ afterEach(() => {
 async function kitWith(front: string, script: string) {
   const dir = join(home, 'kit')
   cpSync(KIT, dir, { recursive: true })
-  mkdirSync(join(dir, 'skills', 'walled'), { recursive: true })
-  writeFileSync(join(dir, 'skills', 'walled', 'run.js'), script)
+  mkdirSync(join(dir, 'scripts', 'walled'), { recursive: true })
+  writeFileSync(join(dir, 'scripts', 'walled', 'run.js'), script)
   writeFileSync(
     join(dir, 'schedules', 'walled.md'),
-    `---\nname: Walled\n${front}\nruns: { script: skills/walled/run.js }\n---\nA made-up schedule for the walls.\n`,
+    `---\nname: Walled\n${front}\nruns: { script: scripts/walled/run.js }\n---\nA made-up schedule for the walls.\n`,
   )
   const m = await install(world, dir, ctx)
   const schedule = schedules(world, m.id).find((a) => a.name === 'Walled')
@@ -94,16 +94,16 @@ describe('the walls of a schedule', () => {
     )
     writeFileSync(
       join(m.dir, 'schedules', 'walled.md'),
-      '---\nname: Walled\ntrigger: { every: day }\ntouches: [Secrets]\nruns: { script: skills/walled/run.js }\n---\nEdited.\n',
+      '---\nname: Walled\ntrigger: { every: day }\ntouches: [Secrets]\nruns: { script: scripts/walled/run.js }\n---\nEdited.\n',
     )
     const out = await runner.runSchedule(schedule, undefined, {}, { asked: true })
     expect(out.words).toMatch(/Secrets is not one of Bakery's tables/)
     // a try has no file: its module is its wall
-    const tried = await runner.runScript(m, 'skills/walled/run.js', {}, 'A try of walled', null)
+    const tried = await runner.runScript(m, 'scripts/walled/run.js', {}, 'A try of walled', null)
     expect(tried.words).toMatch(/A try of walled may write only Bakery's own tables, not Secrets/)
     // a try of a reader keeps its reach: the walls refuse nothing of it (a site waits on a card
     // as ever), and it lands in the module's own table
-    const reached = await runner.runScript(m, 'skills/read/run.js', {}, 'A try of read', null)
+    const reached = await runner.runScript(m, 'scripts/read/run.js', {}, 'A try of read', null)
     expect(reached.words).not.toMatch(/may write only|may not read/)
   }, 90_000)
 

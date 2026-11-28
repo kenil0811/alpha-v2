@@ -30,19 +30,19 @@ beforeEach(async () => {
   world = await World.open(join(home, 'tenants', 't_test'))
   user = world.owner('Kenil')
   module = world.shape.makeModule('Reading room', { actor: { kind: 'alpha' } })
-  mkdirSync(join(module.dir, 'skills', 'read'), { recursive: true })
+  mkdirSync(join(module.dir, 'scripts', 'read'), { recursive: true })
   mkdirSync(join(module.dir, 'schedules'), { recursive: true })
   writeFileSync(
-    join(module.dir, 'skills', 'read', 'quick.js'),
+    join(module.dir, 'scripts', 'read', 'quick.js'),
     'export default async (alpha) => ({ words: `Read ${alpha.input.what}.` })\n',
   )
   writeFileSync(
-    join(module.dir, 'skills', 'read', 'slow.js'),
+    join(module.dir, 'scripts', 'read', 'slow.js'),
     `export default async () => {\n  await new Promise((r) => setTimeout(r, ${SLOW_MS}))\n  return { words: 'Every source read.' }\n}\n`,
   )
   writeFileSync(
     join(module.dir, 'schedules', 'read-everything.md'),
-    '---\nname: Read everything\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/read/slow.js }\n---\nReads every source.\n',
+    '---\nname: Read everything\ntrigger: { every: day, at: "07:00" }\nruns: { script: scripts/read/slow.js }\n---\nReads every source.\n',
   )
   syncSchedules(world, module, 'on')
   runner = new ScheduleRunner(world, () => ({}) as unknown as BrowserEngine, { owner: user.id })
@@ -73,7 +73,7 @@ describe('the run tool', () => {
   it('gives back the outcome of a script that ends within the wait', async () => {
     const out = await said({
       module: 'Reading room',
-      script: 'skills/read/quick.js',
+      script: 'scripts/read/quick.js',
       input: { what: 'one page' },
     })
     expect(out.state).toBe('ok')

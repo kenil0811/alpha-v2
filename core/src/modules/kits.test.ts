@@ -658,7 +658,7 @@ describe('the contracts a kit signs', () => {
   it('keeps who maintains a kit, and a schedule’s description', async () => {
     const dir = copyKit((m) => `${m}maintainer: { name: Avilo, address: kits@avilo.example }\n`, {
       'schedules/counter.md':
-        '---\nname: Counter\ndescription: Counts the orders.\ntrigger: [{ every: day, at: "07:00" }, { changes: Orders }]\nruns: { script: skills/count/run.js }\ntouches: [Orders]\nbudget: { minutes: 5 }\n---\nCounts the orders each morning.\n',
+        '---\nname: Counter\ndescription: Counts the orders.\ntrigger: [{ every: day, at: "07:00" }, { changes: Orders }]\nruns: { script: scripts/count/run.js }\ntouches: [Orders]\nbudget: { minutes: 5 }\n---\nCounts the orders each morning.\n',
     })
     const m = await install(world, dir, ctx)
     expect(installedKits(world)[0]?.maintainer).toEqual({
@@ -673,10 +673,10 @@ describe('the contracts a kit signs', () => {
   it('says what is wrong with a kit before anything installs', async () => {
     const dir = copyKit((m) => m, {
       'schedules/bad.md':
-        '---\nname: Bad\ntrigger: { changes: Nowhere }\nruns: { script: skills/none/run.js }\ntouches: [Elsewhere]\neffects: [fly]\n---\n',
+        '---\nname: Bad\ntrigger: { changes: Nowhere }\nruns: { script: scripts/none/run.js }\ntouches: [Elsewhere]\neffects: [fly]\n---\n',
     })
     await expect(install(world, dir, ctx)).rejects.toThrow(
-      /runs skills\/none\/run.js, which is not in the kit.*touches Elsewhere.*names the effect fly.*runs when Nowhere changes.*has no brief/s,
+      /runs scripts\/none\/run.js, which is not in the kit.*touches Elsewhere.*names the effect fly.*runs when Nowhere changes.*has no brief/s,
     )
   })
 })
@@ -692,7 +692,7 @@ describe('a kit’s schedules and its agents', () => {
     )
     writeFileSync(
       join(dir, 'schedules', 'counter.md'),
-      '---\nname: Counter\ntrigger: { changes: Orders }\nruns: { script: skills/count/run.js }\nwakes: baker\ntouches: [Orders]\n---\nCounts the orders when one changes, and hands the baker what needs a look.\n',
+      '---\nname: Counter\ntrigger: { changes: Orders }\nruns: { script: scripts/count/run.js }\nwakes: baker\ntouches: [Orders]\n---\nCounts the orders when one changes, and hands the baker what needs a look.\n',
     )
     mkdirSync(join(dir, 'agents', 'baker', 'schedules'), { recursive: true })
     writeFileSync(
@@ -711,6 +711,16 @@ describe('a kit’s schedules and its agents', () => {
     setScheduleAgent(world, counter()?.id as string, CHIEF, 'u_1')
     syncSchedules(world, world.shape.module(m.id) as Module, 'paused')
     expect(counter()?.agent).toBe(CHIEF)
+  })
+
+  it('refuses code in a skill, the module’s or its agent’s: code is a script', async () => {
+    const dir = withAgent()
+    writeFileSync(join(dir, 'skills', 'count', 'tally.js'), 'export default async () => ({})\n')
+    mkdirSync(join(dir, 'agents', 'baker', 'skills', 'bake'), { recursive: true })
+    writeFileSync(join(dir, 'agents', 'baker', 'skills', 'bake', 'oven.mjs'), 'export {}\n')
+    await expect(install(world, dir, ctx)).rejects.toThrow(
+      /skills\/count\/tally.js is code in a skill.*agents\/baker\/skills\/bake\/oven.mjs is code in a skill/s,
+    )
   })
 
   it('refuses a schedule naming an agent it does not carry, and an agent’s routine its module starts', async () => {
@@ -890,15 +900,15 @@ describe('stable keys and tombstones', () => {
       { actor: alpha },
     )
     writeFileSync(
-      join(m.dir, 'skills', 'count', 'run.js'),
+      join(m.dir, 'scripts', 'count', 'run.js'),
       'export default async () => ({ orders: 1 })',
     )
     const y = yours(world, m.id)
-    expect(y.files).toEqual([{ path: 'skills/count/run.js', state: 'changed' }])
+    expect(y.files).toEqual([{ path: 'scripts/count/run.js', state: 'changed' }])
     expect(y.rows.map((r) => [r.table, r.key, r.name])).toEqual([
       ['Suppliers', 'mill', 'Mill and Sons'],
     ])
-    await takeBack(world, m.id, { kind: 'file', path: 'skills/count/run.js' }, ctx)
+    await takeBack(world, m.id, { kind: 'file', path: 'scripts/count/run.js' }, ctx)
     await takeBack(world, m.id, { kind: 'row', table: 'Suppliers', key: 'mill' }, ctx)
     expect(yours(world, m.id)).toMatchObject({ files: [], rows: [] })
     expect(world.records.list(suppliers.id)[0]?.values.name).toBe('Mill & Co')

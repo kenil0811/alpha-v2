@@ -87,7 +87,7 @@ describe('rows put to the person', () => {
       ctx,
     )
     writeFileSync(
-      join(m.dir, 'skills/picks.js'),
+      join(m.dir, 'scripts/picks.js'),
       `export default async (alpha) => {
         const people = await alpha.people.list()
         const judged = await alpha.judge({
@@ -107,7 +107,7 @@ describe('rows put to the person', () => {
       }`,
     )
     const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1', judge: fakeJudge })
-    const run = await runner.runScript(m, 'skills/picks.js', {}, 'Picks', null)
+    const run = await runner.runScript(m, 'scripts/picks.js', {}, 'Picks', null)
     expect(run.state).toBe('ok')
     const { people, fits, card } = run.result as { people: number; fits: number; card: string }
     expect([people, fits]).toEqual([2, 1])
@@ -123,7 +123,7 @@ describe('rows put to the person', () => {
     expect(done.open).toBe(0)
     expect(world.cards.get(card)?.answer).toBe('In 1, Left out 1')
     // the person's word stands when the script lands the rows again
-    await runner.runScript(m, 'skills/picks.js', {}, 'Picks', null)
+    await runner.runScript(m, 'scripts/picks.js', {}, 'Picks', null)
     const states = world.records
       .list(world.shape.table('Picks')?.id as string)
       .map((r) => [r.values.why, r.values.state])
@@ -137,14 +137,14 @@ describe('rows put to the person', () => {
   it('refuses choices the field does not have, and rows of another module', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
-      join(m.dir, 'skills/bad.js'),
+      join(m.dir, 'scripts/bad.js'),
       `export default async (alpha) => {
         const rows = (await alpha.rows.list('Orders')).map((r) => r.id)
         return alpha.review({ words: 'x', table: 'Suppliers', field: 'Name', choices: ['Yes'], rows })
       }`,
     )
     const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1', judge: fakeJudge })
-    const bad = await runner.runScript(m, 'skills/bad.js', {}, 'Bad', null)
+    const bad = await runner.runScript(m, 'scripts/bad.js', {}, 'Bad', null)
     expect(bad.state).toBe('failed')
     expect(bad.words).toMatch(/no choice field Name/)
   }, 60_000)

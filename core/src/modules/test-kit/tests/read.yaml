@@ -1,5 +1,5 @@
 # The reader on a recorded page: one supplier landed, with the page it was read from.
-script: skills/read/run.js
+script: scripts/read/run.js
 pages:
   https://supplies.example/list:
     url: https://supplies.example/list

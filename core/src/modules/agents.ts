@@ -14,6 +14,7 @@ import { forgetMarks } from './agent-marks.ts'
 import { commitAll, restoreFile } from './git.ts'
 import { passRoutines } from './routines.ts'
 import { agentSchedules, syncAgentSchedules } from './schedules.ts'
+import { isCode } from './scripts.ts'
 import {
   ALPHA,
   BUILDER_KEY,
@@ -169,6 +170,9 @@ export async function keepAgentFile(
     !PLACES.some((p) => rel.startsWith(p) && rel.length > p.length)
   )
     throw new Refused(`An agent keeps files under ${PLACES.join(', ')}; ${path} is none of these.`)
+  // its skills are how-tos, its craft; code is a module's script, or a routine's check
+  if (rel.startsWith('skills/') && isCode(rel))
+    throw new Refused(`An agent's skill is a how-to, never code: ${rel} is code.`)
   if (/^skills\/[^/]+\/SKILL\.md$/.test(rel)) {
     const front = /^---\n([\s\S]*?)\n---/.exec(content)
     const f = (front ? parse(front[1] as string) : null) as {

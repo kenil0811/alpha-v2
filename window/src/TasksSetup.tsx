@@ -4,8 +4,9 @@ import type { FieldView, ScheduleView, TasksView, WorkingModuleView } from '@alp
 import { useCallback, useEffect, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api } from './api.ts'
-import { OneSchedule, Part } from './ModuleSetup.tsx'
+import { OneSchedule } from './ModuleSetup.tsx'
 import { List, Row } from './ui/list.tsx'
+import { Part } from './ui/part.tsx'
 
 export function TasksSetup({ version, fields }: { version: number; fields: FieldView[] }) {
   const [modules, setModules] = useState<WorkingModuleView[]>([])

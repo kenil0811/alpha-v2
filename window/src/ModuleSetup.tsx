@@ -10,59 +10,28 @@ import type {
   ModuleView,
   RuleView,
   ScheduleView,
-  YoursView,
 } from '@alpha/core/api'
-import { CalendarClock, ChevronRight, FileText, Plus, Trash2 } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { CalendarClock, ChevronRight, FileText, Plus } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import { startAsk } from './ask.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { originWords, when } from './Modules.tsx'
+import { Yours } from './ModuleYours.tsx'
 import { TableTab } from './TableTab.tsx'
 import { KINDS } from './table/KindPicker.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Confirm } from './ui/dialog.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
 import { Select } from './ui/field.tsx'
-import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
-import { More } from './ui/more.tsx'
+import { Part } from './ui/part.tsx'
 import { Pill } from './ui/pill.tsx'
-import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
 import { updatedWords } from './ui/update-now.tsx'
 import { Words } from './ui/words.tsx'
-
-// a part's place on the page, for a link to it (a notice's Find it in Setup › Tables)
-export const partId = (title: string) => `setup-${title.toLowerCase().replaceAll(' ', '-')}`
-
-// A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, a button
-// at the right of the title's line where the part adds something, its content; no card around it.
-export function Part({
-  title,
-  about,
-  action,
-  children,
-}: {
-  title: string
-  about?: string
-  action?: ReactNode
-  children?: ReactNode
-}) {
-  return (
-    <section id={partId(title)} className="flex scroll-mt-4 flex-col">
-      <div className="mb-2.5 flex items-center gap-1.5">
-        <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
-        {about && <Info help={about} />}
-        {action && <div className="ml-auto flex items-center gap-2">{action}</div>}
-      </div>
-      {children}
-    </section>
-  )
-}
 
 export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   return (
@@ -113,6 +82,34 @@ export function ModuleDetails({ m, onChange }: { m: ModuleView; onChange: () => 
             <Words text={m.notes.replace(/^# .*\n+/, '')} />
           </div>
         </Part>
+        {m.scripts.length > 0 && (
+          <Part
+            title="Scripts"
+            about={`The code that does ${m.name}'s work by itself, the same way every time. Ask Alpha to change one.`}
+          >
+            <List>
+              {m.scripts.map((s) => (
+                <Row
+                  key={s.name}
+                  title={s.name}
+                  sub={s.runBy.length ? `Run by ${s.runBy.join(', ')}` : 'Run when asked'}
+                />
+              ))}
+            </List>
+          </Part>
+        )}
+        {m.skills.length > 0 && (
+          <Part
+            title="Skills"
+            about={`How a kind of job in ${m.name} is done, which Alpha follows whoever does it.`}
+          >
+            <List>
+              {m.skills.map((s) => (
+                <Row key={s.name} title={s.name} sub={s.description} />
+              ))}
+            </List>
+          </Part>
+        )}
         {m.kit && <Yours moduleId={m.id} onChange={onChange} />}
         {!!m.kit && !!me?.developer && me.user.role === 'owner' && <FromFolder m={m} />}
       </div>
@@ -423,121 +420,6 @@ function Rules({ m }: { m: ModuleView }) {
             />
           ))}
         </List>
-      )}
-    </Part>
-  )
-}
-
-// What of an installed module is the person's now: each with the module's own version
-// back, and the fields the module no longer uses, each with its values gone for good. It shows
-// only when there is something to show.
-function Yours({ moduleId, onChange }: { moduleId: string; onChange: () => void }) {
-  const [yours, setYours] = useState<YoursView | null>(null)
-  const [asking, setAsking] = useState<string | null>(null)
-  const load = useCallback(() => {
-    api.get<YoursView>(`/api/kits/${moduleId}/yours`).then(setYours, () => setYours(null))
-  }, [moduleId])
-  useEffect(() => {
-    load()
-  }, [load])
-  const { busy, problem, act } = useAct(() => {
-    load()
-    onChange()
-  })
-  if (!yours) return null
-  const back = (what: Record<string, string>) =>
-    act(() => api.post(`/api/kits/${moduleId}/yours/back`, what))
-  const items = [
-    ...yours.files.map((f) => ({
-      key: `file:${f.path}`,
-      words: `The file ${f.path.split('/').pop()}, ${f.state === 'removed' ? 'deleted' : 'changed'} by you`,
-      back: () => back({ kind: 'file', path: f.path }),
-    })),
-    ...yours.rows.map((r) => ({
-      key: `row:${r.id}`,
-      words: `${r.name} in ${r.table}, a setting you changed`,
-      back: () => back({ kind: 'row', table: r.table, key: r.key }),
-    })),
-    ...yours.views.map((v) => ({
-      key: `view:${v.id}`,
-      words: `The saved list ${v.name} on ${v.table}, yours`,
-      back: () => back({ kind: 'view', table: v.table, name: v.name }),
-    })),
-    ...yours.fields.map((f) => ({
-      key: `field:${f.id}`,
-      words: `The field ${f.name} in ${f.table}, added by you`,
-      back: null,
-    })),
-  ]
-  if (!items.length && !yours.removed.length) return null
-  const gone = yours.removed.find((f) => f.fieldId === asking)
-  return (
-    <Part
-      title="What is yours"
-      about="What you changed in this module; its updates leave these alone."
-    >
-      {problem && <Refusal words={problem} />}
-      <List>
-        {items.map((it) => (
-          <Row
-            key={it.key}
-            title={it.words}
-            actions={
-              it.back && (
-                <Button size="sm" variant="ghost" disabled={busy} onClick={it.back}>
-                  Go back to the module's own
-                </Button>
-              )
-            }
-          />
-        ))}
-        {yours.removed.map((f) => (
-          <Row
-            key={`gone-${f.fieldId}`}
-            title={`${f.name} in ${f.table}: the module no longer uses it`}
-            sub={`${f.rows} row${f.rows === 1 ? '' : 's'} still hold a value under it`}
-            actions={
-              <More label="More" disabled={busy}>
-                {(close) => (
-                  <MenuItem
-                    danger
-                    onClick={() => {
-                      close()
-                      setAsking(f.fieldId)
-                    }}
-                  >
-                    <Trash2 className="size-3.5" />
-                    Delete its values
-                  </MenuItem>
-                )}
-              </More>
-            }
-          />
-        ))}
-      </List>
-      {gone && (
-        <Confirm
-          open
-          title={`Delete ${gone.name}'s values?`}
-          yes={`Delete ${gone.rows === 1 ? 'it' : `all ${gone.rows}`}`}
-          busy={busy}
-          done={{
-            words: `${gone.name}'s values are deleted.`,
-          }}
-          onClose={() => setAsking(null)}
-          onYes={() => {
-            setAsking(null)
-            return act(() =>
-              api.post(`/api/kits/${moduleId}/fields/remove`, {
-                table: gone.table,
-                field: gone.fieldId,
-              }),
-            )
-          }}
-        >
-          {gone.rows === 1 ? 'One row' : `${gone.rows} rows`} in {gone.table}{' '}
-          {gone.rows === 1 ? 'holds' : 'hold'} a value under it, and can’t get it back.
-        </Confirm>
       )}
     </Part>
   )

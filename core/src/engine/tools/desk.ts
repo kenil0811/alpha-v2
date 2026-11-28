@@ -244,7 +244,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
     tool(
       'keep',
       [
-        'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), a schedule (schedules/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
+        'Keep a file in a module: a script, its code (scripts/<name>/run.js, with what it reads beside it), a skill, a how-to only (skills/<name>/SKILL.md with front matter name and description, never code), a schedule (schedules/<name>.md, running a script under scripts/), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
         'A schedule file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed), and `runs: { script: <path in the module> }`, then its brief: what it does. Keep its script first. A schedule kept here is on.',
         'An agent: agent: its name, with define: { title (its job in a few words), description (when to use it; teammates decide from this), instructions (how it works and what a good answer looks like), model } makes it or changes it, and the Chief of staff alone makes one or changes another. agent with path skills/<name>/SKILL.md or files/… keeps a skill or file in that agent’s folder, and improve a skill you have before making another.',
         'Before you write a page or a script, read its grammar with guide (about: pages, or scripts).',
