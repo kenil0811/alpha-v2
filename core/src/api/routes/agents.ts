@@ -15,7 +15,7 @@ import {
   undoAgentChange,
 } from '../../modules/agents.ts'
 import { moduleNetwork, removeHost } from '../../modules/runs/reach.ts'
-import { agentSchedules } from '../../modules/schedules.ts'
+import { agentSchedules, shownSchedules } from '../../modules/schedules.ts'
 import { fromView, refuseShipped } from '../../modules/shipped.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -48,6 +48,12 @@ export function registerAgents(ctx: Ctx): void {
       .map((t) => ({ id: t.id, title: t.title, state: STATE_WORDS[t.state] }))
   const schedulesOf = (id: string) =>
     agentSchedules(world, id).map((s) => scheduleOut(world, engine.hands?.runner, s))
+  // the modules' schedules that wake it, each with its module
+  const wokenBy = (id: string): AgentDetail['wokenBy'] =>
+    shownSchedules(world).flatMap((s) => {
+      const m = s.module && s.agent === id ? world.shape.module(s.module) : null
+      return m ? [{ id: s.id, name: s.name, module: { id: m.id, name: m.name } }] : []
+    })
   // an agent's folder as its scripts' place, where its list of sites is kept
   const placeOf = (id: string) => ({
     id: null,
@@ -128,7 +134,8 @@ export function registerAgents(ctx: Ctx): void {
         files: [],
         memories: memoriesOf(id),
         tasks: tasksOf(id),
-        schedules: schedulesOf(id),
+        routines: schedulesOf(id),
+        wokenBy: wokenBy(id),
         sites: sitesOf(id),
       }
     const a = world.agents.get(id)
@@ -148,7 +155,8 @@ export function registerAgents(ctx: Ctx): void {
       files: existsSync(filesDir) ? readdirSync(filesDir) : [],
       memories: memoriesOf(id),
       tasks: tasksOf(id),
-      schedules: schedulesOf(id),
+      routines: schedulesOf(id),
+      wokenBy: wokenBy(id),
       sites: sitesOf(id),
     }
   })

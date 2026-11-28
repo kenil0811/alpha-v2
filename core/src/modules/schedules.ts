@@ -152,7 +152,7 @@ export interface ScheduleFile {
   description: string | null
   trigger: Trigger | Trigger[] | null
   runs: Runs | null
-  wakes: boolean
+  wakes: boolean | string // a module's: true, or the key of one of its kit's agents
   touches: string[] | null // null: it names none, so its module's own tables
   effects: string[] | null // null: the file says nothing, an older one
   needs: { connectors: string[]; tables: string[] }
@@ -233,9 +233,17 @@ function syncFiles(world: World, home: Home, root: string, state: 'on' | 'paused
         key,
         a.name,
       ).find((x) => !kept.has(x.id))
-    // a module's file says only that it wakes an agent; which one is the person's choice
-    const wakes = (was: string | null) =>
-      home.module ? (a.wakes ? (was ?? CHIEF) : null) : home.agent
+    // which agent a module's schedule wakes: the person's choice on Setup once made, else the one
+    // its kit names by key (that agent comes after the kit's schedules: until then none, and the
+    // install syncs again), else the Chief of staff. An agent's own schedule wakes that agent.
+    const wakes = (was: string | null): string | null => {
+      if (!home.module) return home.agent
+      if (!a.wakes) return null
+      if (was) return was
+      if (typeof a.wakes === 'string')
+        return world.agents.shipped(home.module.id, a.wakes)?.id ?? null
+      return CHIEF
+    }
     if (known) {
       kept.add(known.id)
       run(

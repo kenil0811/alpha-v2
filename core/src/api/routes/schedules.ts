@@ -53,6 +53,7 @@ export function scheduleOut(
     lastRunAt: s.lastRunAt,
     running: rows.some((r) => r.state === 'running') || !!world.tasks.openOfSchedule(s.id),
     agent: { id: agent, name: agentName(world, agent) },
+    for: s.module === null && s.by ? (world.user(s.by)?.name ?? null) : null,
     runs: rows.map((r) => {
       const task = r.task ? world.tasks.get(r.task) : undefined
       return {

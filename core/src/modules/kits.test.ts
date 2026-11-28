@@ -4,13 +4,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
+import { CHIEF } from '../world/agents/index.ts'
 import { run } from '../world/db.ts'
+import type { Module } from '../world/shape/index.ts'
 import { moduleNumber } from '../world/shape/numbers.ts'
 import { listOrders, setListOrder } from '../world/table-prefs.ts'
 import { World } from '../world/world.ts'
 import { history } from './git.ts'
 import { install, installedKits, takeBack, update, yours } from './kits/index.ts'
-import { schedules } from './schedules.ts'
+import { schedules, setScheduleAgent, syncSchedules } from './schedules.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
 let home: string
@@ -675,6 +677,55 @@ describe('the contracts a kit signs', () => {
     })
     await expect(install(world, dir, ctx)).rejects.toThrow(
       /runs skills\/none\/run.js, which is not in the kit.*touches Elsewhere.*names the effect fly.*runs when Nowhere changes.*has no brief/s,
+    )
+  })
+})
+
+describe('a kit’s schedules and its agents', () => {
+  // the test kit with an agent of its own, and its schedule waking it by key
+  function withAgent(routine: string | null = null): string {
+    const dir = join(home, 'kit-agent')
+    cpSync(KIT, dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('api: 2', 'api: 3'),
+    )
+    writeFileSync(
+      join(dir, 'schedules', 'counter.md'),
+      '---\nname: Counter\ntrigger: { changes: Orders }\nruns: { script: skills/count/run.js }\nwakes: baker\ntouches: [Orders]\n---\nCounts the orders when one changes, and hands the baker what needs a look.\n',
+    )
+    mkdirSync(join(dir, 'agents', 'baker', 'schedules'), { recursive: true })
+    writeFileSync(
+      join(dir, 'agents', 'baker', 'AGENT.md'),
+      '---\nname: Baker\ntitle: Bakes\ndescription: Looks after the orders.\n---\nAnswer from the tables.\n',
+    )
+    if (routine) writeFileSync(join(dir, 'agents', 'baker', 'schedules', 'routine.md'), routine)
+    return dir
+  }
+
+  it('wakes the agent a schedule names by its key, and a person’s pick on Setup stays', async () => {
+    const m = await install(world, withAgent(), ctx)
+    const baker = world.agents.byName('Baker')?.id as string
+    const counter = () => schedules(world, m.id).find((s) => s.name === 'Counter')
+    expect(counter()?.agent).toBe(baker)
+    setScheduleAgent(world, counter()?.id as string, CHIEF, 'u_1')
+    syncSchedules(world, world.shape.module(m.id) as Module, 'paused')
+    expect(counter()?.agent).toBe(CHIEF)
+  })
+
+  it('refuses a schedule naming an agent it does not carry, and an agent’s routine its module starts', async () => {
+    const dir = withAgent(
+      '---\nname: Watch\ntrigger: { changes: Orders }\nwakes: true\n---\nLooks when an order changes.\n',
+    )
+    writeFileSync(
+      join(dir, 'schedules', 'counter.md'),
+      readFileSync(join(dir, 'schedules', 'counter.md'), 'utf8').replace(
+        'wakes: baker',
+        'wakes: miller',
+      ),
+    )
+    await expect(install(world, dir, ctx)).rejects.toThrow(
+      /routine.md runs when a row changes or a document is filed.*Counter wakes miller, which is not one of the kit's agents \(baker\)/s,
     )
   })
 })

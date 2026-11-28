@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startOf, TaskRuns } from '../../engine/task-runs.ts'
+import { CHIEF } from '../../world/agents/index.ts'
 import type { Task } from '../../world/tasks/index.ts'
 import type { User } from '../../world/world.ts'
 import { World } from '../../world/world.ts'
@@ -201,16 +202,32 @@ describe('a schedule that wakes an agent', () => {
     ).toBe(false)
   })
 
-  it('goes when it is removed, and with its agent; its runs stay', async () => {
+  it('goes when it is removed; its runs stay', async () => {
     const s = await made('Briefing')
     await run(s)
     world.tasks.setState(given[0] as string, 'done', person())
     await removeSchedule(world, s, person())
     expect(agentSchedules(world, scout)).toEqual([])
     expect(runner.runs(5).length).toBeGreaterThan(0)
-    await made('Another')
+  })
+
+  it('is a routine: with its agent deleted it passes to the Chief of staff, still for who asked', async () => {
+    const s = await made('Another', FOUND)
+    await run(s)
+    world.tasks.setState(given[0] as string, 'done', person())
     removeAgent(world, scout, person())
     expect(agentSchedules(world, scout)).toEqual([])
+    const passed = agentSchedules(world, CHIEF).find((x) => x.id === s.id) as Schedule
+    expect(passed).toMatchObject({ name: 'Another', agent: CHIEF, by: user.id, module: null })
+    const dir = world.agents.dirOf(CHIEF)
+    expect(existsSync(join(dir, passed.file))).toBe(true)
+    expect(existsSync(join(dir, passed.runs?.script as string))).toBe(true)
+    expect(runner.runsOf(s.id, 5).length).toBe(1)
+    // it runs from the Chief of staff's folder now, and hands it what it found
+    expect((await run(passed)).state).toBe('ok')
+    expect(world.lines({ kinds: ['agent_removed'], limit: 1 })[0]?.words).toMatch(
+      /The Chief of staff now runs its routine Another/,
+    )
   })
 })
 

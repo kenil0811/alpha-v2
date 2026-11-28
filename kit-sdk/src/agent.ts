@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
-import { ScheduleFront } from './schedule.ts'
+import { ScheduleFront, triggersOf } from './schedule.ts'
 
 export const AgentHead = z.object({
   // its lasting name in its source, so an update finds it; the folder's name when none is given
@@ -92,6 +92,14 @@ export function agentProblems(root: string, models?: string[]): string[] {
       const front = fm ? ScheduleFront.safeParse(parse(fm[1] as string)) : null
       if (!front?.success) problems.push(`${at}'s schedule ${s} is not right.`)
       else if (!(fm?.[2] ?? '').trim()) problems.push(`${at}'s schedule ${s} has no brief.`)
+      // an agent's own schedules are routines, on a clock: what a changed row or a filed document
+      // starts is its module's work, and goes in the module's schedules/
+      else if (triggersOf(front.data.trigger).some((t) => 'changes' in t || 'filed' in t))
+        problems.push(
+          `${at}'s schedule ${s} runs when a row changes or a document is filed: that is work its module starts, so it goes in the module's schedules/, waking ${a.key} (wakes: ${a.key}).`,
+        )
+      else if (typeof front.data.wakes === 'string')
+        problems.push(`${at}'s schedule ${s} names an agent to wake; its own schedules wake it.`)
     }
   }
   return problems

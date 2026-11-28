@@ -40,7 +40,12 @@ export const ScheduleFront = z
     description: z.string().optional(), // one line for Settings and the kit directory
     trigger: z.union([Trigger, z.array(Trigger).min(1)]),
     runs: Runs.optional(), // its script; a schedule that wakes an agent may go without
-    wakes: z.boolean().default(false), // it hands what it found to an agent, as a task
+    // it hands what it found to an agent, as a task: in a module, true (the Chief of staff, until
+    // a person picks another on Setup) or the key of one of its kit's agents; in an agent's own
+    // folder, true (that agent)
+    wakes: z
+      .union([z.boolean(), z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'an agent key')])
+      .default(false),
     // the tables it may write: a wall. A file that names none writes its own module's tables, as a
     // try from the chat does
     touches: z.array(z.string()).optional(),

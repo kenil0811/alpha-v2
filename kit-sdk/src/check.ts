@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
-import { agentProblems } from './agent.ts'
+import { agentProblems, readAgents } from './agent.ts'
 import { CALLS } from './index.ts'
 import { API_VERSIONS_SERVED } from './kinds.ts'
 import { type KitManifest, Manifest, Setup } from './manifest.ts'
@@ -117,6 +117,12 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
   }
   const own = new Set(m.tables.map((t) => t.name))
   const usedTables = new Set(m.uses.flatMap((u) => u.tables))
+  // the keys of the agents it carries: a schedule of the module may name one to wake
+  const agentKeys = new Set(
+    existsSync(join(dir, 'agents'))
+      ? readAgents(join(dir, 'agents')).flatMap((a) => (typeof a === 'string' ? [] : [a.key]))
+      : [],
+  )
   const keys = new Set<string>()
   for (const t of m.tables) {
     // a tab kept is a part's or a setup table's: a main table is a tab already
@@ -212,6 +218,10 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
     const name = a.name ?? f.replace(/\.md$/, '')
     if (a.runs && !existsSync(join(dir, a.runs.script)))
       problems.push(`${name} runs ${a.runs.script}, which is not in the kit.`)
+    if (typeof a.wakes === 'string' && !agentKeys.has(a.wakes))
+      problems.push(
+        `${name} wakes ${a.wakes}, which is not one of the kit's agents${agentKeys.size ? ` (${[...agentKeys].join(', ')})` : ''}.`,
+      )
     for (const t of a.touches ?? [])
       if (!own.has(t) && !usedTables.has(t))
         problems.push(

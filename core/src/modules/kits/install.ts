@@ -96,6 +96,8 @@ export async function install(
     { id: module.id, label: kitName, on: !!manifest.core },
     ctx,
   )
+  // its schedules again, now that the agents they name to wake are here
+  syncSchedules(world, world.shape.module(module.id) as Module, 'paused')
   return module
 }
 
@@ -240,6 +242,7 @@ export async function update(
     { id: module.id, label: kitName, on: !!manifest.core },
     ctx,
   )
+  syncSchedules(world, world.shape.module(module.id) as Module, 'paused')
   return report
 }
 

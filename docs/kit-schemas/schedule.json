@@ -190,7 +190,15 @@
     },
     "wakes": {
       "default": false,
-      "type": "boolean"
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        }
+      ]
     },
     "touches": {
       "type": "array",

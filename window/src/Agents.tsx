@@ -274,7 +274,8 @@ export function AgentPage({
       <Memories id={a.id} memories={a.memories} onChange={load} />
       <AgentSchedules
         agent={a.id}
-        schedules={a.schedules}
+        routines={a.routines}
+        wokenBy={a.wokenBy}
         onChange={load}
         from={a.chief || a.from.kind === 'here' ? null : a.from.name}
       />

@@ -12,6 +12,7 @@ import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { forgetMarks } from './agent-marks.ts'
 import { commitAll, restoreFile } from './git.ts'
+import { passRoutines } from './routines.ts'
 import { agentSchedules, syncAgentSchedules } from './schedules.ts'
 import {
   ALPHA,
@@ -231,13 +232,15 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   if (id === CHIEF) throw new Refused('The Chief of staff is always here.')
   const agent = world.agents.get(id)
   if (!agent) throw new Refused('That agent is not there.')
-  // what a module's schedule woke it for goes to the Chief of staff; its own go with it
+  // what a module's schedule woke it for goes to the Chief of staff, and so do the routines people
+  // asked of an agent made here, still for them; a kit agent's routines are its kit's and go with it
   run(
     world.db,
     'UPDATE schedules SET agent = ? WHERE agent = ? AND module_id IS NOT NULL',
     CHIEF,
     id,
   )
+  const passed = agent.source ? [] : passRoutines(world, agent)
   for (const s of agentSchedules(world, id)) {
     run(world.db, 'UPDATE runs SET schedule_id = NULL WHERE schedule_id = ?', s.id)
     run(world.db, 'DELETE FROM schedules WHERE id = ?', s.id)
@@ -252,8 +255,8 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   world.line({
     actor: ctx.actor,
     kind: 'agent_removed',
-    words: `Deleted the agent ${agent.name}. Its conversations stay in Logs.`,
-    data: { removed: id },
+    words: `Deleted the agent ${agent.name}. Its conversations stay in Logs.${passed.length ? ` The Chief of staff now runs ${passed.length === 1 ? 'its routine' : 'its routines'} ${passed.join(', ')}.` : ''}`,
+    data: { removed: id, ...(passed.length ? { passed } : {}) },
     user: ctx.user ?? null,
   })
 }

@@ -1,6 +1,7 @@
-// An agent's schedules: a line each on its page, and each one's own page with what it does, when,
-// and how its runs came out. Made in chat with the agent, or here.
-import type { AgentScheduleView } from '@alpha/core/api'
+// An agent's routines, what people asked it to do on a clock for themselves: a line each on its
+// page with who asked, and each one's own page with what it does, when, and how its runs came out.
+// Made in chat with the agent, or here. Under them, the modules' schedules that hand it their work.
+import type { AgentDetail, AgentScheduleView } from '@alpha/core/api'
 import { CalendarClock, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
@@ -153,6 +154,7 @@ function Controls({ s, onChange }: { s: AgentScheduleView; onChange: () => void 
 function lineUnder(s: AgentScheduleView): string {
   const last = s.runs[0]
   return [
+    s.for ? `For ${s.for}` : '',
     s.when,
     s.state === 'on' ? (s.next ? `next ${dayWords(s.next)}` : '') : 'paused',
     last ? `last: ${last.words}${money(last.usd)}` : '',
@@ -163,12 +165,14 @@ function lineUnder(s: AgentScheduleView): string {
 
 export function AgentSchedules({
   agent,
-  schedules,
+  routines: schedules,
+  wokenBy = [],
   onChange,
   from = null,
 }: {
   agent: string
-  schedules: AgentScheduleView[]
+  routines: AgentScheduleView[]
+  wokenBy?: AgentDetail['wokenBy']
   onChange: () => void
   from?: string | null // a shipped agent's source: its schedules change only with it
 }) {
@@ -176,7 +180,7 @@ export function AgentSchedules({
   return (
     <section className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <h2 className="font-medium font-serif text-ink text-xl">Schedules</h2>
+        <h2 className="font-medium font-serif text-ink text-xl">Routines</h2>
         {from ? (
           <span className="text-ink-3 text-sm">Change with {from}</span>
         ) : (
@@ -212,6 +216,20 @@ export function AgentSchedules({
             />
           ))}
         </List>
+      )}
+      {wokenBy.length > 0 && (
+        <p className="text-ink-3 text-sm">
+          Woken by{' '}
+          {wokenBy.map((w, i) => (
+            <span key={w.id}>
+              {i > 0 && (i === wokenBy.length - 1 ? ' and ' : ', ')}
+              <a href={`#/module/${w.module.id}/setup`} className="text-ink-2 hover:underline">
+                {w.name}
+              </a>{' '}
+              in {w.module.name}
+            </span>
+          ))}
+        </p>
       )}
     </section>
   )

@@ -33,7 +33,10 @@ export interface AgentDetail extends AgentView {
   files: string[]
   memories: MemoryView[]
   tasks: { id: string; title: string; state: string }[]
-  schedules: AgentScheduleView[]
+  // what people asked it to do on a clock, for themselves, each with who asked
+  routines: AgentScheduleView[]
+  // the modules' schedules that hand it what they find (Repair a source, in Deal pilot)
+  wokenBy: { id: string; name: string; module: { id: string; name: string } }[]
   sites: string[] // the sites it opens with no card, shared with its scripts and shell (sites.yaml)
 }
 
@@ -57,6 +60,7 @@ export interface AgentScheduleView {
   lastRunAt: string | null
   running: boolean
   agent: { id: string; name: string }
+  for: string | null // a routine: the person who asked for it, by name
   runs: ScheduleRunView[] // newest first
 }
 

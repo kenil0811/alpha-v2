@@ -140,8 +140,8 @@ model fetches everything else, and a table's fields arrive with its first use in
 
 ## Agents
 
-An agent is a row and a folder (`agents/<id>/`) holding its instructions, skills, files and own
-schedules. Every agent can do what the Chief of staff can; they differ by instructions, memory,
+An agent is a row and a folder (`agents/<id>/`) holding its instructions, skills, files and
+routines. Every agent can do what the Chief of staff can; they differ by instructions, memory,
 skills and model. `reach` is empty on every agent today, and one function reads it, so limits can
 come later as a small change. The Chief of staff is always there, has no row, knows every agent,
 and makes and changes agents without a card. A change to an agent's files is a commit, so it can be
@@ -173,7 +173,13 @@ failure makes it Waiting, with Run again. A due day alone is information. A task
 start later, and each copy of a repeat given to an agent starts on its own day.
 
 **A schedule** is a file, `schedules/<name>.md`, whose front matter says when, what it runs and
-what it may touch, and whose body is its brief. It sits in a module or in an agent's folder. When
+what it may touch, and whose body is its brief. It sits where what starts it says (the definitions,
+27 Nov). The work starts a module's schedule (a time the work needs, a row changing, a document
+filed), which outlives any agent; one that wakes an agent names it (`wakes: <agent key>` in a kit,
+or picked on Setup), else the Chief of staff. A person asking an agent for something on a clock,
+for themselves, makes a routine: a schedule in that agent's folder with the person who asked, shown
+on its page. A kit's agent ships clock routines only (`pnpm kit check`), and an agent made here,
+deleted, passes its routines to the Chief of staff, still for who asked. When
 is an hour, a day, a weekday, a named day, a week, a pattern, a table changing, or a document filed.
 The scheduler ticks once a minute, and a background job that fails says so: a journal line each
 time and a card on Home after two in a row, or at once for a backup. One run of a schedule happens at a time, a missed run becomes
