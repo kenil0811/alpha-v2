@@ -57,18 +57,20 @@ export const Manifest = z.object({
   // the kit API it was written for; core says which it serves
   api: z.number().int().positive().optional(),
   // the other kits, or the connectors, whose tables it reads, relates to or triggers on: a kit by
-  // name and the version it needs at least, a connector by name
+  // name and the version it needs at least, a connector by name; a module made here names another
+  // made here by its name (module), which a kit never does
   uses: z
     .array(
       z
         .object({
           kit: z.string().min(1).optional(),
+          module: z.string().min(1).optional(),
           connector: z.string().min(1).optional(),
           min: z.string().optional(),
           tables: z.array(z.string()).default([]),
         })
-        .refine((u) => !!u.kit !== !!u.connector, {
-          message: 'A use names a kit or a connector, one of the two.',
+        .refine((u) => [u.kit, u.module, u.connector].filter(Boolean).length === 1, {
+          message: 'A use names a kit, a module or a connector, one of them.',
         }),
     )
     .default([]),

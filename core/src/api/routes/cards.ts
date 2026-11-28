@@ -15,6 +15,7 @@ import { RUN_AGAIN } from '../../modules/runs/index.ts'
 import { schedules } from '../../modules/schedules.ts'
 import { JOB_FAILED } from '../../scheduler/scheduler.ts'
 import { Refused } from '../../world/kinds.ts'
+import { READ_BY_SHAPE } from '../../world/reads.ts'
 import { type Redo, redo } from '../../world/shape/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { CardView } from '../types.ts'
@@ -145,6 +146,19 @@ export function registerCards(ctx: Ctx): void {
           void runner.retry(input.schedule, { user: user.id, turn: null }).catch(() => undefined)
         else runner.leave(input.schedule, input.cursor)
         const out = world.cards.answer(id, answer, person)
+        live()
+        return cardOut(out)
+      }
+      // a change another module's scripts read: done now anyway, or left as it was (world/reads.ts)
+      if (c?.call?.tool === READ_BY_SHAPE) {
+        const r = c.call.input as unknown as Redo
+        if (answer === c.options[0]) {
+          const said = redo(world.shape, r, { actor: person, user: user.id, anyway: true })
+          const out = world.cards.answer(id, answer, person, `Done now: ${said}`)
+          live()
+          return cardOut(out)
+        }
+        const out = world.cards.answer(id, answer, person, 'Left as it was.')
         live()
         return cardOut(out)
       }

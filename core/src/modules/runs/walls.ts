@@ -72,12 +72,13 @@ function reach(
   }
 }
 
-// What a module's kit says it uses, from its module.yaml.
+// What a module says it uses, from its module.yaml: a kit's or one made here (whose module.yaml
+// is not a kit's, so only its uses are read).
 function usesOf(dir: string) {
   const manifest = join(dir, 'module.yaml')
-  return existsSync(manifest)
-    ? (Manifest.safeParse(parse(readFileSync(manifest, 'utf8'))).data?.uses ?? [])
-    : []
+  if (!existsSync(manifest)) return []
+  const y = parse(readFileSync(manifest, 'utf8')) as { uses?: unknown } | null
+  return Manifest.shape.uses.safeParse(y?.uses ?? []).data ?? []
 }
 
 // The connectors a module's kit names in its uses, lower case: whose reads its scripts may use.

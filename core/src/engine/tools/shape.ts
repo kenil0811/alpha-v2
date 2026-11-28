@@ -3,6 +3,7 @@
 
 import { z } from 'zod'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
+import { setReads } from '../../world/reads.ts'
 import { setPer } from '../../world/records/fold.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
@@ -34,6 +35,7 @@ const SHAPE_INPUT = {
     'many',
     'per',
     'business_case',
+    'reads',
   ]),
   module: z.string().optional(),
   within: z.string().optional(),
@@ -52,6 +54,9 @@ const SHAPE_INPUT = {
   tab: z.boolean().optional(), // keep_tab: a part or setup table shown as a tab too, or not
   // per: false takes a table's one row per person off; organization for one row per organization
   per: z.union([z.boolean(), z.literal('organization')]).optional(),
+  // reads: the other module (from) whose tables (tables) this module's scripts read; none to stop
+  from: z.string().optional(),
+  tables: z.array(z.string()).optional(),
   // a module's business case: who it is for, what it keeps, the decisions it serves
   business_case: z
     .object({ for: z.string().min(1), keeps: z.string().min(1), decides: z.string().min(1) })
@@ -88,6 +93,8 @@ export function describeShape(a: ShapeAction): string {
       return `let ${a.field} in ${a.table} hold several`
     case 'per':
       return `make ${a.table} one row per person, by ${a.field}`
+    case 'reads':
+      return `let ${a.module} read ${(a.tables ?? []).join(', ') || 'nothing'} of ${a.from}`
     default:
       return a.action.replace('_', ' ')
   }
@@ -119,6 +126,12 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
         ? `${m.name} is for ${a.business_case.for}; it keeps ${a.business_case.keeps}, for deciding ${a.business_case.decides}.`
         : `${m.name} keeps the person's own business case; theirs stands.`,
     )
+  }
+  if (a.action === 'reads') {
+    const m = world.shape.module(a.module?.trim() || '')
+    const from = world.shape.module(a.from?.trim() || '')
+    if (!m || !from) throw new Refused('reads needs module and from: two modules here.')
+    return say(setReads(world, m, from, a.tables ?? [], c))
   }
   if (a.action === 'place_module') {
     if (!a.module) throw new Refused('place_module needs module.')
@@ -314,6 +327,7 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'Make or change tables, and place modules. Every table and field carries an about: one sentence on what a row or a value means, in the person’s own terms; you write it when you make one (it shows as assumed until they edit it), and the person’s own sentence always stands. Actions:',
         'make_table: a table with its fields, in a module (made if it is not there yet); give module, table, about, fields (each with about). A module without a business case takes business_case with its first table: for (who it serves), keeps (what it keeps track of) and decides (the decisions it serves), in the person’s own terms; it shows as assumed until they change it.',
         'business_case: give module and business_case, to set or change a module’s; the person’s own stands.',
+        'reads: give module, from (another module) and tables, so module’s scripts may read those tables of from (none to stop); a module’s scripts read only its own tables and what it names here, and a change that would break a module reading another asks the person first.',
         'Walls: a table that would hold only a name is a choice field on the table that would point at it; a table named for a period (October, Q3, 2025) is one table with a date on each row.',
         'add_fields: give table and fields (each with about).',
         'describe: give table and about for the table; table, field and about for a field; table, field (the view’s name), what: view and about for a view.',

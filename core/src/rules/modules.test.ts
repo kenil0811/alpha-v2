@@ -7,6 +7,7 @@ import { checkSigned, install } from '../modules/kits/index.ts'
 import { api } from '../modules/runs/api.ts'
 import type { ScheduleRunner } from '../modules/runs/runner.ts'
 import { all } from '../world/db.ts'
+import { setReads } from '../world/reads.ts'
 import type { Act } from './doors.ts'
 import { type Acts, alpha } from './drive.ts'
 import { CONTRACT, drive, refusal, refusedWith, rule } from './rule.ts'
@@ -313,3 +314,24 @@ rule('M5', 'kit code finds tables and fields by their lasting key', {
     },
   },
 })
+
+rule(
+  'M9',
+  'a change that would break a module reading another is on a card from every door, naming it',
+  {
+    world: [[]],
+    acts: ['renameTable', 'renameField'],
+    doors: (d) => d.by !== 'kit',
+    given: (w) => {
+      const person = { actor: { kind: 'person' as const, id: w.user.id }, user: w.user.id }
+      const reader = w.world.shape.makeModule('Pipeline', person)
+      const bakery = w.world.shape.module('Bakery')
+      if (bakery) setReads(w.world, reader, bakery, ['Suppliers'], person)
+    },
+    attempt: (a, act) => tryShape(a, act, 'Suppliers', 'Bakery'),
+    // nothing changed yet, and the person has the card naming the module that reads it
+    holds: (w, _refused, act) =>
+      unchanged(w, act, 'Suppliers', 'Bakery', null) &&
+      w.world.cards.waiting().some((c) => /^Pipeline reads Suppliers/.test(c.words)),
+  },
+)

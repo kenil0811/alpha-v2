@@ -25,6 +25,10 @@
             "type": "string",
             "minLength": 1
           },
+          "module": {
+            "type": "string",
+            "minLength": 1
+          },
           "connector": {
             "type": "string",
             "minLength": 1

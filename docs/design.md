@@ -320,7 +320,11 @@ A module is a folder kept as a git repository: `module.yaml` with its business c
 and sites, then `NOTES.md`, `pages/`, `scripts/`, `skills/`, `schedules/` and `files/`. A script is
 its code (`scripts/<name>/`, with what it reads beside it), which a schedule or the run tool runs; a
 skill is only ever a how-to the model follows (`skills/<name>/SKILL.md`), for a module or an agent
-(the definitions, 27 Nov), and `pnpm kit check` and the keep tool refuse code in one. A module may sit inside
+(the definitions, 27 Nov), and `pnpm kit check` and the keep tool refuse code in one. A module
+names the other modules whose tables its scripts read (`uses` in `module.yaml`: a kit's by the
+other kit's name, one made here by the other module's, through the shape tool's reads), and reads
+nothing else of theirs; Module details shows what it reads and what reads it, and a change that
+deletes or renames what another module reads is on a card first, by any door (`docs/rules.md` M9). A module may sit inside
 another. A kit is a module with no person's rows, and the kit API is version 3, which adds the
 agents a kit carries; version 2 kits still install (`docs/kit-api.md`).
 Scripts are plain JavaScript in the sandbox, importing nothing of Alpha's and handed one `alpha`

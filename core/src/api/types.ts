@@ -33,6 +33,7 @@ export type {
 } from './file-types.ts'
 
 import type { ViewOf } from './me-types.ts'
+import type { InsideModuleView, ModuleRead, ModuleScript, ModuleSkill } from './module-types.ts'
 
 export type {
   CardWidth,
@@ -514,8 +515,10 @@ export interface ModuleView {
   schedules: ScheduleView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written
-  scripts: { name: string; runBy: string[] }[] // its code, each with the schedules that run it
-  skills: { name: string; description: string }[] // how its work is done, which Alpha follows
+  scripts: ModuleScript[] // its code, with the schedules that run each
+  skills: ModuleSkill[] // how its work is done (how-tos)
+  reads: ModuleRead[] // the other modules whose tables its scripts read
+  readBy: ModuleRead[] // and those that read its
   // what it is for, and whose words: the kit's, Alpha's (assumed) or the person's
   businessCase: {
     for: string
@@ -527,15 +530,6 @@ export interface ModuleView {
   pages: PageSummary[]
   tables: TableSummary[]
   modules: InsideModuleView[] // the modules inside it
-}
-
-// A module inside another, as the parent's Overview lists it: where it comes from and what goes on in it now, the modules inside it counted too.
-export interface InsideModuleView extends ModuleSummary {
-  kit: string | null
-  schedules: number // on
-  running: number
-  needs: number // cards waiting on the person
-  tasks: number // open
 }
 
 // What Alpha remembers: the standing instructions the person gave, for them or for everyone.
@@ -645,5 +639,6 @@ export interface TaskView extends TaskLineView {
 
 export type * from './agent-types.ts'
 export type * from './live-types.ts'
+export type * from './module-types.ts'
 export type * from './read-types.ts'
 export type * from './story-types.ts'

@@ -115,6 +115,11 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
     if ((m.api ?? 0) < 3) problems.push('The kit carries agents/, which needs api: 3.')
     problems.push(...agentProblems(join(dir, 'agents'), options.models))
   }
+  for (const u of m.uses)
+    if (u.module)
+      problems.push(
+        `module.yaml uses the module ${u.module}: a kit names the kits it reads (kit: <name>), never a module made on one Alpha.`,
+      )
   const own = new Set(m.tables.map((t) => t.name))
   const usedTables = new Set(m.uses.flatMap((u) => u.tables))
   // the keys of the agents it carries: a schedule of the module may name one to wake

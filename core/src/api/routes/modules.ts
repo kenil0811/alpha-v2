@@ -9,6 +9,7 @@ import { agentName, schedules, shownSchedules, whenWords } from '../../modules/s
 import { scriptsOf } from '../../modules/scripts.ts'
 import { pageAnswer, pageDocument, pageRecord, pagesFor, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
+import { readersOf, readsOf } from '../../world/reads.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ModuleSummary, ModuleView } from '../types.ts'
@@ -135,6 +136,16 @@ export function registerModules(ctx: Ctx): void {
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
       scripts: scriptsOf(m.dir, schedules(world, m.id)),
       skills: skillsOf(m.dir),
+      reads: readsOf(world, m).map((r) => ({
+        id: r.module?.id ?? null,
+        name: r.module?.name ?? r.name,
+        tables: r.tables,
+      })),
+      readBy: readersOf(world, m).map((r) => ({
+        id: r.module.id,
+        name: r.module.name,
+        tables: r.tables,
+      })),
       businessCase: businessCase(m),
       parent: m.parent,
       pages: pagesFor(world, m),

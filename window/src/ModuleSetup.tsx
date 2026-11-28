@@ -110,6 +110,41 @@ export function ModuleDetails({ m, onChange }: { m: ModuleView; onChange: () => 
             </List>
           </Part>
         )}
+        {(m.reads.length > 0 || m.readBy.length > 0) && (
+          <Part
+            title="Other modules"
+            about={`The modules whose tables ${m.name}'s scripts read, and those that read ${m.name}'s. A change that would break one asks you first.`}
+          >
+            <List>
+              {m.reads.map((r) => (
+                <Row
+                  key={`r-${r.name}`}
+                  title={
+                    r.id ? (
+                      <a href={`#/module/${r.id}`} className="hover:underline">
+                        Reads {r.name}
+                      </a>
+                    ) : (
+                      `Reads ${r.name}, not on this Alpha`
+                    )
+                  }
+                  sub={r.tables.join(', ')}
+                />
+              ))}
+              {m.readBy.map((r) => (
+                <Row
+                  key={`b-${r.id}`}
+                  title={
+                    <a href={`#/module/${r.id}`} className="hover:underline">
+                      Read by {r.name}
+                    </a>
+                  }
+                  sub={r.tables.join(', ')}
+                />
+              ))}
+            </List>
+          </Part>
+        )}
         {m.kit && <Yours moduleId={m.id} onChange={onChange} />}
         {!!m.kit && !!me?.developer && me.user.role === 'owner' && <FromFolder m={m} />}
       </div>

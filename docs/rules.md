@@ -43,6 +43,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | M6 | Who may build is one firm setting: everyone, admins or nobody. Building is a new module, table, field, schedule or page, and installing or packing a kit | 4 Nov | with Dell's contract |
 | M7 | The developer switch (`developer: true` in alpha.yaml, out of the window since 7 Nov), installing packs, restoring, bringing in or removing data are for admins only (the owner, until there are users); the model's route is everyone's to set | 4 Nov, 7 Nov, 19 Nov | with Dell's contract |
 | M8 | A managed kit's update may rename, retype and remove, by a scripted migration signed with it; an open kit's update only adds | 4 Nov | with Dell's contract |
+| M9 | A module names the other modules whose tables its scripts read (`uses`), and reads nothing else of theirs; a change that deletes or renames a table, or a field of one, that another module reads is on a card from every door, naming that module, and nothing changes until the person says Do it now anyway | 28 Nov | test |
 
 ## Who owns the data: Alpha's own
 

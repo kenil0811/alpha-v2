@@ -28,6 +28,7 @@ import { Refused } from './kinds.ts'
 import { askMaintainer } from './maintained.ts'
 import { ModelSql } from './modelsql.ts'
 import { People } from './people/index.ts'
+import { askReaders } from './reads.ts'
 import { FOLD_PICK, foldPeople, pickFolded, unfoldPeople } from './records/fold.ts'
 import { Records } from './records/index.ts'
 import { Rules } from './rules.ts'
@@ -133,7 +134,12 @@ export class World {
     this.tasks = new Tasks(db, this.shape, (id) => this.user(id)?.name ?? null)
     this.accounts = new Accounts(db)
     this.shape.onGone = (ids) => this.people.gone(ids)
-    this.shape.asks = (module, redo, ctx) => askMaintainer(this, module, redo, ctx)
+    // a change of shape asks first, by any door: a maintained kit's maintainer (M4), and the modules
+    // that read what it would break (reads.ts)
+    this.shape.asks = (module, redo, ctx) => {
+      askMaintainer(this, module, redo, ctx)
+      askReaders(this, redo, ctx)
+    }
   }
 
   static async open(dir: string, options: { pageRows?: number } = {}): Promise<World> {
