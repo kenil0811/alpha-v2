@@ -133,4 +133,4 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | R4 | The scenario journeys that do not wait run before any push that touches the world, and the session's log names their reports | 4 Nov | — |
 | R5 | Plugins are first-party code in this repository; nothing from elsewhere loads through the plugin host. One that must, runs in its own process as a connector does | 4 Nov | test |
 | R6 | One request of a person makes at most 8 asks or tasks given between agents and 4 hops in a chain, then waits for Continue; Alpha counts them, not the model, and the same ask is not made twice in one chain | 9 Nov | test |
-| R7 | An agent's check only looks: it reads and cannot write, draft, send or use the model. A scheduled run cannot make or change a schedule | 10 Nov | test |
+| R7 | A check only looks, an agent's or that of a module's schedule that wakes one: it reads and cannot write, draft, send or use the model. A scheduled run cannot make or change a schedule | 10 Nov, 28 Nov | test |

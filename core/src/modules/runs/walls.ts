@@ -113,6 +113,16 @@ export function wallsForTry(runner: ScheduleRunner, module: RunPlace): Walls {
 export function wallsFor(runner: ScheduleRunner, module: RunPlace, file: ScheduleFile): Walls {
   if (!module.id) return CHECK
   const { own, uses, connectors } = reach(runner, { id: module.id, dir: module.dir })
+  // a module's schedule that wakes an agent runs a check, which only looks as an agent's does
+  // (rules R7): its module's tables and what it reads, the pages on its list, and no writes
+  if (file.wakes)
+    return {
+      kind: 'check',
+      touches: new Set(),
+      reads: lower([...own, ...uses]),
+      effects: new Set(['browser.open', 'browser.extract']),
+      connectors: lower(connectors),
+    }
   return {
     kind: 'file',
     // a file that names no tables writes its module's own, as a try does

@@ -1,11 +1,13 @@
 // An agent's schedules (docs/rules.md, R7): a check only looks, and a scheduled run cannot grow its
 // own work.
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
 import type { Tooling } from '../engine/tools/common.ts'
 import { scheduleTools } from '../engine/tools/schedule.ts'
 import { makeSchedule } from '../modules/agent-schedules.ts'
 import { ScheduleRunner } from '../modules/runs/index.ts'
-import { agentSchedules } from '../modules/schedules.ts'
+import { agentSchedules, schedules, syncSchedules } from '../modules/schedules.ts'
 import { rule } from './rule.ts'
 import type { RuleWorld } from './world.ts'
 
@@ -52,6 +54,29 @@ rule('R7', 'an agent’s check only looks, and a scheduled run cannot make or ch
         (err: Error) => err.message,
       )
       return said.includes('A check only looks')
+    },
+    'a module’s schedule that wakes an agent runs a check that cannot write either': async (w) => {
+      const m = w.world.shape.module('Bakery')
+      if (!m) return false
+      mkdirSync(join(m.dir, 'scripts', 'watch'), { recursive: true })
+      writeFileSync(
+        join(m.dir, 'scripts', 'watch', 'check.js'),
+        "export default async (alpha) => { await alpha.rows.land('Orders', []); return { wake: false } }\n",
+      )
+      writeFileSync(
+        join(m.dir, 'schedules', 'watch.md'),
+        '---\nname: Watch\ntrigger: { changes: Orders }\nruns: { script: scripts/watch/check.js }\nwakes: true\n---\nLooks.\n',
+      )
+      syncSchedules(w.world, m, 'on')
+      const s = schedules(w.world, m.id).find((x) => x.name === 'Watch')
+      if (!s) return false
+      const out = await runnerIn(w).runSchedule(
+        s,
+        { user: w.user.id, turn: null },
+        {},
+        { asked: true },
+      )
+      return out.state === 'failed' && /A check only looks/.test(out.words ?? '')
     },
     'a scheduled run cannot make a schedule': async (w) => {
       const agent = agentIn(w)
