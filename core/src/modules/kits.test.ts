@@ -1,5 +1,13 @@
 // The kit installer and the ownership rule, on a made-up kit (test-kit/): never a client's.
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -518,15 +526,19 @@ describe('updating a kit', () => {
       'Suppliers:\n  - key: mill\n    values: { Name: Mill & Sons, Email: mill@example.com }\n  - key: dairy\n    values: { Name: Dairy Farm Ltd, Email: dairy@example.com }\n',
     )
     writeFileSync(join(next, 'skills/count/README.md'), 'New in 0.2.0.\n')
+    // a script the kit no longer ships goes with the update, unchanged as it came
+    rmSync(join(next, 'scripts/read'), { recursive: true })
 
     const report = await update(world, 'Bakery', next, ctx)
     expect(report).toEqual({
       replaced: ['NOTES.md'],
       kept: ['skills/count/SKILL.md'],
       added: ['skills/count/README.md'],
+      removed: ['scripts/read/run.js'],
       rowsLanded: 1,
       rowsKept: 1,
     })
+    expect(existsSync(join(m.dir, 'scripts/read/run.js'))).toBe(false)
     expect(readFileSync(join(m.dir, 'skills/count/SKILL.md'), 'utf8')).toContain('My words.')
     expect(readFileSync(join(m.dir, 'NOTES.md'), 'utf8')).toContain('Newer notes.')
     const rows = world.records.list(suppliers)
